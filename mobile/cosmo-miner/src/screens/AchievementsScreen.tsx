@@ -1,67 +1,48 @@
 import React, { useMemo } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
-import { ACHIEVEMENTS, type AchievementId } from "../game/ACHIEVEMENTS";
-import { computeUpgradesBought } from "../game/computeStats";
-import { formatNum } from "../game/formatNum";
-import type { UpgradesState } from "../game/types";
-import type { GameState } from "../game/types";
+import { ACHIEVEMENTS, type AchievementDefinition, type AchievementId } from "../game/ACHIEVEMENTS";
+import type { AchievementsState } from "../game/types";
 
-export type AchievementsScreenProps = Pick<
-  GameState,
-  "energy" | "totalEarned" | "upgrades" | "achievements"
->;
+export type AchievementsScreenProps = {
+  achievements: AchievementsState;
+};
 
-function getAnyUpgradeMaxLevel(upgrades: UpgradesState): number {
-  let max = 0;
-  for (const upgId in upgrades) {
-    const lvl = upgrades[upgId as unknown as keyof UpgradesState] ?? 0;
-    if (lvl > max) max = lvl;
-  }
-  return max;
+function isUnlocked(set: Set<AchievementId>, def: AchievementDefinition) {
+  return set.has(def.id);
 }
 
-export function AchievementsScreen({ energy, totalEarned, upgrades, achievements }: AchievementsScreenProps) {
+export function AchievementsScreen({ achievements }: AchievementsScreenProps) {
   const unlockedSet = useMemo(() => new Set(achievements.unlockedIds as AchievementId[]), [achievements.unlockedIds]);
-  const upgradesBought = useMemo(() => computeUpgradesBought(upgrades), [upgrades]);
-  const maxUpgradeLevel = useMemo(() => getAnyUpgradeMaxLevel(upgrades), [upgrades]);
 
   return (
     <View style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.title}>🏆 ДОСТИЖЕНИЯ</Text>
+        <Text style={styles.title}>◈ ЛИЧНОЕ ДЕЛО ◈</Text>
+        <Text style={styles.subtitle}>
+          {Array.from(unlockedSet).length}/{ACHIEVEMENTS.length} страниц получено
+        </Text>
 
         {ACHIEVEMENTS.map((def) => {
-          const unlocked = unlockedSet.has(def.id);
-
-          const current =
-            def.target.type === "energyAtLeast"
-              ? energy
-              : def.target.type === "totalEarnedAtLeast"
-              ? totalEarned
-              : def.target.type === "anyUpgradeLevelAtLeast"
-              ? maxUpgradeLevel
-              : def.target.type === "upgradesBoughtAtLeast"
-              ? upgradesBought
-              : 0;
-
-          const target = def.target.value;
-          const progress = target > 0 ? Math.min(1, current / target) : 0;
+          const unlocked = isUnlocked(unlockedSet, def);
 
           return (
-            <View key={def.id} style={[styles.card, unlocked ? styles.cardUnlocked : null]}>
-              <View style={styles.cardTop}>
-                <Text style={styles.name}>{def.title}</Text>
-                <Text style={[styles.status, unlocked ? styles.statusUnlocked : styles.statusLocked]}>
-                  {unlocked ? "ОТКРЫТО" : `${Math.round(progress * 100)}%`}
+            <View
+              key={def.id}
+              style={[
+                styles.card,
+                unlocked ? styles.cardUnlocked : null,
+                unlocked ? { opacity: 1 } : { opacity: 0.4 },
+              ]}
+            >
+              <Text style={[styles.icon, unlocked ? null : { opacity: 0.35 }]}>{def.icon}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.name, { color: unlocked ? "#ffd700" : "rgba(255,255,255,0.25)" }]}>
+                  {def.name}
+                </Text>
+                <Text style={[styles.lore, unlocked ? null : { color: "rgba(255,255,255,0.15)" }]}>
+                  {unlocked ? def.lore : "???"}
                 </Text>
               </View>
-              <Text style={styles.desc}>{def.description}</Text>
-
-              <View style={styles.progressTrack}>
-                <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
-              </View>
-
-              <Text style={styles.reward}>Награда: +{formatNum(def.rewardEnergy)} ⚡</Text>
             </View>
           );
         })}
@@ -81,49 +62,30 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     marginBottom: 14,
   },
+  subtitle: {
+    textAlign: "center",
+    fontSize: 10,
+    color: "rgba(255,255,255,0.18)",
+    marginBottom: 12,
+    letterSpacing: 1,
+    fontWeight: "800",
+  },
   card: {
-    padding: 14,
+    flexDirection: "row",
+    gap: 12,
+    padding: 12,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.07)",
-    backgroundColor: "rgba(255,255,255,0.03)",
-    marginBottom: 12,
+    borderColor: "rgba(255,255,255,0.04)",
+    backgroundColor: "rgba(255,255,255,0.015)",
+    marginBottom: 10,
   },
   cardUnlocked: {
-    borderColor: "rgba(120,255,120,0.35)",
-    backgroundColor: "rgba(120,255,120,0.08)",
+    borderColor: "rgba(255,180,0,0.22)",
+    backgroundColor: "rgba(255,180,0,0.03)",
   },
-  cardTop: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  name: { fontSize: 13, fontWeight: "900", color: "#00d4ff" },
-  status: { fontSize: 10, fontWeight: "900" },
-  statusUnlocked: { color: "rgba(120,255,120,0.85)" },
-  statusLocked: { color: "rgba(255,255,255,0.5)" },
-  desc: {
-    marginTop: 6,
-    fontSize: 10,
-    color: "rgba(255,255,255,0.45)",
-  },
-  progressTrack: {
-    marginTop: 10,
-    height: 10,
-    borderRadius: 8,
-    backgroundColor: "rgba(0,212,255,0.12)",
-    overflow: "hidden",
-  },
-  progressFill: {
-    height: 10,
-    borderRadius: 8,
-    backgroundColor: "rgba(0,212,255,0.65)",
-  },
-  reward: {
-    marginTop: 10,
-    fontSize: 10,
-    color: "rgba(255,200,0,0.55)",
-    fontWeight: "700",
-  },
+  icon: { fontSize: 26, flexShrink: 0 },
+  name: { fontSize: 12, fontWeight: "900", letterSpacing: 1 },
+  lore: { marginTop: 3, fontSize: 10, lineHeight: 16, color: "rgba(255,255,255,0.15)" },
 });
 

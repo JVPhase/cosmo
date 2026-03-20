@@ -1,23 +1,22 @@
 import { StatusBar } from "expo-status-bar";
 import React, { useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { UpgradesScreen } from "./src/screens/UpgradesScreen";
+import { PlanetsScreen } from "./src/screens/PlanetsScreen";
 import { AchievementsScreen } from "./src/screens/AchievementsScreen";
 import { GameScreen } from "./src/screens/GameScreen";
-import { MapScreen } from "./src/screens/MapScreen";
-import { SettingsScreen } from "./src/screens/SettingsScreen";
-import { UpgradesScreen } from "./src/screens/UpgradesScreen";
+import { IntroOverlay } from "./src/ui/IntroOverlay";
 import { useGame } from "./src/game/useGame";
-import { loadGame, saveGame } from "./src/game/storage";
+import { loadGame, loadIntroSeen, saveGame, saveIntroSeen } from "./src/game/storage";
 import type { GameStateInit } from "./src/game/types";
 
-type TabId = "game" | "upgrades" | "map" | "achievements" | "settings";
+type TabId = "game" | "upgrades" | "planets" | "achievements";
 
 const TABS: Array<{ id: TabId; icon: string; label: string }> = [
-  { id: "game", icon: "🪨", label: "ДОБЫЧА" },
+  { id: "game", icon: "⛏️", label: "ДОБЫЧА" },
   { id: "upgrades", icon: "⚡", label: "АПГРЕЙДЫ" },
-  { id: "map", icon: "🗺️", label: "ЭКСПЕДИЦИИ" },
-  { id: "achievements", icon: "🏆", label: "ДОСТИЖЕНИЯ" },
-  { id: "settings", icon: "⚙️", label: "НАСТРОЙКИ" },
+  { id: "planets", icon: "🌍", label: "ПЛАНЕТЫ" },
+  { id: "achievements", icon: "🏆", label: "ДЕЛО" },
 ];
 
 function GameApp({ initial, tab, onSetTab }: { initial: GameStateInit; tab: TabId; onSetTab: (t: TabId) => void }) {
@@ -26,22 +25,24 @@ function GameApp({ initial, tab, onSetTab }: { initial: GameStateInit; tab: TabI
   const latestSaveRef = useRef({
     energy: game.energy,
     totalEarned: game.totalEarned,
+    clicks: game.clicks,
     upgrades: game.upgrades,
     unlockedPlanetIds: game.unlockedPlanetIds,
     achievements: game.achievements,
-    settings: game.settings,
+    selectedPlanetId: game.selectedPlanetId,
   });
 
   useEffect(() => {
     latestSaveRef.current = {
       energy: game.energy,
       totalEarned: game.totalEarned,
+      clicks: game.clicks,
       upgrades: game.upgrades,
       unlockedPlanetIds: game.unlockedPlanetIds,
       achievements: game.achievements,
-      settings: game.settings,
+      selectedPlanetId: game.selectedPlanetId,
     };
-  }, [game.energy, game.totalEarned, game.upgrades, game.unlockedPlanetIds, game.achievements, game.settings]);
+  }, [game.energy, game.totalEarned, game.clicks, game.upgrades, game.unlockedPlanetIds, game.selectedPlanetId, game.achievements]);
 
   // Save every few seconds (avoid saving on each tick).
   useEffect(() => {
@@ -61,38 +62,44 @@ function GameApp({ initial, tab, onSetTab }: { initial: GameStateInit; tab: TabI
           clickPower={game.clickPower}
           passiveRate={game.passiveRate}
           onMine={game.mineClick}
+          planet={game.planet}
+          clerkMessage={game.clerkMessage}
+          onCloseClerk={game.closeClerk}
+          achievementToast={
+            game.achievementToast
+              ? {
+                  id: game.achievementToast.id,
+                  name: game.achievementToast.name,
+                  icon: game.achievementToast.icon,
+                  lore: game.achievementToast.lore,
+                }
+              : null
+          }
+          onCloseAchievementToast={game.closeAchievementToast}
         />
       );
       break;
     case "upgrades":
       tabContent = <UpgradesScreen energy={game.energy} upgrades={game.upgrades} onBuyUpgrade={game.buyUpgrade} />;
       break;
-    case "map":
+    case "planets":
       tabContent = (
-        <MapScreen
+        <PlanetsScreen
           energy={game.energy}
           unlockedPlanetIds={game.unlockedPlanetIds}
+          selectedPlanetId={game.selectedPlanetId}
           onUnlockPlanet={game.unlockPlanet}
+          onChoosePlanet={(id) => {
+            game.selectPlanet(id);
+            onSetTab("game");
+          }}
         />
       );
       break;
     case "achievements":
       tabContent = (
         <AchievementsScreen
-          energy={game.energy}
-          totalEarned={game.totalEarned}
-          upgrades={game.upgrades}
           achievements={game.achievements}
-        />
-      );
-      break;
-    case "settings":
-      tabContent = (
-        <SettingsScreen
-          settings={game.settings}
-          onSetSoundEnabled={game.setSoundEnabled}
-          onSetMusicEnabled={game.setMusicEnabled}
-          onSetLanguage={game.setLanguage}
         />
       );
       break;
@@ -122,20 +129,22 @@ function GameApp({ initial, tab, onSetTab }: { initial: GameStateInit; tab: TabI
 export default function App() {
   const [tab, setTab] = useState<TabId>("game");
   const [initial, setInitial] = useState<GameStateInit | undefined>(undefined);
+  const [introSeen, setIntroSeen] = useState<boolean | undefined>(undefined);
 
   useEffect(() => {
     let mounted = true;
     (async () => {
-      const loaded = await loadGame();
+      const [loaded, seen] = await Promise.all([loadGame(), loadIntroSeen()]);
       if (!mounted) return;
       setInitial(loaded ?? {});
+      setIntroSeen(seen);
     })();
     return () => {
       mounted = false;
     };
   }, []);
 
-  if (initial === undefined) {
+  if (initial === undefined || introSeen === undefined) {
     return (
       <View style={styles.container}>
         <StatusBar style="light" />
@@ -146,7 +155,18 @@ export default function App() {
     );
   }
 
-  return <GameApp initial={initial} tab={tab} onSetTab={setTab} />;
+  return (
+    <View style={styles.container}>
+      <GameApp initial={initial} tab={tab} onSetTab={setTab} />
+      <IntroOverlay
+        visible={!introSeen}
+        onDone={async () => {
+          setIntroSeen(true);
+          await saveIntroSeen(true);
+        }}
+      />
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
