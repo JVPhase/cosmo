@@ -37,6 +37,7 @@ export type AnimatedMineEffectsProps = {
   trigger: number; // increment on each tap
   origin?: Point; // tap point in local coordinates of the asteroid container
   clickPower: number;
+  mineColor: string;
   style?: StyleProp<ViewStyle>;
   children: React.ReactNode;
 };
@@ -47,6 +48,7 @@ export function AnimatedMineEffects({
   trigger,
   origin,
   clickPower,
+  mineColor,
   style,
   children,
 }: AnimatedMineEffectsProps) {
@@ -198,7 +200,7 @@ export function AnimatedMineEffects({
               height: 58,
               borderRadius: 29,
               borderWidth: 2,
-              borderColor: "rgba(255,200,0,0.65)",
+              borderColor: mineColor,
               opacity: r.opacity,
               left: r.originX - 29,
               top: r.originY - 29,

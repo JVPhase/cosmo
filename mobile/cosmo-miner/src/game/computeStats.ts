@@ -1,12 +1,13 @@
 import { PLANETS, type PlanetDefinition, type PlanetId } from "./PLANETS";
-import { UPGRADES, type UpgradeDefinition, type UpgradeId } from "./UPGRADES";
+import { UPGRADES, type UpgradeId, type UpgradeDefinition } from "./UPGRADES";
 import type { UpgradesState } from "./types";
 
 export type DerivedStats = {
-  clickPower: number;
-  passiveRate: number; // per second
-  clickMultiplier: number;
-  passiveMultiplier: number;
+  clickPower: number; // energy per click
+  passiveRate: number; // energy per second (already includes planet bonus)
+  baseClickPower: number; // without planet bonus
+  basePassiveRate: number; // without planet bonus
+  planetBonus: number;
 };
 
 function getPlanetByIdLoose(id: PlanetId): PlanetDefinition {
@@ -17,32 +18,28 @@ function getPlanetByIdLoose(id: PlanetId): PlanetDefinition {
 
 export function computeStats(args: {
   upgrades: UpgradesState;
-  unlockedPlanetIds: PlanetId[];
+  selectedPlanetId: PlanetId;
 }): DerivedStats {
-  const { upgrades, unlockedPlanetIds } = args;
+  const { upgrades, selectedPlanetId } = args;
 
-  let baseClickPower = 1;
+  let baseClickPower = 1; // clickPow starts from 1 in v2
   let basePassiveRate = 0;
 
   for (const upg of UPGRADES) {
     const level = upgrades[upg.id] ?? 0;
-    if ("baseClick" in upg && upg.baseClick) baseClickPower += upg.baseClick * level;
-    if ("basePassive" in upg && upg.basePassive) basePassiveRate += upg.basePassive * level;
+    if (upg.clickBonus) baseClickPower += upg.clickBonus * level;
+    if (upg.passiveBonus) basePassiveRate += upg.passiveBonus * level;
   }
 
-  let clickMultiplier = 1;
-  let passiveMultiplier = 1;
-  for (const planetId of unlockedPlanetIds) {
-    const planet = getPlanetByIdLoose(planetId);
-    clickMultiplier *= planet.clickMultiplier;
-    passiveMultiplier *= planet.passiveMultiplier;
-  }
+  const planet = getPlanetByIdLoose(selectedPlanetId);
+  const planetBonus = planet.bonus;
 
   return {
-    clickPower: baseClickPower * clickMultiplier,
-    passiveRate: basePassiveRate * passiveMultiplier,
-    clickMultiplier,
-    passiveMultiplier,
+    clickPower: baseClickPower * planetBonus,
+    passiveRate: basePassiveRate * planetBonus,
+    baseClickPower,
+    basePassiveRate,
+    planetBonus,
   };
 }
 

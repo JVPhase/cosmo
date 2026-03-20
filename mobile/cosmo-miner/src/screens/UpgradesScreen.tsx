@@ -1,6 +1,6 @@
 import React from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { computeUpgradeCost, getUpgradeById, UPGRADES, type UpgradeId } from "../game/UPGRADES";
+import { computeUpgradeCost, UPGRADES, type UpgradeId } from "../game/UPGRADES";
 import { formatNum } from "../game/formatNum";
 import type { UpgradesState } from "../game/types";
 
@@ -14,7 +14,7 @@ export function UpgradesScreen({ energy, upgrades, onBuyUpgrade }: UpgradesScree
   return (
     <View style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.title}>◈ АПГРЕЙДЫ ◈</Text>
+        <Text style={styles.title}>◈ КАТАЛОГ АПГРЕЙДОВ ◈</Text>
 
         {UPGRADES.map((upg) => {
           const level = upgrades[upg.id] ?? 0;
@@ -36,7 +36,7 @@ export function UpgradesScreen({ energy, upgrades, onBuyUpgrade }: UpgradesScree
 
               <View style={styles.mainText}>
                 <Text style={[styles.name, { color: canBuy ? "#00d4ff" : "rgba(255,255,255,0.5)" }]}>{upg.name}</Text>
-                <Text style={styles.desc}>{upg.desc}</Text>
+                <Text style={styles.desc}>{upg.lore}</Text>
                 {level > 0 && <Text style={styles.level}>Ур. {level}</Text>}
               </View>
 

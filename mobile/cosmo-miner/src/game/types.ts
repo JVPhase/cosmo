@@ -8,24 +8,18 @@ export type AchievementsState = {
   unlockedIds: AchievementId[];
 };
 
-export type GameSettings = {
-  soundEnabled: boolean;
-  musicEnabled: boolean;
-  language: "ru";
-};
-
 export type GameState = {
   energy: number;
   totalEarned: number;
+  clicks: number;
   upgrades: UpgradesState;
   unlockedPlanetIds: PlanetId[];
+  selectedPlanetId: PlanetId;
   achievements: AchievementsState;
-  settings: GameSettings;
 };
 
 export type GameStateInit = Partial<GameState> & {
   upgrades?: Partial<UpgradesState>;
   achievements?: Partial<AchievementsState>;
-  settings?: Partial<GameSettings>;
 };
 
