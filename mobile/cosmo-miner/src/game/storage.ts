@@ -38,9 +38,11 @@ export async function saveGame(state: GameState): Promise<void> {
       unlockedPlanetIds: state.unlockedPlanetIds,
       selectedPlanetId: state.selectedPlanetId,
       achievements: state.achievements,
+      metals: state.metals,
+      fleet: state.fleet,
+      battle: state.battle,
     },
   };
-
   await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
 }
 
@@ -56,8 +58,5 @@ export async function loadIntroSeen(): Promise<boolean> {
 export async function saveIntroSeen(seen: boolean): Promise<void> {
   try {
     await AsyncStorage.setItem(INTRO_KEY, seen ? "1" : "0");
-  } catch {
-    // ignore
-  }
+  } catch {}
 }
-

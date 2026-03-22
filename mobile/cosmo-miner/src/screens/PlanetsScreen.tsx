@@ -1,35 +1,39 @@
 import React, { useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ALIENS } from "../game/ALIENS";
 import { PLANETS, type PlanetDefinition, type PlanetId } from "../game/PLANETS";
-import { formatNum } from "../game/formatNum";
+import type { BattleState } from "../game/types";
 
 export type PlanetsScreenProps = {
-  energy: number;
   unlockedPlanetIds: PlanetId[];
   selectedPlanetId: PlanetId;
-  onUnlockPlanet: (id: PlanetId) => void;
-  onChoosePlanet: (id: PlanetId) => void; // also switches tab to game
+  battle: BattleState | null;
+  shipDamage: number;
+  onAttackPlanet: (id: PlanetId) => void;
+  onChoosePlanet: (id: PlanetId) => void;
 };
 
 export function PlanetsScreen({
-  energy,
   unlockedPlanetIds,
   selectedPlanetId,
-  onUnlockPlanet,
+  battle,
+  shipDamage,
+  onAttackPlanet,
   onChoosePlanet,
 }: PlanetsScreenProps) {
   const [selPlanet, setSelPlanet] = useState<PlanetDefinition | null>(null);
-
   const unlockedSet = useMemo(() => new Set(unlockedPlanetIds), [unlockedPlanetIds]);
 
   if (selPlanet) {
     const unlocked = unlockedSet.has(selPlanet.id);
-    const canUnlock = energy >= selPlanet.cost;
+    const alien = ALIENS.find((a) => a.planetId === selPlanet.id);
+    const alreadyBattling = battle?.planetId === selPlanet.id;
+    const otherBattle = !!battle && battle.planetId !== selPlanet.id;
 
     return (
       <View style={styles.screen}>
         <ScrollView contentContainerStyle={styles.content}>
-          <Pressable onPress={() => setSelPlanet(null)} style={({ pressed }) => [pressed ? { opacity: 0.9 } : null]}>
+          <Pressable onPress={() => setSelPlanet(null)}>
             <Text style={styles.back}>← НАЗАД</Text>
           </Pressable>
 
@@ -46,35 +50,51 @@ export function PlanetsScreen({
             <Text style={styles.dossierText}>{selPlanet.lore}</Text>
           </View>
 
+          {alien && !unlocked && (
+            <View style={[styles.dossier, { borderColor: "rgba(255,80,80,0.2)", marginTop: 8 }]}>
+              <Text style={[styles.dossierTitle, { color: "rgba(255,80,80,0.6)" }]}>
+                {alien.icon} ОККУПИРОВАНА · {alien.name}
+              </Text>
+              <Text style={styles.dossierText}>{alien.lore}</Text>
+              <Text style={styles.alienHP}>HP противника: {alien.maxHP.toLocaleString()}</Text>
+            </View>
+          )}
+
           {unlocked ? (
             <Pressable
-              onPress={() => {
-                onChoosePlanet(selPlanet.id);
-              }}
-              style={({ pressed }) => [
-                styles.chooseBtn,
-                pressed ? { opacity: 0.92 } : null,
-              ]}
+              onPress={() => onChoosePlanet(selPlanet.id)}
+              style={({ pressed }) => [styles.chooseBtn, pressed ? { opacity: 0.92 } : null]}
             >
               <Text style={styles.chooseBtnText}>✓ ВЫБРАТЬ ЭТУ ЛОКАЦИЮ</Text>
             </Pressable>
+          ) : alreadyBattling ? (
+            <View style={styles.attackingBox}>
+              <Text style={styles.attackingText}>⚔️ БОЙ В ПРОЦЕССЕ</Text>
+              <Text style={styles.attackingHint}>Перейдите на вкладку БОЙ для атаки</Text>
+            </View>
+          ) : otherBattle ? (
+            <View style={[styles.attackingBox, { borderColor: "rgba(255,255,255,0.08)" }]}>
+              <Text style={[styles.attackingText, { color: "rgba(255,255,255,0.3)" }]}>
+                ВЫ УЖЕ ВЕДЁТЕ БОЙ
+              </Text>
+              <Text style={styles.attackingHint}>Сначала завершите текущий бой</Text>
+            </View>
+          ) : shipDamage === 0 ? (
+            <View style={[styles.attackingBox, { borderColor: "rgba(255,255,255,0.08)" }]}>
+              <Text style={[styles.attackingText, { color: "rgba(255,255,255,0.3)" }]}>
+                НЕТ ВООРУЖЕНИЯ
+              </Text>
+              <Text style={styles.attackingHint}>Постройте пушки в ВЕРФИ</Text>
+            </View>
           ) : (
             <Pressable
-              disabled={!canUnlock}
               onPress={() => {
-                if (!canUnlock) return;
-                onUnlockPlanet(selPlanet.id);
+                onAttackPlanet(selPlanet.id);
                 setSelPlanet(null);
               }}
-              style={({ pressed }) => [
-                styles.unlockBtn,
-                canUnlock ? styles.unlockBtnCan : styles.unlockBtnLock,
-                pressed && canUnlock ? { opacity: 0.92 } : null,
-              ]}
+              style={({ pressed }) => [styles.attackBtn, pressed ? { opacity: 0.92 } : null]}
             >
-              <Text style={[styles.unlockBtnText, canUnlock ? styles.unlockBtnTextCan : styles.unlockBtnTextLock]}>
-                {canUnlock ? `🔓 РАЗБЛОКИРОВАТЬ · ${formatNum(selPlanet.cost)} ⚡` : `🔒 НУЖНО ${formatNum(selPlanet.cost)} ⚡`}
-              </Text>
+              <Text style={styles.attackBtnText}>⚔️ НАЧАТЬ АТАКУ</Text>
             </Pressable>
           )}
         </ScrollView>
@@ -90,7 +110,8 @@ export function PlanetsScreen({
         {PLANETS.map((p) => {
           const unlocked = unlockedSet.has(p.id);
           const active = p.id === selectedPlanetId;
-          const canUnlock = energy >= p.cost;
+          const isBattling = battle?.planetId === p.id;
+          const alien = ALIENS.find((a) => a.planetId === p.id);
 
           return (
             <Pressable
@@ -99,25 +120,34 @@ export function PlanetsScreen({
               style={({ pressed }) => [
                 styles.card,
                 active ? styles.cardActive : null,
-                !unlocked ? styles.cardLocked : unlocked ? styles.cardUnlocked : null,
+                isBattling ? styles.cardBattling : null,
+                !unlocked && !isBattling ? styles.cardLocked : null,
+                unlocked && !active ? styles.cardUnlocked : null,
                 pressed ? { opacity: 0.92 } : null,
               ]}
             >
               <Text style={[styles.cardIcon, !unlocked ? { opacity: 0.35 } : null]}>{p.icon}</Text>
 
               <View style={{ flex: 1 }}>
-                <Text style={[styles.cardName, unlocked ? { color: p.color } : { color: "rgba(255,255,255,0.25)" }]}>{p.name}</Text>
+                <Text style={[styles.cardName, unlocked ? { color: p.color } : { color: "rgba(255,255,255,0.25)" }]}>
+                  {p.name}
+                </Text>
                 <Text style={styles.cardMeta}>
-                  {unlocked ? `${p.resource} · ×${p.bonus}` : `🔒 ${formatNum(p.cost)} ⚡`}
+                  {unlocked
+                    ? `${p.resource} · ×${p.bonus}`
+                    : isBattling
+                    ? `⚔️ Бой с ${alien?.name ?? "противником"}`
+                    : alien
+                    ? `👾 Оккупирована: ${alien.name}`
+                    : "Недоступна"}
                 </Text>
               </View>
 
-              {active ? <Text style={styles.activeLabel}>АКТИВНА</Text> : null}
+              {active && <Text style={styles.activeLabel}>АКТИВНА</Text>}
+              {isBattling && <Text style={styles.battleLabel}>БОЙ</Text>}
             </Pressable>
           );
         })}
-
-        <Text style={styles.energyFooter}>Энергий: {formatNum(energy)}</Text>
       </ScrollView>
     </View>
   );
@@ -150,9 +180,9 @@ const styles = StyleSheet.create({
   },
   dossierTitle: { fontSize: 12, color: "rgba(0,212,255,0.5)", letterSpacing: 2, fontWeight: "900", marginBottom: 6 },
   dossierText: { fontSize: 12, color: "rgba(200,220,255,0.7)", lineHeight: 18 },
+  alienHP: { marginTop: 6, fontSize: 10, color: "rgba(255,100,100,0.6)", fontWeight: "700" },
   planetName: { fontSize: 14, fontWeight: "900", letterSpacing: 2, marginTop: 8 },
   meta: { marginTop: 3, fontSize: 11, color: "rgba(255,255,255,0.35)", fontWeight: "700" },
-
   card: {
     flexDirection: "row",
     alignItems: "center",
@@ -167,6 +197,10 @@ const styles = StyleSheet.create({
     borderColor: "rgba(120,255,120,0.25)",
     backgroundColor: "rgba(120,255,120,0.06)",
   },
+  cardBattling: {
+    borderColor: "rgba(255,80,80,0.35)",
+    backgroundColor: "rgba(255,40,40,0.06)",
+  },
   cardUnlocked: {
     backgroundColor: "rgba(255,255,255,0.02)",
     borderColor: "rgba(255,255,255,0.06)",
@@ -179,7 +213,7 @@ const styles = StyleSheet.create({
   cardName: { fontSize: 12, fontWeight: "900", letterSpacing: 1, marginBottom: 2 },
   cardMeta: { fontSize: 10, color: "rgba(255,255,255,0.25)" },
   activeLabel: { fontSize: 10, color: "rgba(120,255,120,0.65)", letterSpacing: 1, fontWeight: "900" },
-
+  battleLabel: { fontSize: 10, color: "rgba(255,80,80,0.75)", letterSpacing: 1, fontWeight: "900" },
   chooseBtn: {
     marginTop: 16,
     width: "100%",
@@ -191,32 +225,28 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   chooseBtnText: { color: "#7fff00", fontWeight: "900", letterSpacing: 2, fontSize: 11 },
-
-  unlockBtn: {
+  attackBtn: {
     marginTop: 16,
     width: "100%",
     paddingVertical: 14,
     borderRadius: 12,
     borderWidth: 1,
+    borderColor: "rgba(255,80,80,0.45)",
+    backgroundColor: "rgba(255,40,40,0.09)",
     alignItems: "center",
   },
-  unlockBtnCan: {
-    borderColor: "rgba(255,200,0,0.45)",
-    backgroundColor: "rgba(255,200,0,0.09)",
+  attackBtnText: { color: "#ff5555", fontWeight: "900", letterSpacing: 2, fontSize: 11 },
+  attackingBox: {
+    marginTop: 16,
+    width: "100%",
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255,80,80,0.3)",
+    backgroundColor: "rgba(255,40,40,0.05)",
+    alignItems: "center",
+    gap: 4,
   },
-  unlockBtnLock: {
-    borderColor: "rgba(255,255,255,0.08)",
-    backgroundColor: "rgba(255,255,255,0.02)",
-  },
-  unlockBtnText: { fontWeight: "900", letterSpacing: 2, fontSize: 11 },
-  unlockBtnTextCan: { color: "#ffd700" },
-  unlockBtnTextLock: { color: "rgba(255,255,255,0.25)" },
-
-  energyFooter: {
-    marginTop: 10,
-    textAlign: "center",
-    color: "rgba(0,212,255,0.5)",
-    fontWeight: "800",
-  },
+  attackingText: { color: "#ff6666", fontWeight: "900", letterSpacing: 2, fontSize: 11 },
+  attackingHint: { fontSize: 10, color: "rgba(255,255,255,0.25)" },
 });
-
