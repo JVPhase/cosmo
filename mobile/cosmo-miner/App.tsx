@@ -8,6 +8,7 @@ import { GameScreen } from "./src/screens/GameScreen";
 import { ShipyardScreen } from "./src/screens/ShipyardScreen";
 import { BattleScreen } from "./src/screens/BattleScreen";
 import { IntroOverlay } from "./src/ui/IntroOverlay";
+import { PasswordScreen } from "./src/ui/PasswordScreen";
 import { useGame } from "./src/game/useGame";
 import { loadGame, loadIntroSeen, saveGame, saveIntroSeen } from "./src/game/storage";
 import type { GameStateInit } from "./src/game/types";
@@ -95,6 +96,7 @@ function GameApp({ initial, tab, onSetTab }: { initial: GameStateInit; tab: TabI
           selectedPlanetId={game.selectedPlanetId}
           battle={game.battle}
           shipDamage={game.totalDamage}
+          energy={game.energy}
           onAttackPlanet={(id) => {
             game.startBattle(id);
             onSetTab("battle");
@@ -112,6 +114,7 @@ function GameApp({ initial, tab, onSetTab }: { initial: GameStateInit; tab: TabI
           metals={game.metals}
           fleet={game.fleet}
           totalDamage={game.totalDamage}
+          battle={game.battle}
           onBuildShip={game.buildShip}
           onRepairShip={game.repairShip}
           onSelectShip={game.selectShip}
@@ -164,6 +167,7 @@ function GameApp({ initial, tab, onSetTab }: { initial: GameStateInit; tab: TabI
 }
 
 export default function App() {
+  const [unlocked, setUnlocked] = useState(false);
   const [tab, setTab] = useState<TabId>("game");
   const [initial, setInitial] = useState<GameStateInit | undefined>(undefined);
   const [introSeen, setIntroSeen] = useState<boolean | undefined>(undefined);
@@ -178,6 +182,15 @@ export default function App() {
     })();
     return () => { mounted = false; };
   }, []);
+
+  if (!unlocked) {
+    return (
+      <View style={styles.container}>
+        <StatusBar style="light" />
+        <PasswordScreen onUnlock={() => setUnlocked(true)} />
+      </View>
+    );
+  }
 
   if (initial === undefined || introSeen === undefined) {
     return (

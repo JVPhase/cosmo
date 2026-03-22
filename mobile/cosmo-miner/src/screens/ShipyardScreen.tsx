@@ -3,12 +3,13 @@ import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-nati
 import { CANNONS, computeCannonCost, type CannonId } from "../game/CANNONS";
 import { METALS } from "../game/METALS";
 import { SHIPS, type ShipId } from "../game/SHIPS";
-import type { FleetState, MetalsState } from "../game/types";
+import type { BattleState, FleetState, MetalsState } from "../game/types";
 
 export type ShipyardScreenProps = {
   metals: MetalsState;
   fleet: FleetState;
   totalDamage: number;
+  battle: BattleState | null;
   onBuildShip: (id: ShipId) => void;
   onRepairShip: (id: ShipId) => void;
   onSelectShip: (id: ShipId) => void;
@@ -40,11 +41,13 @@ export function ShipyardScreen({
   metals,
   fleet,
   totalDamage,
+  battle,
   onBuildShip,
   onRepairShip,
   onSelectShip,
   onCraftCannon,
 }: ShipyardScreenProps) {
+  const isBattleActive = !!battle;
   const [expandedShipId, setExpandedShipId] = useState<ShipId | null>(null);
   const ownedMap = new Map(fleet.ownedShips.map((s) => [s.shipId, s]));
 
@@ -52,6 +55,13 @@ export function ShipyardScreen({
     <View style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.title}>◈ ВЕРФЬ · МБК «ЗВЁЗДНЫЙ» ◈</Text>
+
+        {isBattleActive && (
+          <View style={styles.battleBanner}>
+            <Text style={styles.battleBannerText}>⚔️ БОЙ АКТИВЕН — ВЕРФЬ ЗАБЛОКИРОВАНА</Text>
+            <Text style={styles.battleBannerHint}>Завершите бой для доступа к улучшениям</Text>
+          </View>
+        )}
 
         {/* Metal inventory */}
         <View style={styles.inventoryRow}>
@@ -79,8 +89,8 @@ export function ShipyardScreen({
           const isSelected = fleet.selectedShipId === ship.id;
           const isExpanded = expandedShipId === ship.id;
 
-          const canBuild = !isOwned && canAffordCost(metals, ship.baseCost);
-          const canRepair = isBroken && canAffordCost(metals, ship.repairCost);
+          const canBuild = !isOwned && canAffordCost(metals, ship.baseCost) && !isBattleActive;
+          const canRepair = isBroken && canAffordCost(metals, ship.repairCost) && !isBattleActive;
 
           // Ship's own cannon damage (for display)
           const shipCannonDmg = owned
@@ -156,13 +166,14 @@ export function ShipyardScreen({
                   </>
                 ) : !isSelected ? (
                   <Pressable
-                    onPress={() => onSelectShip(ship.id)}
+                    onPress={() => !isBattleActive && onSelectShip(ship.id)}
+                    disabled={isBattleActive}
                     style={({ pressed }) => [
-                      styles.actionBtn, styles.btnGreen,
-                      pressed ? { opacity: 0.85 } : null,
+                      styles.actionBtn, isBattleActive ? styles.btnDisabled : styles.btnGreen,
+                      pressed && !isBattleActive ? { opacity: 0.85 } : null,
                     ]}
                   >
-                    <Text style={[styles.actionBtnText, { color: "#00ff88" }]}>В БОЙ</Text>
+                    <Text style={[styles.actionBtnText, { color: isBattleActive ? "rgba(255,255,255,0.2)" : "#00ff88" }]}>В БОЙ</Text>
                   </Pressable>
                 ) : (
                   <Text style={styles.activeLabel}>АКТИВЕН</Text>
@@ -176,7 +187,7 @@ export function ShipyardScreen({
                   {CANNONS.map((cannon) => {
                     const level = owned.cannons[cannon.id] ?? 0;
                     const cost = computeCannonCost(cannon, level);
-                    const canAfford = canAffordCost(metals, cost);
+                    const canAfford = canAffordCost(metals, cost) && !isBattleActive;
 
                     return (
                       <View key={cannon.id} style={styles.cannonRow}>
@@ -376,4 +387,16 @@ const styles = StyleSheet.create({
     borderColor: "rgba(0,212,255,0.1)",
   },
   hintText: { fontSize: 10, color: "rgba(0,212,255,0.5)", lineHeight: 16 },
+  battleBanner: {
+    marginBottom: 14,
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "rgba(255,80,80,0.4)",
+    backgroundColor: "rgba(255,40,40,0.08)",
+    alignItems: "center",
+    gap: 4,
+  },
+  battleBannerText: { fontSize: 11, color: "#ff5555", fontWeight: "900", letterSpacing: 1 },
+  battleBannerHint: { fontSize: 10, color: "rgba(255,150,150,0.5)" },
 });

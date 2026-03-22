@@ -257,6 +257,7 @@ export function useGame(initial?: GameStateInit) {
 
   const craftCannon = useCallback((shipId: ShipId, cannonId: CannonId) => {
     setState((prev) => {
+      if (prev.battle) return prev;
       const cannon = CANNONS.find((c) => c.id === cannonId);
       if (!cannon) return prev;
       const ownedShip = prev.fleet.ownedShips.find((s) => s.shipId === shipId);
@@ -281,6 +282,7 @@ export function useGame(initial?: GameStateInit) {
 
   const buildShip = useCallback((shipId: ShipId) => {
     setState((prev) => {
+      if (prev.battle) return prev;
       const ship = SHIPS.find((s) => s.id === shipId);
       if (!ship) return prev;
       if (prev.fleet.ownedShips.some((s) => s.shipId === shipId)) return prev;
@@ -301,6 +303,7 @@ export function useGame(initial?: GameStateInit) {
 
   const repairShip = useCallback((shipId: ShipId) => {
     setState((prev) => {
+      if (prev.battle) return prev;
       const ship = SHIPS.find((s) => s.id === shipId);
       if (!ship) return prev;
       const owned = prev.fleet.ownedShips.find((s) => s.shipId === shipId);
@@ -321,6 +324,7 @@ export function useGame(initial?: GameStateInit) {
 
   const selectShip = useCallback((shipId: ShipId) => {
     setState((prev) => {
+      if (prev.battle) return prev;
       const owned = prev.fleet.ownedShips.find((s) => s.shipId === shipId);
       if (!owned || owned.broken) return prev;
       return { ...prev, fleet: { ...prev.fleet, selectedShipId: shipId } };
@@ -337,8 +341,10 @@ export function useGame(initial?: GameStateInit) {
       if (!selectedShipId) return prev;
       const ownedShip = prev.fleet.ownedShips.find((s) => s.shipId === selectedShipId);
       if (!ownedShip || ownedShip.broken) return prev;
+      if (prev.energy < alien.attackEnergyCost) return prev;
       return {
         ...prev,
+        energy: prev.energy - alien.attackEnergyCost,
         battle: {
           planetId,
           shipId: selectedShipId,
