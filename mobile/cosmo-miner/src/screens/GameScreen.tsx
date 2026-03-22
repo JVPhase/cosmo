@@ -280,7 +280,7 @@ export function GameScreen({
             ]}
           >
             <Image
-              source={require('../../assets/asteroid.png')}
+              source={planet.image}
               resizeMode="contain"
               style={styles.asteroidImage}
             />

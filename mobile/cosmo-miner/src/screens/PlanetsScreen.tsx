@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { ALIENS } from "../game/ALIENS";
 import { PLANETS, type PlanetDefinition, type PlanetId } from "../game/PLANETS";
 import type { BattleState } from "../game/types";
@@ -38,7 +38,7 @@ export function PlanetsScreen({
           </Pressable>
 
           <View style={{ alignItems: "center" }}>
-            <Text style={{ fontSize: 52, color: selPlanet.color }}>{selPlanet.icon}</Text>
+            <Image source={selPlanet.image} style={styles.detailImage} resizeMode="contain" />
             <Text style={[styles.planetName, { color: selPlanet.color }]}>{selPlanet.name}</Text>
             <Text style={styles.meta}>
               Ресурс: {selPlanet.resource} · Бонус ×{selPlanet.bonus}
@@ -126,7 +126,7 @@ export function PlanetsScreen({
                 pressed ? { opacity: 0.92 } : null,
               ]}
             >
-              <Text style={[styles.cardIcon, !unlocked ? { opacity: 0.35 } : null]}>{p.icon}</Text>
+              <Image source={p.image} style={[styles.cardIcon, !unlocked ? { opacity: 0.35 } : null]} resizeMode="contain" />
 
               <View style={{ flex: 1 }}>
                 <Text style={[styles.cardName, unlocked ? { color: p.color } : { color: "rgba(255,255,255,0.25)" }]}>
@@ -209,7 +209,8 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.01)",
     borderColor: "rgba(255,255,255,0.03)",
   },
-  cardIcon: { fontSize: 28, marginRight: 2 },
+  cardIcon: { width: 36, height: 36, marginRight: 2 },
+  detailImage: { width: 90, height: 90 },
   cardName: { fontSize: 12, fontWeight: "900", letterSpacing: 1, marginBottom: 2 },
   cardMeta: { fontSize: 10, color: "rgba(255,255,255,0.25)" },
   activeLabel: { fontSize: 10, color: "rgba(120,255,120,0.65)", letterSpacing: 1, fontWeight: "900" },
