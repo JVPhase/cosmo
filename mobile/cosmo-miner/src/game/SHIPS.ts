@@ -7,6 +7,7 @@ export type ShipDefinition = {
   id: ShipId;
   name: string;
   icon: string;
+  image: number;
   damageMultiplier: number;
   baseCost: Partial<MetalsState>;
   repairCost: Partial<MetalsState>;
@@ -18,6 +19,7 @@ export const SHIPS: readonly ShipDefinition[] = [
     id: "scout",
     name: "Разведчик «Нулевой»",
     icon: "🚀",
+    image: require("../../assets/scoutship.png"),
     damageMultiplier: 1,
     baseCost: { iron: 30 },
     repairCost: { iron: 10 },
@@ -27,6 +29,7 @@ export const SHIPS: readonly ShipDefinition[] = [
     id: "cruiser",
     name: "Крейсер «Гамма»",
     icon: "🛸",
+    image: require("../../assets/cruisership.png"),
     damageMultiplier: 2.5,
     baseCost: { titan: 25 },
     repairCost: { titan: 8 },
@@ -36,6 +39,7 @@ export const SHIPS: readonly ShipDefinition[] = [
     id: "dreadnought",
     name: "Дредноут «Отдел Б»",
     icon: "🛡️",
+    image: require("../../assets/dreadnoughtship.png"),
     damageMultiplier: 5,
     baseCost: { iridium: 20 },
     repairCost: { iridium: 7 },
@@ -45,6 +49,7 @@ export const SHIPS: readonly ShipDefinition[] = [
     id: "flagship",
     name: "Флагман «Абсолют-77»",
     icon: "💫",
+    image: require("../../assets/flagship.png"),
     damageMultiplier: 12,
     baseCost: { iron: 40, titan: 30, iridium: 15 },
     repairCost: { iron: 15, titan: 10, iridium: 5 },

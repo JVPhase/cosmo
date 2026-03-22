@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { AnimatedMineEffects } from '../ui/AnimatedMineEffects';
 import { formatNum } from '../game/formatNum';
+import { METALS } from '../game/METALS';
 import type { PlanetDefinition } from '../game/PLANETS';
 import type { MetalsState } from '../game/types';
 
@@ -237,9 +238,12 @@ export function GameScreen({
 
         {/* Metal inventory */}
         <View style={styles.metalsRow}>
-          <Text style={styles.metalItem}>🔩 {metals.iron}</Text>
-          <Text style={styles.metalItem}>🔷 {metals.titan}</Text>
-          <Text style={styles.metalItem}>💜 {metals.iridium}</Text>
+          {METALS.map((m) => (
+            <View key={m.id} style={styles.metalItem}>
+              <Image source={m.image} style={styles.metalIcon} resizeMode="contain" />
+              <Text style={styles.metalCount}>{metals[m.id] ?? 0}</Text>
+            </View>
+          ))}
         </View>
       </View>
 
@@ -507,8 +511,14 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   metalItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  metalIcon: { width: 18, height: 18 },
+  metalCount: {
     fontSize: 10,
-    color: 'rgba(255,220,100,0.55)',
+    color: 'rgba(255,220,100,0.75)',
     fontWeight: '700',
   },
   hint: {
