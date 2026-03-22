@@ -13,6 +13,7 @@ import {
 import { AnimatedMineEffects } from '../ui/AnimatedMineEffects';
 import { formatNum } from '../game/formatNum';
 import type { PlanetDefinition } from '../game/PLANETS';
+import type { MetalsState } from '../game/types';
 
 type Point = { x: number; y: number };
 
@@ -21,6 +22,7 @@ export type GameScreenProps = {
   totalEarned: number;
   clickPower: number;
   passiveRate: number; // per second
+  metals: MetalsState;
   onMine: () => void;
   planet: PlanetDefinition;
   clerkMessage: string | null;
@@ -39,6 +41,7 @@ export function GameScreen({
   totalEarned,
   clickPower,
   passiveRate,
+  metals,
   onMine,
   planet,
   clerkMessage,
@@ -230,6 +233,13 @@ export function GameScreen({
               ×{planet.bonus} бонус
             </Text>
           </View>
+        </View>
+
+        {/* Metal inventory */}
+        <View style={styles.metalsRow}>
+          <Text style={styles.metalItem}>🔩 {metals.iron}</Text>
+          <Text style={styles.metalItem}>🔷 {metals.titan}</Text>
+          <Text style={styles.metalItem}>💜 {metals.iridium}</Text>
         </View>
       </View>
 
@@ -490,6 +500,16 @@ const styles = StyleSheet.create({
     shadowColor: 'rgba(0,212,255,0.65)',
     shadowOpacity: 1,
     shadowRadius: 8,
+  },
+  metalsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 6,
+  },
+  metalItem: {
+    fontSize: 10,
+    color: 'rgba(255,220,100,0.55)',
+    fontWeight: '700',
   },
   hint: {
     position: 'absolute',

@@ -1,0 +1,81 @@
+import type { CannonId } from "./CANNONS";
+import type { MetalsState } from "./METALS";
+
+export type ShipId = "scout" | "cruiser" | "dreadnought" | "flagship";
+
+export type ShipDefinition = {
+  id: ShipId;
+  name: string;
+  icon: string;
+  damageMultiplier: number;
+  baseCost: Partial<MetalsState>;
+  repairCost: Partial<MetalsState>;
+  lore: string;
+};
+
+export const SHIPS: readonly ShipDefinition[] = [
+  {
+    id: "scout",
+    name: "Разведчик «Нулевой»",
+    icon: "🚀",
+    damageMultiplier: 1,
+    baseCost: { iron: 30 },
+    repairCost: { iron: 10 },
+    lore: "Серийный номер 0000. Выдаётся по умолчанию. По умолчанию же и ломается.",
+  },
+  {
+    id: "cruiser",
+    name: "Крейсер «Гамма»",
+    icon: "🛸",
+    damageMultiplier: 2.5,
+    baseCost: { titan: 25 },
+    repairCost: { titan: 8 },
+    lore: "Усиленный корпус. Министерство обороны одобрило. Министерство финансов — нет. Летит.",
+  },
+  {
+    id: "dreadnought",
+    name: "Дредноут «Отдел Б»",
+    icon: "🛡️",
+    damageMultiplier: 5,
+    baseCost: { iridium: 20 },
+    repairCost: { iridium: 7 },
+    lore: "Назван в честь отдела, который его разработал. Отдел Б официально не существует.",
+  },
+  {
+    id: "flagship",
+    name: "Флагман «Абсолют-77»",
+    icon: "💫",
+    damageMultiplier: 12,
+    baseCost: { iron: 40, titan: 30, iridium: 15 },
+    repairCost: { iron: 15, titan: 10, iridium: 5 },
+    lore: "Форма допуска — 47 страниц. Форма техобслуживания — ещё 62. Зато летит как мечта.",
+  },
+] as const;
+
+export function getShipById(id: ShipId): ShipDefinition {
+  const ship = SHIPS.find((s) => s.id === id);
+  if (!ship) throw new Error(`Unknown ship id: ${id}`);
+  return ship;
+}
+
+export type OwnedShip = {
+  shipId: ShipId;
+  broken: boolean;
+  cannons: Record<CannonId, number>;
+};
+
+export type FleetState = {
+  ownedShips: OwnedShip[];
+  selectedShipId: ShipId | null;
+};
+
+export function createDefaultCannons(): Record<CannonId, number> {
+  return { standard: 0, titan: 0, iridium: 0, alloy: 0 };
+}
+
+export function createDefaultFleetState(): FleetState {
+  return {
+    ownedShips: [],
+    selectedShipId: null,
+  };
+}

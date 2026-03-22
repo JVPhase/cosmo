@@ -37,6 +37,10 @@ export function UpgradesScreen({ energy, upgrades, onBuyUpgrade }: UpgradesScree
               <View style={styles.mainText}>
                 <Text style={[styles.name, { color: canBuy ? "#00d4ff" : "rgba(255,255,255,0.5)" }]}>{upg.name}</Text>
                 <Text style={styles.desc}>{upg.lore}</Text>
+                <Text style={styles.bonus}>
+                  {upg.clickBonus > 0 ? `+${upg.clickBonus} ⚡ за клик` : `+${upg.passiveBonus} ⚡/сек`}
+                  {" за уровень"}
+                </Text>
                 {level > 0 && <Text style={styles.level}>Ур. {level}</Text>}
               </View>
 
@@ -106,6 +110,12 @@ const styles = StyleSheet.create({
     marginTop: 2,
     fontSize: 10,
     color: "rgba(255,255,255,0.4)",
+  },
+  bonus: {
+    marginTop: 3,
+    fontSize: 9,
+    color: "rgba(0,212,255,0.6)",
+    fontWeight: "700",
   },
   level: {
     marginTop: 4,
