@@ -6,12 +6,13 @@ export type MetalDefinition = {
   id: MetalId;
   name: string;
   icon: string;
+  image: number;
 };
 
 export const METALS: readonly MetalDefinition[] = [
-  { id: "iron", name: "Железо", icon: "🔩" },
-  { id: "titan", name: "Титан", icon: "🔷" },
-  { id: "iridium", name: "Иридий", icon: "💜" },
+  { id: "iron", name: "Железо", icon: "🔩", image: require("../../assets/iron.png") },
+  { id: "titan", name: "Титан", icon: "🔷", image: require("../../assets/titan.png") },
+  { id: "iridium", name: "Иридий", icon: "💜", image: require("../../assets/iridium.png") },
 ] as const;
 
 // Drop table: which metals drop from each planet and at what chance per click

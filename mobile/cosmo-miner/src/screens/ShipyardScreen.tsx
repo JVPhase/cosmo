@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { CANNONS, computeCannonCost, type CannonId } from "../game/CANNONS";
 import { METALS } from "../game/METALS";
 import { SHIPS, type ShipId } from "../game/SHIPS";
@@ -15,10 +15,21 @@ export type ShipyardScreenProps = {
   onCraftCannon: (shipId: ShipId, cannonId: CannonId) => void;
 };
 
-function metalCostText(cost: Partial<MetalsState>): string {
-  return Object.entries(cost)
-    .map(([k, v]) => `${METALS.find((m) => m.id === k)?.icon ?? ""} ${v}`)
-    .join("  ");
+function MetalCost({ cost, color }: { cost: Partial<MetalsState>; color: string }) {
+  return (
+    <View style={styles.metalCostRow}>
+      {Object.entries(cost).map(([k, v]) => {
+        const metal = METALS.find((m) => m.id === k);
+        if (!metal) return null;
+        return (
+          <View key={k} style={styles.metalCostItem}>
+            <Image source={metal.image} style={styles.metalCostIcon} resizeMode="contain" />
+            <Text style={[styles.metalCostText, { color }]}>{v}</Text>
+          </View>
+        );
+      })}
+    </View>
+  );
 }
 
 function canAffordCost(metals: MetalsState, cost: Partial<MetalsState>): boolean {
@@ -46,7 +57,7 @@ export function ShipyardScreen({
         <View style={styles.inventoryRow}>
           {METALS.map((m) => (
             <View key={m.id} style={styles.metalBox}>
-              <Text style={styles.metalIcon}>{m.icon}</Text>
+              <Image source={m.image} style={styles.metalImage} resizeMode="contain" />
               <Text style={styles.metalName}>{m.name}</Text>
               <Text style={styles.metalCount}>{metals[m.id] ?? 0}</Text>
             </View>
@@ -88,7 +99,7 @@ export function ShipyardScreen({
                 onPress={() => isOwned ? setExpandedShipId(isExpanded ? null : ship.id) : undefined}
                 style={styles.shipHeader}
               >
-                <Text style={styles.shipIcon}>{ship.icon}</Text>
+                <Image source={ship.image} style={styles.shipImage} resizeMode="contain" />
                 <View style={styles.shipInfo}>
                   <Text style={[styles.shipName, {
                     color: isBroken ? "#ff6666" : isSelected ? "#00ff88" : isOwned ? "#00d4ff" : "rgba(255,255,255,0.3)",
@@ -113,9 +124,7 @@ export function ShipyardScreen({
               <View style={styles.shipActions}>
                 {!isOwned ? (
                   <>
-                    <Text style={[styles.costText, { color: canBuild ? "#ffd700" : "rgba(255,200,0,0.3)" }]}>
-                      {metalCostText(ship.baseCost)}
-                    </Text>
+                    <MetalCost cost={ship.baseCost} color={canBuild ? "#ffd700" : "rgba(255,200,0,0.3)"} />
                     <Pressable
                       onPress={() => onBuildShip(ship.id)}
                       disabled={!canBuild}
@@ -131,9 +140,7 @@ export function ShipyardScreen({
                   </>
                 ) : isBroken ? (
                   <>
-                    <Text style={[styles.costText, { color: canRepair ? "#ff9900" : "rgba(255,150,0,0.3)" }]}>
-                      {metalCostText(ship.repairCost)}
-                    </Text>
+                    <MetalCost cost={ship.repairCost} color={canRepair ? "#ff9900" : "rgba(255,150,0,0.3)"} />
                     <Pressable
                       onPress={() => onRepairShip(ship.id)}
                       disabled={!canRepair}
@@ -182,9 +189,7 @@ export function ShipyardScreen({
                           </Text>
                         </View>
                         <View style={styles.cannonRight}>
-                          <Text style={[styles.cannonCost, { color: canAfford ? "#ffd700" : "rgba(255,200,0,0.3)" }]}>
-                            {metalCostText(cost)}
-                          </Text>
+                          <MetalCost cost={cost} color={canAfford ? "#ffd700" : "rgba(255,200,0,0.3)"} />
                           <Pressable
                             onPress={() => onCraftCannon(ship.id, cannon.id)}
                             disabled={!canAfford}
@@ -239,7 +244,7 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.08)",
     backgroundColor: "rgba(255,255,255,0.03)",
   },
-  metalIcon: { fontSize: 20 },
+  metalImage: { width: 32, height: 32 },
   metalName: { fontSize: 8, color: "rgba(255,255,255,0.4)", marginTop: 3, fontWeight: "700" },
   metalCount: { fontSize: 16, color: "#ffd700", fontWeight: "900", marginTop: 2 },
   damageBox: {
@@ -291,7 +296,7 @@ const styles = StyleSheet.create({
     gap: 10,
     padding: 12,
   },
-  shipIcon: { fontSize: 26, marginTop: 2 },
+  shipImage: { width: 52, height: 52, marginTop: 2 },
   shipInfo: { flex: 1 },
   shipName: { fontSize: 12, fontWeight: "800", letterSpacing: 0.5, marginBottom: 2 },
   shipLore: { fontSize: 9, color: "rgba(255,255,255,0.3)", lineHeight: 13, marginBottom: 4 },
@@ -307,7 +312,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingBottom: 12,
   },
-  costText: { fontSize: 10, fontWeight: "800" },
+  metalCostRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  metalCostItem: { flexDirection: "row", alignItems: "center", gap: 3 },
+  metalCostIcon: { width: 14, height: 14 },
+  metalCostText: { fontSize: 10, fontWeight: "800" },
   activeLabel: { fontSize: 9, color: "rgba(0,255,136,0.65)", fontWeight: "700", letterSpacing: 1 },
   actionBtn: {
     paddingVertical: 6,
