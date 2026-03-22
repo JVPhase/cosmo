@@ -88,12 +88,12 @@ export function useGame(initial?: GameStateInit) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     if (!state.battle) return;
-    const interval = setInterval(() => setNow(Date.now()), 500);
+    const interval = setInterval(() => setNow(Date.now()), 50);
     return () => clearInterval(interval);
   }, [!!state.battle]);
 
   const timeRemaining = state.battle
-    ? Math.max(0, Math.ceil((state.battle.expiresAt - now) / 1000))
+    ? Math.max(0, state.battle.expiresAt - now)
     : 0;
 
   const [clerkMessage, setClerkMessage] = useState<string | null>(null);
