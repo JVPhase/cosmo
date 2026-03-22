@@ -7,6 +7,7 @@ export type AlienRace = {
   icon: string;
   image: number;
   maxHP: number;
+  attackEnergyCost: number;
   lore: string;
 };
 
@@ -17,6 +18,7 @@ export const ALIENS: readonly AlienRace[] = [
     icon: "👹",
     image: require("../../assets/fireship.png"),
     maxHP: 500,
+    attackEnergyCost: 10000,
     lore: "Огнеподобные существа, оккупировавшие Меркурий-Икс. Считают жар своим правом. На запрос о переговорах прислали лаву.",
   },
   {
@@ -25,6 +27,7 @@ export const ALIENS: readonly AlienRace[] = [
     icon: "💎",
     image: require("../../assets/crystalship.png"),
     maxHP: 2000,
+    attackEnergyCost: 50000,
     lore: "Живут внутри кристаллов. Очень переживают за сохранность породы. Ваше появление расценили как незапланированный аудит.",
   },
   {
@@ -33,6 +36,7 @@ export const ALIENS: readonly AlienRace[] = [
     icon: "👻",
     image: require("../../assets/omegaship.png"),
     maxHP: 8000,
+    attackEnergyCost: 250000,
     lore: "Полупрозрачные, высокомерные, имеют собственный парламент. Он заседает уже 300 лет без единого решения.",
   },
   {
@@ -41,6 +45,7 @@ export const ALIENS: readonly AlienRace[] = [
     icon: "☀️",
     image: require("../../assets/sunship.png"),
     maxHP: 30000,
+    attackEnergyCost: 1250000,
     lore: "Живут прямо на звезде. Огнеупорные, злопамятные, имеют лобби в 7 галактиках. Бейте быстро, пока не подали жалобу.",
   },
 ] as const;

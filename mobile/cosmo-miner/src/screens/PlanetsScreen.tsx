@@ -9,6 +9,7 @@ export type PlanetsScreenProps = {
   selectedPlanetId: PlanetId;
   battle: BattleState | null;
   shipDamage: number;
+  energy: number;
   onAttackPlanet: (id: PlanetId) => void;
   onChoosePlanet: (id: PlanetId) => void;
 };
@@ -18,6 +19,7 @@ export function PlanetsScreen({
   selectedPlanetId,
   battle,
   shipDamage,
+  energy,
   onAttackPlanet,
   onChoosePlanet,
 }: PlanetsScreenProps) {
@@ -29,6 +31,7 @@ export function PlanetsScreen({
     const alien = ALIENS.find((a) => a.planetId === selPlanet.id);
     const alreadyBattling = battle?.planetId === selPlanet.id;
     const otherBattle = !!battle && battle.planetId !== selPlanet.id;
+    const notEnoughEnergy = !!alien && !unlocked && energy < alien.attackEnergyCost;
 
     return (
       <View style={styles.screen}>
@@ -57,6 +60,9 @@ export function PlanetsScreen({
               </Text>
               <Text style={styles.dossierText}>{alien.lore}</Text>
               <Text style={styles.alienHP}>HP противника: {alien.maxHP.toLocaleString()}</Text>
+              <Text style={[styles.alienHP, { color: energy >= alien.attackEnergyCost ? "rgba(0,212,255,0.7)" : "rgba(255,80,80,0.7)" }]}>
+                ⚡ Стоимость атаки: {alien.attackEnergyCost.toLocaleString()} энергии
+              </Text>
             </View>
           )}
 
@@ -85,6 +91,15 @@ export function PlanetsScreen({
                 НЕТ ВООРУЖЕНИЯ
               </Text>
               <Text style={styles.attackingHint}>Постройте пушки в ВЕРФИ</Text>
+            </View>
+          ) : notEnoughEnergy ? (
+            <View style={[styles.attackingBox, { borderColor: "rgba(255,80,80,0.2)" }]}>
+              <Text style={[styles.attackingText, { color: "rgba(255,100,100,0.6)" }]}>
+                НЕ ХВАТАЕТ ЭНЕРГИИ
+              </Text>
+              <Text style={styles.attackingHint}>
+                Нужно {alien!.attackEnergyCost.toLocaleString()} энергии для атаки
+              </Text>
             </View>
           ) : (
             <Pressable

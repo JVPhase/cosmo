@@ -167,24 +167,8 @@ export function BattleScreen({
             боя.{'\n\n'}
             Отправьтесь в Верфь для починки.
           </Text>
-          <Pressable onPress={onGoToShipyard} style={styles.goShipyardBtn}>
+          <Pressable onPress={() => { onClearDefeat(); onGoToShipyard(); }} style={styles.goShipyardBtn}>
             <Text style={styles.goShipyardText}>🛠️ ПЕРЕЙТИ В ВЕРФЬ</Text>
-          </Pressable>
-          <Pressable
-            onPress={onClearDefeat}
-            style={[
-              styles.goShipyardBtn,
-              { marginTop: 8, borderColor: 'rgba(255,255,255,0.1)' }
-            ]}
-          >
-            <Text
-              style={[
-                styles.goShipyardText,
-                { color: 'rgba(255,255,255,0.3)' }
-              ]}
-            >
-              ЗАКРЫТЬ
-            </Text>
           </Pressable>
         </View>
       </LinearGradient>
@@ -414,9 +398,9 @@ const styles = StyleSheet.create({
   rocketBtn: {
     alignItems: 'center',
     justifyContent: 'center',
-    width: 160,
-    height: 160,
-    borderRadius: 80,
+    width: 240,
+    height: 240,
+    borderRadius: 120,
     backgroundColor: 'rgba(255,40,40,0.08)',
     borderWidth: 1,
     borderColor: 'rgba(255,80,80,0.3)'
@@ -424,10 +408,10 @@ const styles = StyleSheet.create({
   rocketPressable: {
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 80
+    borderRadius: 120
   },
-  rocketEmoji: { fontSize: 72 },
-  alienShipImage: { width: 100, height: 100 },
+  rocketEmoji: { fontSize: 108 },
+  alienShipImage: { width: 150, height: 150 },
   clickHint: {
     marginTop: 8,
     fontSize: 10,
