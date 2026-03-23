@@ -22,40 +22,37 @@ function isValidState(s: unknown): s is GameStateInit {
   if (typeof s !== "object" || s === null) return false;
   const state = s as Record<string, unknown>;
 
-  // Top-level primitive fields
   if (typeof state.energy !== "number") return false;
   if (typeof state.totalEarned !== "number") return false;
   if (typeof state.clicks !== "number") return false;
   if (typeof state.selectedPlanetId !== "number") return false;
   if (!Array.isArray(state.unlockedPlanetIds)) return false;
 
-  // achievements
   if (typeof state.achievements !== "object" || state.achievements === null) return false;
   if (!Array.isArray((state.achievements as Record<string, unknown>).unlockedIds)) return false;
 
-  // upgrades — all current upgrade IDs must be present as numbers
   if (typeof state.upgrades !== "object" || state.upgrades === null) return false;
   const upgrades = state.upgrades as Record<string, unknown>;
   for (const upg of UPGRADES) {
     if (typeof upgrades[upg.id] !== "number") return false;
   }
 
-  // metals — all current metal IDs must be present as numbers
   if (typeof state.metals !== "object" || state.metals === null) return false;
   const metals = state.metals as Record<string, unknown>;
   for (const metal of METALS) {
     if (typeof metals[metal.id] !== "number") return false;
   }
 
-  // fleet
   if (typeof state.fleet !== "object" || state.fleet === null) return false;
   const fleet = state.fleet as Record<string, unknown>;
   if (!Array.isArray(fleet.ownedShips)) return false;
 
-  // unlockedPlanetIds — all values must be valid planet IDs
+  // selectedPlanetId must be a valid planet id (now 1-10)
   const validPlanetIds = new Set(PLANETS.map((p) => p.id));
+  if (!validPlanetIds.has(state.selectedPlanetId as number)) return false;
   if (!(state.unlockedPlanetIds as unknown[]).every((id) => validPlanetIds.has(id as number))) return false;
 
+  // New fields are optional — defaults applied in useGame.ts if absent
   return true;
 }
 
@@ -93,6 +90,9 @@ export async function saveGame(state: GameState): Promise<void> {
       metals: state.metals,
       fleet: state.fleet,
       battle: state.battle,
+      playerXP: state.playerXP,
+      research: state.research,
+      expeditions: state.expeditions,
     },
   };
   await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(payload));

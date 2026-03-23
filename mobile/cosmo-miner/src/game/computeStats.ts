@@ -1,13 +1,18 @@
+import { BATTLE_DURATION_MS } from "./ALIENS";
 import { PLANETS, type PlanetDefinition, type PlanetId } from "./PLANETS";
-import { UPGRADES, type UpgradeId, type UpgradeDefinition } from "./UPGRADES";
+import { computeResearchEffects, type ResearchState } from "./RESEARCH";
+import { UPGRADES, type UpgradeId } from "./UPGRADES";
 import type { UpgradesState } from "./types";
 
 export type DerivedStats = {
-  clickPower: number; // energy per click
-  passiveRate: number; // energy per second (already includes planet bonus)
-  baseClickPower: number; // without planet bonus
-  basePassiveRate: number; // without planet bonus
+  clickPower: number;         // energy per click (with all bonuses)
+  passiveRate: number;        // energy per second (with all bonuses)
+  baseClickPower: number;     // without planet bonus or research
+  basePassiveRate: number;    // without planet bonus or research
   planetBonus: number;
+  metalDropBonus: number;     // flat bonus added to each metal drop roll
+  battleTimerMs: number;      // total battle duration in ms
+  damageResearchMultiplier: number; // 1.0 + research damage bonuses
 };
 
 function getPlanetByIdLoose(id: PlanetId): PlanetDefinition {
@@ -19,10 +24,11 @@ function getPlanetByIdLoose(id: PlanetId): PlanetDefinition {
 export function computeStats(args: {
   upgrades: UpgradesState;
   selectedPlanetId: PlanetId;
+  research: ResearchState;
 }): DerivedStats {
-  const { upgrades, selectedPlanetId } = args;
+  const { upgrades, selectedPlanetId, research } = args;
 
-  let baseClickPower = 1; // clickPow starts from 1 in v2
+  let baseClickPower = 1;
   let basePassiveRate = 0;
 
   for (const upg of UPGRADES) {
@@ -34,12 +40,17 @@ export function computeStats(args: {
   const planet = getPlanetByIdLoose(selectedPlanetId);
   const planetBonus = planet.bonus;
 
+  const fx = computeResearchEffects(research);
+
   return {
-    clickPower: baseClickPower * planetBonus,
-    passiveRate: basePassiveRate * planetBonus,
+    clickPower: baseClickPower * planetBonus * (1 + fx.clickMultiplierBonus),
+    passiveRate: basePassiveRate * planetBonus * (1 + fx.passiveMultiplierBonus),
     baseClickPower,
     basePassiveRate,
     planetBonus,
+    metalDropBonus: fx.metalDropBonus,
+    battleTimerMs: BATTLE_DURATION_MS + fx.battleTimerBonus,
+    damageResearchMultiplier: 1 + fx.damageMultiplierBonus,
   };
 }
 
