@@ -1,8 +1,10 @@
 import type { AchievementId } from "./ACHIEVEMENTS";
 import type { BattleState } from "./ALIENS";
 import type { CannonId } from "./CANNONS";
+import type { ActiveExpedition, ExpeditionId } from "./EXPEDITIONS";
 import type { MetalId, MetalsState } from "./METALS";
 import type { PlanetId } from "./PLANETS";
+import type { ResearchId, ResearchState } from "./RESEARCH";
 import type { FleetState, OwnedShip, ShipId } from "./SHIPS";
 import type { UpgradeId } from "./UPGRADES";
 
@@ -23,6 +25,9 @@ export type GameState = {
   metals: MetalsState;
   fleet: FleetState;
   battle: BattleState | null;
+  playerXP: number;
+  research: ResearchState;
+  expeditions: ActiveExpedition[];
 };
 
 export type GameStateInit = {
@@ -43,6 +48,9 @@ export type GameStateInit = {
     selectedShipId?: ShipId | null;
   };
   battle?: BattleState | null;
+  playerXP?: number;
+  research?: ResearchState;
+  expeditions?: ActiveExpedition[];
 };
 
-export type { BattleState, FleetState, MetalsState, OwnedShip };
+export type { ActiveExpedition, BattleState, FleetState, MetalsState, OwnedShip, ResearchId, ResearchState };

@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { ALIENS } from "../game/ALIENS";
 import { PLANETS, type PlanetDefinition, type PlanetId } from "../game/PLANETS";
+import { SECTORS, isSectorUnlocked } from "../game/SECTORS";
 import type { BattleState } from "../game/types";
 
 export type PlanetsScreenProps = {
@@ -32,6 +33,7 @@ export function PlanetsScreen({
     const alreadyBattling = battle?.planetId === selPlanet.id;
     const otherBattle = !!battle && battle.planetId !== selPlanet.id;
     const notEnoughEnergy = !!alien && !unlocked && energy < alien.attackEnergyCost;
+    const sector2Locked = selPlanet.sectorId === 2 && !isSectorUnlocked(2, unlockedPlanetIds);
 
     return (
       <View style={styles.screen}>
@@ -53,7 +55,7 @@ export function PlanetsScreen({
             <Text style={styles.dossierText}>{selPlanet.lore}</Text>
           </View>
 
-          {alien && !unlocked && (
+          {alien && !unlocked && !sector2Locked && (
             <View style={[styles.dossier, { borderColor: "rgba(255,80,80,0.2)", marginTop: 8 }]}>
               <Text style={[styles.dossierTitle, { color: "rgba(255,80,80,0.6)" }]}>
                 {alien.icon} ОККУПИРОВАНА · {alien.name}
@@ -66,7 +68,14 @@ export function PlanetsScreen({
             </View>
           )}
 
-          {unlocked ? (
+          {sector2Locked ? (
+            <View style={[styles.attackingBox, { borderColor: "rgba(255,200,0,0.2)", marginTop: 16 }]}>
+              <Text style={[styles.attackingText, { color: "rgba(255,200,0,0.6)" }]}>
+                🔒 СЕКТОР 2 ЗАБЛОКИРОВАН
+              </Text>
+              <Text style={styles.attackingHint}>Захватите все планеты Сектора 1</Text>
+            </View>
+          ) : unlocked ? (
             <Pressable
               onPress={() => onChoosePlanet(selPlanet.id)}
               style={({ pressed }) => [styles.chooseBtn, pressed ? { opacity: 0.92 } : null]}
@@ -122,45 +131,73 @@ export function PlanetsScreen({
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.title}>◈ ЛОКАЦИИ ДОБЫЧИ ◈</Text>
 
-        {PLANETS.map((p) => {
-          const unlocked = unlockedSet.has(p.id);
-          const active = p.id === selectedPlanetId;
-          const isBattling = battle?.planetId === p.id;
-          const alien = ALIENS.find((a) => a.planetId === p.id);
+        {SECTORS.map((sector) => {
+          const sectorUnlocked = isSectorUnlocked(sector.id, unlockedPlanetIds);
+          const sectorPlanets = PLANETS.filter((p) => p.sectorId === sector.id);
 
           return (
-            <Pressable
-              key={p.id}
-              onPress={() => setSelPlanet(p)}
-              style={({ pressed }) => [
-                styles.card,
-                active ? styles.cardActive : null,
-                isBattling ? styles.cardBattling : null,
-                !unlocked && !isBattling ? styles.cardLocked : null,
-                unlocked && !active ? styles.cardUnlocked : null,
-                pressed ? { opacity: 0.92 } : null,
-              ]}
-            >
-              <Image source={p.image} style={[styles.cardIcon, !unlocked ? { opacity: 0.35 } : null]} resizeMode="contain" />
-
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.cardName, unlocked ? { color: p.color } : { color: "rgba(255,255,255,0.25)" }]}>
-                  {p.name}
-                </Text>
-                <Text style={styles.cardMeta}>
-                  {unlocked
-                    ? `${p.resource} · ×${p.bonus}`
-                    : isBattling
-                    ? `⚔️ Бой с ${alien?.name ?? "противником"}`
-                    : alien
-                    ? `👾 Оккупирована: ${alien.name}`
-                    : "Недоступна"}
-                </Text>
+            <View key={sector.id}>
+              {/* Sector header */}
+              <View style={[styles.sectorHeader, sectorUnlocked ? styles.sectorHeaderUnlocked : styles.sectorHeaderLocked]}>
+                <Text style={styles.sectorIcon}>{sector.icon}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.sectorName, sectorUnlocked ? { color: "#00d4ff" } : { color: "rgba(255,255,255,0.25)" }]}>
+                    СЕКТОР {sector.id} · {sector.name.toUpperCase()}
+                  </Text>
+                  {!sectorUnlocked && (
+                    <Text style={styles.sectorLockHint}>Захватите все планеты Сектора 1</Text>
+                  )}
+                </View>
+                {!sectorUnlocked && <Text style={styles.lockIcon}>🔒</Text>}
               </View>
 
-              {active && <Text style={styles.activeLabel}>АКТИВНА</Text>}
-              {isBattling && <Text style={styles.battleLabel}>БОЙ</Text>}
-            </Pressable>
+              {sectorPlanets.map((p) => {
+                const unlocked = unlockedSet.has(p.id);
+                const active = p.id === selectedPlanetId;
+                const isBattling = battle?.planetId === p.id;
+                const alien = ALIENS.find((a) => a.planetId === p.id);
+                const grayed = !sectorUnlocked && !unlocked;
+
+                return (
+                  <Pressable
+                    key={p.id}
+                    onPress={() => setSelPlanet(p)}
+                    style={({ pressed }) => [
+                      styles.card,
+                      active ? styles.cardActive : null,
+                      isBattling ? styles.cardBattling : null,
+                      !unlocked && !isBattling ? styles.cardLocked : null,
+                      unlocked && !active ? styles.cardUnlocked : null,
+                      pressed ? { opacity: 0.92 } : null,
+                    ]}
+                  >
+                    <Image
+                      source={p.image}
+                      style={[styles.cardIcon, (grayed || (!unlocked && !isBattling)) ? { opacity: 0.25 } : null]}
+                      resizeMode="contain"
+                    />
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.cardName, unlocked ? { color: p.color } : { color: "rgba(255,255,255,0.25)" }]}>
+                        {p.name}
+                      </Text>
+                      <Text style={styles.cardMeta}>
+                        {unlocked
+                          ? `${p.resource} · ×${p.bonus}`
+                          : isBattling
+                          ? `⚔️ Бой с ${alien?.name ?? "противником"}`
+                          : !sectorUnlocked
+                          ? "🔒 Сектор заблокирован"
+                          : alien
+                          ? `👾 Оккупирована: ${alien.name}`
+                          : "Недоступна"}
+                      </Text>
+                    </View>
+                    {active && <Text style={styles.activeLabel}>АКТИВНА</Text>}
+                    {isBattling && <Text style={styles.battleLabel}>БОЙ</Text>}
+                  </Pressable>
+                );
+              })}
+            </View>
           );
         })}
       </ScrollView>
@@ -186,6 +223,31 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     marginBottom: 12,
   },
+  // Sector header
+  sectorHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    marginBottom: 8,
+    marginTop: 4,
+    borderWidth: 1,
+  },
+  sectorHeaderUnlocked: {
+    borderColor: "rgba(0,212,255,0.15)",
+    backgroundColor: "rgba(0,212,255,0.03)",
+  },
+  sectorHeaderLocked: {
+    borderColor: "rgba(255,255,255,0.05)",
+    backgroundColor: "rgba(255,255,255,0.01)",
+  },
+  sectorIcon: { fontSize: 16 },
+  sectorName: { fontSize: 9, fontWeight: "900", letterSpacing: 1.5 },
+  sectorLockHint: { fontSize: 9, color: "rgba(255,200,0,0.4)", marginTop: 1 },
+  lockIcon: { fontSize: 14 },
+  // Detail view
   dossier: {
     borderRadius: 12,
     padding: 12,
@@ -198,6 +260,7 @@ const styles = StyleSheet.create({
   alienHP: { marginTop: 6, fontSize: 10, color: "rgba(255,100,100,0.6)", fontWeight: "700" },
   planetName: { fontSize: 14, fontWeight: "900", letterSpacing: 2, marginTop: 8 },
   meta: { marginTop: 3, fontSize: 11, color: "rgba(255,255,255,0.35)", fontWeight: "700" },
+  // Planet cards
   card: {
     flexDirection: "row",
     alignItems: "center",
@@ -206,7 +269,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     borderRadius: 12,
     borderWidth: 1,
-    marginBottom: 10,
+    marginBottom: 8,
   },
   cardActive: {
     borderColor: "rgba(120,255,120,0.25)",

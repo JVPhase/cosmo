@@ -1,31 +1,40 @@
 import { StatusBar } from "expo-status-bar";
 import React, { useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { UpgradesScreen } from "./src/screens/UpgradesScreen";
-import { PlanetsScreen } from "./src/screens/PlanetsScreen";
 import { AchievementsScreen } from "./src/screens/AchievementsScreen";
-import { GameScreen } from "./src/screens/GameScreen";
-import { ShipyardScreen } from "./src/screens/ShipyardScreen";
 import { BattleScreen } from "./src/screens/BattleScreen";
+import { GameScreen } from "./src/screens/GameScreen";
+import { PlanetsScreen } from "./src/screens/PlanetsScreen";
+import { ResearchScreen } from "./src/screens/ResearchScreen";
+import { ShipyardScreen } from "./src/screens/ShipyardScreen";
+import { UpgradesScreen } from "./src/screens/UpgradesScreen";
 import { IntroOverlay } from "./src/ui/IntroOverlay";
+import { ModalSheet } from "./src/ui/ModalSheet";
 import { PasswordScreen } from "./src/ui/PasswordScreen";
 import { useGame } from "./src/game/useGame";
 import { loadGame, loadIntroSeen, saveGame, saveIntroSeen } from "./src/game/storage";
+import { ALIENS } from "./src/game/ALIENS";
+import { SHIPS } from "./src/game/SHIPS";
+import { UPGRADES } from "./src/game/UPGRADES";
 import type { GameStateInit } from "./src/game/types";
 
-type TabId = "game" | "upgrades" | "planets" | "shipyard" | "battle" | "achievements";
+const MIN_ATTACK_ENERGY = Math.min(...ALIENS.map((a) => a.attackEnergyCost));
+const MIN_UPGRADE_COST = Math.min(...UPGRADES.map((u) => u.baseCost));
+
+type TabId = "game" | "upgrades" | "planets" | "shipyard" | "battle";
 
 const TABS: Array<{ id: TabId; icon: string; label: string }> = [
-  { id: "game", icon: "⛏️", label: "ДОБЫЧА" },
-  { id: "upgrades", icon: "⚡", label: "АПГР." },
-  { id: "planets", icon: "🌍", label: "ПЛАН." },
+  { id: "game",     icon: "⛏️", label: "ДОБЫЧА" },
+  { id: "upgrades", icon: "⚡",  label: "АПГР." },
+  { id: "planets",  icon: "🌍", label: "ПЛАН." },
   { id: "shipyard", icon: "🛠️", label: "ВЕРФЬ" },
-  { id: "battle", icon: "⚔️", label: "БОЙ" },
-  { id: "achievements", icon: "🏆", label: "ДЕЛО" },
+  { id: "battle",   icon: "⚔️", label: "БОЙ" },
 ];
 
 function GameApp({ initial, tab, onSetTab }: { initial: GameStateInit; tab: TabId; onSetTab: (t: TabId) => void }) {
   const game = useGame(initial);
+  const [researchOpen, setResearchOpen] = useState(false);
+  const [achievementsOpen, setAchievementsOpen] = useState(false);
 
   const latestRef = useRef(game);
   useEffect(() => { latestRef.current = game; });
@@ -45,10 +54,43 @@ function GameApp({ initial, tab, onSetTab }: { initial: GameStateInit; tab: TabI
         metals: g.metals,
         fleet: g.fleet,
         battle: g.battle,
+        playerXP: g.playerXP,
+        research: g.research,
+        expeditions: g.expeditions,
       } as any).catch(() => {});
     }, 3000);
     return () => clearInterval(interval);
   }, []);
+
+  const firstShipCost = SHIPS[0].baseCost;
+  const shipyardUnlocked =
+    game.fleet.ownedShips.length > 0 ||
+    Object.entries(firstShipCost).every(([metal, qty]) => (game.metals[metal as keyof typeof game.metals] ?? 0) >= (qty ?? 0));
+
+  const upgradesUnlocked = game.energy >= MIN_UPGRADE_COST || Object.values(game.upgrades).some((v) => v > 0);
+
+  const planetsUnlocked =
+    game.unlockedPlanetIds.length > 1 || game.energy >= MIN_ATTACK_ENERGY;
+
+  const battleUnlocked =
+    !!game.battle || game.unlockedPlanetIds.length > 1 || !!game.defeatInfo;
+
+  // Auto-switch away from hidden tabs
+  useEffect(() => {
+    if (tab === "shipyard" && !shipyardUnlocked) onSetTab("game");
+  }, [shipyardUnlocked, tab]);
+
+  useEffect(() => {
+    if (tab === "upgrades" && !upgradesUnlocked) onSetTab("game");
+  }, [upgradesUnlocked, tab]);
+
+  useEffect(() => {
+    if (tab === "planets" && !planetsUnlocked) onSetTab("game");
+  }, [planetsUnlocked, tab]);
+
+  useEffect(() => {
+    if (tab === "battle" && !battleUnlocked) onSetTab("game");
+  }, [battleUnlocked, tab]);
 
   // Auto-switch to game tab after battle victory
   useEffect(() => {
@@ -83,11 +125,34 @@ function GameApp({ initial, tab, onSetTab }: { initial: GameStateInit; tab: TabI
               : null
           }
           onCloseAchievementToast={game.closeAchievementToast}
+          playerLevel={game.playerLevel}
+          playerXP={game.playerXP}
+          levelUpToast={game.levelUpToast}
+          onCloseLevelUpToast={game.closeLevelUpToast}
+          firstIronToast={game.firstIronToast}
+          onCloseFirstIronToast={game.closeFirstIronToast}
+          onOpenResearch={() => setResearchOpen(true)}
+          onOpenAchievements={() => setAchievementsOpen(true)}
+          achievementsUnlocked={game.achievementsUnlocked}
+          achievementsUnlockToast={game.achievementsUnlockToast}
+          onCloseAchievementsUnlockToast={game.closeAchievementsUnlockToast}
+          upgradesUnlockToast={game.upgradesUnlockToast}
+          onCloseUpgradesUnlockToast={game.closeUpgradesUnlockToast}
+          currentUnlockToast={game.currentUnlockToast}
+          onDismissUnlockToast={game.dismissUnlockToast}
+          firstShipToast={game.firstShipToast}
+          onCloseFirstShipToast={game.closeFirstShipToast}
         />
       );
       break;
     case "upgrades":
-      tabContent = <UpgradesScreen energy={game.energy} upgrades={game.upgrades} onBuyUpgrade={game.buyUpgrade} />;
+      tabContent = (
+        <UpgradesScreen
+          energy={game.energy}
+          upgrades={game.upgrades}
+          onBuyUpgrade={game.buyUpgrade}
+        />
+      );
       break;
     case "planets":
       tabContent = (
@@ -115,10 +180,15 @@ function GameApp({ initial, tab, onSetTab }: { initial: GameStateInit; tab: TabI
           fleet={game.fleet}
           totalDamage={game.totalDamage}
           battle={game.battle}
+          expeditions={game.expeditions}
+          expeditionRemainingMap={game.expeditionRemainingMap}
+          unlockedPlanetIds={game.unlockedPlanetIds}
           onBuildShip={game.buildShip}
           onRepairShip={game.repairShip}
           onSelectShip={game.selectShip}
           onCraftCannon={(shipId, cannonId) => game.craftCannon(shipId, cannonId)}
+          onStartExpedition={game.startExpedition}
+          onClaimExpedition={game.claimExpedition}
         />
       );
       break;
@@ -135,9 +205,6 @@ function GameApp({ initial, tab, onSetTab }: { initial: GameStateInit; tab: TabI
         />
       );
       break;
-    case "achievements":
-      tabContent = <AchievementsScreen achievements={game.achievements} />;
-      break;
   }
 
   return (
@@ -145,11 +212,40 @@ function GameApp({ initial, tab, onSetTab }: { initial: GameStateInit; tab: TabI
       <StatusBar style="light" />
       <View style={styles.content}>{tabContent}</View>
 
+      <ModalSheet visible={researchOpen} title="◈ ИССЛЕДОВАНИЯ · МГМР ◈" onClose={() => setResearchOpen(false)}>
+        <ResearchScreen
+          playerLevel={game.playerLevel}
+          playerXP={game.playerXP}
+          energy={game.energy}
+          research={game.research}
+          onBuyResearch={game.buyResearch}
+          battleUnlocked={battleUnlocked}
+        />
+      </ModalSheet>
+
+      <ModalSheet visible={achievementsOpen} title="◈ ЛИЧНОЕ ДЕЛО ◈" onClose={() => setAchievementsOpen(false)}>
+        <AchievementsScreen achievements={game.achievements} />
+      </ModalSheet>
+
+      {(() => {
+        const visibleTabs = TABS.filter((t) => {
+          if (t.id === "upgrades") return upgradesUnlocked;
+          if (t.id === "shipyard") return shipyardUnlocked;
+          if (t.id === "planets") return planetsUnlocked;
+          if (t.id === "battle") return battleUnlocked;
+          return true;
+        });
+        if (visibleTabs.length < 2) return null;
+        return (
       <View style={styles.tabBar}>
-        {TABS.map((t) => {
+        {visibleTabs.map((t) => {
           const active = tab === t.id;
           const hasBattle = t.id === "battle" && !!game.battle;
           const hasDefeat = t.id === "battle" && !!game.defeatInfo;
+          const hasExpeditionDone =
+            t.id === "shipyard" &&
+            game.expeditions.some((e) => (game.expeditionRemainingMap[e.shipId] ?? 1) === 0);
+
           return (
             <Pressable key={t.id} onPress={() => onSetTab(t.id)} style={styles.tabBtn}>
               <Text style={styles.tabIcon}>{t.icon}</Text>
@@ -158,10 +254,15 @@ function GameApp({ initial, tab, onSetTab }: { initial: GameStateInit; tab: TabI
               {(hasBattle || hasDefeat) ? (
                 <View style={[styles.tabBadge, hasDefeat ? { backgroundColor: "#ff9900" } : {}]} />
               ) : null}
+              {hasExpeditionDone ? (
+                <View style={[styles.tabBadge, { backgroundColor: "#00ff88" }]} />
+              ) : null}
             </Pressable>
           );
         })}
       </View>
+        );
+      })()}
     </View>
   );
 }
@@ -223,7 +324,7 @@ const styles = StyleSheet.create({
   loading: { flex: 1, alignItems: "center", justifyContent: "center" },
   loadingText: { color: "rgba(0,212,255,0.7)", fontWeight: "800" },
   tabBar: {
-    height: 72,
+    height: 68,
     flexDirection: "row",
     borderTopWidth: 1,
     borderTopColor: "rgba(0,212,255,0.15)",
@@ -236,27 +337,27 @@ const styles = StyleSheet.create({
     gap: 1,
     position: "relative",
   },
-  tabIcon: { fontSize: 16 },
+  tabIcon: { fontSize: 14 },
   tabLabel: {
-    marginTop: 2,
-    fontSize: 8,
-    letterSpacing: 0.5,
+    marginTop: 1,
+    fontSize: 7,
+    letterSpacing: 0.3,
     color: "rgba(255,255,255,0.3)",
     fontWeight: "800",
   },
   tabLabelActive: { color: "#00d4ff" },
   tabActiveLine: {
     position: "absolute",
-    left: 8,
-    right: 8,
-    bottom: 6,
+    left: 6,
+    right: 6,
+    bottom: 5,
     height: 2,
     backgroundColor: "#00d4ff",
   },
   tabBadge: {
     position: "absolute",
-    top: 8,
-    right: "25%",
+    top: 6,
+    right: "20%",
     width: 7,
     height: 7,
     borderRadius: 4,

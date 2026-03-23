@@ -9,11 +9,17 @@ import {
   Text,
   View,
   type GestureResponderEvent,
+  type LayoutChangeEvent,
 } from 'react-native';
 import { AnimatedMineEffects } from '../ui/AnimatedMineEffects';
+import { Popup } from '../ui/Popup';
 import { formatNum } from '../game/formatNum';
 import { METALS } from '../game/METALS';
+import { SHIPS } from '../game/SHIPS';
+
+const ironMetal = METALS.find((m) => m.id === 'iron')!;
 import type { PlanetDefinition } from '../game/PLANETS';
+import { getPlayerTitle, xpAtLevelStart, xpForNextLevel } from '../game/PLAYER';
 import type { MetalsState } from '../game/types';
 
 type Point = { x: number; y: number };
@@ -35,6 +41,23 @@ export type GameScreenProps = {
     lore: string;
   } | null;
   onCloseAchievementToast: () => void;
+  playerLevel: number;
+  playerXP: number;
+  levelUpToast: number | null;
+  onCloseLevelUpToast: () => void;
+  firstIronToast: boolean;
+  onCloseFirstIronToast: () => void;
+  onOpenResearch: () => void;
+  onOpenAchievements: () => void;
+  achievementsUnlocked: boolean;
+  achievementsUnlockToast: boolean;
+  onCloseAchievementsUnlockToast: () => void;
+  upgradesUnlockToast: boolean;
+  onCloseUpgradesUnlockToast: () => void;
+  currentUnlockToast: { title: string; text: string; image?: number; headerEmoji?: string } | null;
+  onDismissUnlockToast: () => void;
+  firstShipToast: boolean;
+  onCloseFirstShipToast: () => void;
 };
 
 export function GameScreen({
@@ -49,9 +72,35 @@ export function GameScreen({
   onCloseClerk,
   achievementToast,
   onCloseAchievementToast,
+  playerLevel,
+  playerXP,
+  levelUpToast,
+  onCloseLevelUpToast,
+  firstIronToast,
+  onCloseFirstIronToast,
+  onOpenResearch,
+  onOpenAchievements,
+  achievementsUnlocked,
+  achievementsUnlockToast,
+  onCloseAchievementsUnlockToast,
+  upgradesUnlockToast,
+  onCloseUpgradesUnlockToast,
+  currentUnlockToast,
+  onDismissUnlockToast,
+  firstShipToast,
+  onCloseFirstShipToast,
 }: GameScreenProps) {
+  const xpStart = xpAtLevelStart(playerLevel);
+  const xpNext = xpForNextLevel(playerLevel);
+  const xpPercent = xpNext !== null ? Math.min(1, (playerXP - xpStart) / (xpNext - xpStart)) : 1;
   const [trigger, setTrigger] = useState(0);
   const [origin, setOrigin] = useState<Point | undefined>(undefined);
+  const [headerHeight, setHeaderHeight] = useState(0);
+  const onHeaderLayout = (e: LayoutChangeEvent) => setHeaderHeight(e.nativeEvent.layout.height);
+  const [ironInfoOpen, setIronInfoOpen] = useState(false);
+  const [showClickHint, setShowClickHint] = useState(true);
+  const lastClickRef = useRef<number | null>(null);
+  const hintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const glowScale = useRef(new Animated.Value(1)).current;
   const orbitRotation = useRef(new Animated.Value(0)).current;
   const orbitRotate = orbitRotation.interpolate({
@@ -130,7 +179,20 @@ export function GameScreen({
     setOrigin({ x, y });
     setTrigger((t) => t + 1);
     onMine();
+
+    lastClickRef.current = Date.now();
+    setShowClickHint(false);
+    if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
+    hintTimerRef.current = setTimeout(() => {
+      setShowClickHint(true);
+    }, 30000);
   };
+
+  useEffect(() => {
+    return () => {
+      if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
+    };
+  }, []);
 
   return (
     <LinearGradient
@@ -175,7 +237,7 @@ export function GameScreen({
       ) : null}
 
       {/* Header */}
-      <View style={styles.header}>
+      <View style={styles.header} onLayout={onHeaderLayout}>
         <View style={styles.headerRow}>
           <View>
             <Text style={styles.headerLabel}>◈ МГМР · СОТ. №4,829,441 ◈</Text>
@@ -206,7 +268,7 @@ export function GameScreen({
           >
             <Text
               style={[styles.statText, { color: 'rgba(255,200,0,0.75)' }]}
-            >{`+${formatNum(clickPower)}/клик`}</Text>
+            >{`+${clickPower < 1000 ? clickPower.toFixed(2) : formatNum(clickPower)}/клик`}</Text>
           </View>
           <View
             style={[
@@ -238,14 +300,64 @@ export function GameScreen({
 
         {/* Metal inventory */}
         <View style={styles.metalsRow}>
-          {METALS.map((m) => (
-            <View key={m.id} style={styles.metalItem}>
+          {METALS.filter((m) => (metals[m.id] ?? 0) > 0).map((m) => (
+            <Pressable
+              key={m.id}
+              style={styles.metalItem}
+              onPress={m.id === 'iron' ? () => setIronInfoOpen(true) : undefined}
+            >
               <Image source={m.image} style={styles.metalIcon} resizeMode="contain" />
               <Text style={styles.metalCount}>{metals[m.id] ?? 0}</Text>
-            </View>
+            </Pressable>
           ))}
         </View>
+
+        {/* XP bar */}
+        <View style={styles.xpRow}>
+          <Text style={styles.xpLevel}>УР.{playerLevel}</Text>
+          <View style={styles.xpBarBg}>
+            <View style={[styles.xpBarFill, { width: `${xpPercent * 100}%` }]} />
+          </View>
+          <Text style={styles.xpTitle}>{getPlayerTitle(playerLevel)}</Text>
+        </View>
       </View>
+
+      {/* Floating action buttons */}
+      {headerHeight > 0 && (
+        <View style={[styles.floatingBtns, { top: headerHeight + 10 }]}>
+          <Pressable
+            onPress={onOpenResearch}
+            style={({ pressed }) => [styles.floatingBtn, pressed ? { opacity: 0.7 } : null]}
+          >
+            <Text style={styles.floatingBtnIcon}>🔬</Text>
+          </Pressable>
+          {achievementsUnlocked && (
+            <Pressable
+              onPress={onOpenAchievements}
+              style={({ pressed }) => [styles.floatingBtn, pressed ? { opacity: 0.7 } : null]}
+            >
+              <Text style={styles.floatingBtnIcon}>🏆</Text>
+            </Pressable>
+          )}
+        </View>
+      )}
+
+      {/* Level-up toast */}
+      {levelUpToast ? (
+        <View style={styles.levelUpToast}>
+          <Text style={styles.levelUpIcon}>⬆️</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.levelUpLabel}>НОВЫЙ УРОВЕНЬ</Text>
+            <Text style={styles.levelUpLevel}>Уровень {levelUpToast} · {getPlayerTitle(levelUpToast)}</Text>
+          </View>
+          <Pressable
+            onPress={onCloseLevelUpToast}
+            style={({ pressed }) => (pressed ? { opacity: 0.9 } : null)}
+          >
+            <Text style={styles.levelUpClose}>✕</Text>
+          </Pressable>
+        </View>
+      ) : null}
 
       {/* Main */}
       <View style={styles.main}>
@@ -289,15 +401,73 @@ export function GameScreen({
               style={styles.asteroidImage}
             />
 
-            <View style={styles.asteroidCenter}>
-              <Text style={styles.asteroidIcon}>⛏️</Text>
-              <Text style={styles.clickHint}>КЛИКНИ</Text>
-            </View>
+            {showClickHint && (
+              <View style={styles.asteroidCenter}>
+                <Text style={styles.asteroidIcon}>⛏️</Text>
+                <Text style={styles.clickHint}>КЛИКНИ</Text>
+              </View>
+            )}
           </Pressable>
         </AnimatedMineEffects>
 
         <Text style={styles.hint}>◈ ДОБЫВАЙ {planet.resource} ◈</Text>
       </View>
+
+      <Popup
+        visible={firstIronToast}
+        title="◈ ПЕРВАЯ НАХОДКА · КЛЕРК-7 ◈"
+        onClose={onCloseFirstIronToast}
+        image={ironMetal.image}
+        text={'Зафиксирован первый образец Железа™! За эту выдающуюся находку вам полагается премия — после заполнения форм ЖЛ-1 по ЖЛ-83, нотариально заверенного снимка астероида и справки с предыдущего места работы. P.S. Этот металл может пригодиться. Возможно.'}
+        clerk
+      />
+
+      <Popup
+        visible={achievementsUnlockToast}
+        title="◈ СИСТЕМА ДОСТИЖЕНИЙ · КЛЕРК-7 ◈"
+        onClose={onCloseAchievementsUnlockToast}
+        text={'Хочу вас подбодрить. Серьёзно. Поэтому внедряю систему достижений — специально для вас.\n\nКаждое достижение будет официально зафиксировано в личном деле. Форма ДСТ-1 уже направлена в архив в трёх экземплярах.\n\nТак держать, сотрудник №4,829,441. Вы справляетесь. Почти.'}
+        clerk
+        headerEmoji="🏆"
+      />
+
+      <Popup
+        visible={upgradesUnlockToast}
+        title="◈ АПГРЕЙДЫ ДОСТУПНЫ · КЛЕРК-7 ◈"
+        onClose={onCloseUpgradesUnlockToast}
+        text={'Поздравляю — у вас достаточно энергии для первого улучшения оборудования!\n\nАпгрейды повышают мощность добычи и пассивный доход. Настоятельно рекомендую вкладывать всё, что есть.\n\nФорма АПГ-1 «Заявка на улучшение» заполнена автоматически. Можете не благодарить.'}
+        clerk
+        headerEmoji="⚡"
+      />
+
+      <Popup
+        visible={ironInfoOpen}
+        title="◈ ЖЕЛЕЗО™ · КЛЕРК-7 ◈"
+        onClose={() => setIronInfoOpen(false)}
+        image={ironMetal.image}
+        text={'Железо — базовый промышленный металл. Добывайте его как можно больше.\n\nПо регламенту МГМР, минимальная норма сбора не установлена. Это не значит, что её нет — просто форма МН-2 «Установление нормы» находится на согласовании с 2341 года.\n\nВывод: добывайте. Много. Пока не спросили.'}
+        clerk
+      />
+
+      <Popup
+        visible={!!currentUnlockToast}
+        title={currentUnlockToast?.title ?? ""}
+        onClose={onDismissUnlockToast}
+        image={currentUnlockToast?.image}
+        text={currentUnlockToast?.text ?? ""}
+        headerEmoji={currentUnlockToast?.headerEmoji}
+        clerk
+      />
+
+      <Popup
+        visible={firstShipToast}
+        title="◈ ПЕРВЫЙ КОРАБЛЬ · КЛЕРК-7 ◈"
+        onClose={onCloseFirstShipToast}
+        image={SHIPS[0].image}
+        text={'Поздравляю с постройкой первого корабля!\n\nОднако для навигации необходимы данные из реестра МГМР. Министерство готово их предоставить — как только вы выйдете на связь. Для этого потребуется 10 000 единиц энергии. Форма НВГ-1 «Запрос навигационных данных» будет заполнена автоматически.'}
+        clerk
+        headerEmoji="🚀"
+      />
 
       {/* Clerk bubble */}
       {clerkMessage ? (
@@ -561,9 +731,9 @@ const styles = StyleSheet.create({
     left: 10,
     right: 10,
     zIndex: 30,
-    backgroundColor: 'rgba(255,180,0,0.08)',
+    backgroundColor: 'rgba(40,25,0,0.97)',
     borderWidth: 1,
-    borderColor: 'rgba(255,180,0,0.45)',
+    borderColor: 'rgba(255,180,0,0.7)',
     borderRadius: 14,
     padding: 12,
     flexDirection: 'row',
@@ -592,4 +762,86 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   achievementClose: { fontSize: 14, color: 'rgba(0,212,255,0.35)', padding: 6 },
+
+  xpRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 6,
+  },
+  xpLevel: {
+    fontSize: 8,
+    color: 'rgba(0,212,255,0.6)',
+    fontWeight: '900',
+    letterSpacing: 0.5,
+    minWidth: 30,
+  },
+  xpBarBg: {
+    flex: 1,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    overflow: 'hidden',
+  },
+  xpBarFill: {
+    height: '100%',
+    borderRadius: 2,
+    backgroundColor: 'rgba(0,212,255,0.6)',
+  },
+  xpTitle: {
+    fontSize: 8,
+    color: 'rgba(0,212,255,0.35)',
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+
+  levelUpToast: {
+    position: 'absolute',
+    top: 86,
+    left: 10,
+    right: 10,
+    zIndex: 30,
+    backgroundColor: 'rgba(0,50,80,0.97)',
+    borderWidth: 1,
+    borderColor: 'rgba(0,212,255,0.5)',
+    borderRadius: 14,
+    padding: 12,
+    flexDirection: 'row',
+    gap: 10 as any,
+    alignItems: 'center',
+  },
+  levelUpIcon: { fontSize: 26 },
+  levelUpLabel: {
+    fontSize: 8,
+    color: 'rgba(0,212,255,0.7)',
+    letterSpacing: 2,
+    fontWeight: '900',
+    marginBottom: 2,
+  },
+  levelUpLevel: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#00d4ff',
+    marginTop: 2,
+  },
+  levelUpClose: { fontSize: 14, color: 'rgba(0,212,255,0.35)', padding: 6 },
+
+  floatingBtns: {
+    position: 'absolute',
+    left: 10,
+    flexDirection: 'column',
+    gap: 6 as any,
+    zIndex: 5,
+  },
+  floatingBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: 'rgba(0,212,255,0.07)',
+    borderWidth: 1,
+    borderColor: 'rgba(0,212,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  floatingBtnIcon: { fontSize: 16 },
 });

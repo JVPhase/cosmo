@@ -1,6 +1,10 @@
+import type { SectorId } from "./SECTORS";
+
 export const PLANETS = [
+  // ── SECTOR 1 · ВНУТРЕННИЙ КЛАСТЕР ──
   {
     id: 1,
+    sectorId: 1 as SectorId,
     name: "Астероид Б-4",
     icon: "🪨",
     image: require("../../assets/asteroid.png"),
@@ -13,6 +17,7 @@ export const PLANETS = [
   },
   {
     id: 2,
+    sectorId: 1 as SectorId,
     name: "Меркурий-Икс",
     icon: "🔴",
     image: require("../../assets/mercury.png"),
@@ -25,6 +30,7 @@ export const PLANETS = [
   },
   {
     id: 3,
+    sectorId: 1 as SectorId,
     name: "Кристаллис",
     icon: "💎",
     image: require("../../assets/crystal.png"),
@@ -37,6 +43,7 @@ export const PLANETS = [
   },
   {
     id: 4,
+    sectorId: 1 as SectorId,
     name: "Туманность Омега",
     icon: "🌫️",
     image: require("../../assets/omega.png"),
@@ -49,6 +56,7 @@ export const PLANETS = [
   },
   {
     id: 5,
+    sectorId: 1 as SectorId,
     name: "Солнце Гамма-9",
     icon: "⭐",
     image: require("../../assets/sun.png"),
@@ -59,6 +67,72 @@ export const PLANETS = [
     bonus: 50,
     lore: "Добыча на поверхности звезды. Отдел охраны труда подал протест в 47 инстанций. Все 47 одобрили. Такова бюрократия. Скафандр выдаётся за свой счёт.",
   },
+  // ── SECTOR 2 · ДАЛЬНИЙ КЛАСТЕР ──
+  {
+    id: 6,
+    sectorId: 2 as SectorId,
+    name: "Чёрная дыра Б-7",
+    icon: "⚫",
+    image: require("../../assets/omega.png"),
+    unlocked: false,
+    cost: 0,
+    resource: "Темниум",
+    color: "#8e44ad",
+    bonus: 120,
+    lore: "Чёрная дыра. Отдел охраны труда подал 88 протестов. Все одобрены. Такова система. Форм не хватило.",
+  },
+  {
+    id: 7,
+    sectorId: 2 as SectorId,
+    name: "Нейтронная ОТД-44",
+    icon: "💫",
+    image: require("../../assets/sun.png"),
+    unlocked: false,
+    cost: 0,
+    resource: "Нейтрониум",
+    color: "#1abc9c",
+    bonus: 350,
+    lore: "Масса в миллиард тонн на куб. сантиметр. Форма на добычу ВЕС-88 весит 2 кг. Ирония не зарегистрирована.",
+  },
+  {
+    id: 8,
+    sectorId: 2 as SectorId,
+    name: "Туманность Парадокса",
+    icon: "🌀",
+    image: require("../../assets/crystal.png"),
+    unlocked: false,
+    cost: 0,
+    resource: "Парадоксит",
+    color: "#2980b9",
+    bonus: 1000,
+    lore: "Научно необъяснима. Министерство объяснило через форму НОБ-3. Учёные плачут. Мы добываем.",
+  },
+  {
+    id: 9,
+    sectorId: 2 as SectorId,
+    name: "Квантовое Поле Икс",
+    icon: "⚡",
+    image: require("../../assets/mercury.png"),
+    unlocked: false,
+    cost: 0,
+    resource: "Квантоний",
+    color: "#e67e22",
+    bonus: 3000,
+    lore: "Одновременно существует и не существует. Пока вы не подали заявку — не существовало. Теперь существует. Добывайте.",
+  },
+  {
+    id: 10,
+    sectorId: 2 as SectorId,
+    name: "Сингулярность Альфа-0",
+    icon: "🌌",
+    image: require("../../assets/asteroid.png"),
+    unlocked: false,
+    cost: 0,
+    resource: "Сингуларий",
+    color: "#c0392b",
+    bonus: 10000,
+    lore: "Конец всего. Начало всего. Акт приёмки-передачи в 47 экземплярах. Поздравляем с прибытием.",
+  },
 ] as const;
 
 export type PlanetDefinition = (typeof PLANETS)[number];
@@ -68,5 +142,9 @@ export function getPlanetById(id: PlanetId): PlanetDefinition {
   const p = PLANETS.find((x) => x.id === id);
   if (!p) throw new Error(`Unknown planet id: ${id}`);
   return p;
+}
+
+export function getPlanetsBySector(sectorId: SectorId): readonly PlanetDefinition[] {
+  return PLANETS.filter((p) => p.sectorId === sectorId);
 }
 

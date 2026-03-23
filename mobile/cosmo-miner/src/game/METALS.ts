@@ -17,6 +17,7 @@ export const METALS: readonly MetalDefinition[] = [
 
 // Drop table: which metals drop from each planet and at what chance per click
 export const PLANET_DROP_TABLE: Record<PlanetId, { metalId: MetalId; chance: number }[]> = {
+  // Sector 1
   1: [{ metalId: "iron", chance: 0.15 }],
   2: [
     { metalId: "titan", chance: 0.12 },
@@ -36,6 +37,30 @@ export const PLANET_DROP_TABLE: Record<PlanetId, { metalId: MetalId; chance: num
     { metalId: "titan", chance: 0.10 },
     { metalId: "iridium", chance: 0.10 },
   ],
+  // Sector 2 — higher drop rates reflect greater resource density
+  6: [
+    { metalId: "iron", chance: 0.20 },
+    { metalId: "titan", chance: 0.15 },
+    { metalId: "iridium", chance: 0.10 },
+  ],
+  7: [
+    { metalId: "iron", chance: 0.15 },
+    { metalId: "titan", chance: 0.20 },
+    { metalId: "iridium", chance: 0.15 },
+  ],
+  8: [
+    { metalId: "titan", chance: 0.20 },
+    { metalId: "iridium", chance: 0.25 },
+  ],
+  9: [
+    { metalId: "titan", chance: 0.20 },
+    { metalId: "iridium", chance: 0.30 },
+  ],
+  10: [
+    { metalId: "iron", chance: 0.25 },
+    { metalId: "titan", chance: 0.30 },
+    { metalId: "iridium", chance: 0.35 },
+  ],
 };
 
 export type MetalsState = Record<MetalId, number>;
@@ -44,11 +69,11 @@ export function createDefaultMetalsState(): MetalsState {
   return { iron: 0, titan: 0, iridium: 0 };
 }
 
-export function rollMetalDrops(planetId: PlanetId): MetalsState {
+export function rollMetalDrops(planetId: PlanetId, dropBonus = 0): MetalsState {
   const drops = PLANET_DROP_TABLE[planetId] ?? [];
   const result = createDefaultMetalsState();
   for (const drop of drops) {
-    if (Math.random() < drop.chance) {
+    if (Math.random() < Math.min(1, drop.chance + dropBonus)) {
       result[drop.metalId] += 1;
     }
   }

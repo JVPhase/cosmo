@@ -222,7 +222,7 @@ export function AnimatedMineEffects({
               },
             ]}
           >
-            <Text style={styles.floatText}>+{f.value}</Text>
+            <Text style={styles.floatText}>+{f.value.toFixed(2)}</Text>
           </Animated.View>
         ))}
       </View>

@@ -17,7 +17,6 @@ export function AchievementsScreen({ achievements }: AchievementsScreenProps) {
   return (
     <View style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.title}>◈ ЛИЧНОЕ ДЕЛО ◈</Text>
         <Text style={styles.subtitle}>
           {Array.from(unlockedSet).length}/{ACHIEVEMENTS.length} страниц получено
         </Text>
