@@ -4,7 +4,7 @@ import { ACHIEVEMENTS, type AchievementDefinition } from "./ACHIEVEMENTS";
 import { ALIENS, type BattleState } from "./ALIENS";
 import { CANNONS, computeCannonCost, type CannonId } from "./CANNONS";
 import { EXPEDITIONS, getExpeditionById, type ExpeditionId } from "./EXPEDITIONS";
-import { METALS, addMetals, createDefaultMetalsState, hasEnoughMetals, rollMetalDrops, subtractMetals } from "./METALS";
+import { METALS, addMetals, createDefaultMetalsState, hasEnoughMetals, rollMetalDrops, subtractMetals, type MetalId } from "./METALS";
 import { PLANETS, type PlanetId, type PlanetDefinition } from "./PLANETS";
 import { computePlayerLevel } from "./PLAYER";
 import { RESEARCH, type ResearchId, type ResearchState } from "./RESEARCH";
@@ -53,6 +53,13 @@ function computeBaseShipDamage(fleet: GameState["fleet"]): number {
 
 const BASE_PLANET_ID = PLANETS[0].id;
 
+function mergeDiscovered(current: MetalId[], metals: Record<string, number>): MetalId[] {
+  const newOnes = (Object.keys(metals) as MetalId[]).filter(
+    (k) => metals[k] > 0 && !current.includes(k)
+  );
+  return newOnes.length > 0 ? [...current, ...newOnes] : current;
+}
+
 export function useGame(initial?: GameStateInit) {
   const defaultState = useMemo<GameState>(
     () => ({
@@ -64,6 +71,7 @@ export function useGame(initial?: GameStateInit) {
       selectedPlanetId: BASE_PLANET_ID,
       achievements: { unlockedIds: [] },
       metals: createDefaultMetalsState(),
+      discoveredMetals: [],
       fleet: createDefaultFleetState(),
       battle: null,
       playerXP: 0,
@@ -78,6 +86,9 @@ export function useGame(initial?: GameStateInit) {
     const unlockedSet = new Set<PlanetId>(initial?.unlockedPlanetIds ?? [BASE_PLANET_ID]);
     unlockedSet.add(BASE_PLANET_ID);
     const metals = { ...createDefaultMetalsState(), ...(initial?.metals ?? {}) };
+    // Restore discovered metals from save, or derive from current metal amounts for backwards compat
+    const discoveredMetals: MetalId[] = initial?.discoveredMetals
+      ?? (Object.keys(metals) as MetalId[]).filter((k) => metals[k] > 0);
     const fleet = {
       ownedShips: (initial?.fleet?.ownedShips ?? []).map((s) => ({
         shipId: s.shipId,
@@ -97,6 +108,7 @@ export function useGame(initial?: GameStateInit) {
       selectedPlanetId: initial?.selectedPlanetId ?? BASE_PLANET_ID,
       achievements: { unlockedIds: initial?.achievements?.unlockedIds ?? [] },
       metals,
+      discoveredMetals,
       fleet,
       battle: initial?.battle ?? null,
       playerXP: initial?.playerXP ?? 0,
@@ -187,7 +199,7 @@ export function useGame(initial?: GameStateInit) {
     setClerkMessage(msgs[Math.floor(Math.random() * msgs.length)].text);
   }, []);
 
-  // Passive income tick + passive XP
+  // Passive income tick
   useEffect(() => {
     if (derived.passiveRate <= 0) return;
     const interval = setInterval(() => {
@@ -195,7 +207,6 @@ export function useGame(initial?: GameStateInit) {
         ...prev,
         energy: prev.energy + derived.passiveRate,
         totalEarned: prev.totalEarned + derived.passiveRate,
-        playerXP: prev.playerXP + Math.floor(derived.passiveRate / 100),
       }));
     }, 1000);
     return () => clearInterval(interval);
@@ -402,18 +413,21 @@ export function useGame(initial?: GameStateInit) {
     setState((prev) => {
       const newTotalEarned = prev.totalEarned + add;
       const metalDrop = newTotalEarned >= 100
-        ? rollMetalDrops(prev.selectedPlanetId, derived.metalDropBonus)
+        ? rollMetalDrops(prev.selectedPlanetId, derived.metalDropBonus, derived.planetBonus)
         : createDefaultMetalsState();
+      const newMetals = addMetals(prev.metals, metalDrop);
+      const newDiscovered = mergeDiscovered(prev.discoveredMetals, newMetals);
       return {
         ...prev,
         energy: prev.energy + add,
         totalEarned: newTotalEarned,
         clicks: prev.clicks + 1,
-        metals: addMetals(prev.metals, metalDrop),
+        metals: newMetals,
+        discoveredMetals: newDiscovered,
         playerXP: prev.playerXP + 1,
       };
     });
-  }, [derived.clickPower, derived.metalDropBonus]);
+  }, [derived.clickPower, derived.metalDropBonus, derived.planetBonus]);
 
   const buyUpgrade = useCallback(
     (id: UpgradeId) => {
@@ -607,14 +621,42 @@ export function useGame(initial?: GameStateInit) {
     });
   }, []);
 
+  const forfeitBattle = useCallback(() => {
+    setState((prev) => {
+      if (!prev.battle) return prev;
+      const { shipId } = prev.battle;
+      return {
+        ...prev,
+        battle: null,
+        fleet: {
+          ...prev.fleet,
+          ownedShips: prev.fleet.ownedShips.map((s) =>
+            s.shipId === shipId ? { ...s, broken: true } : s
+          ),
+        },
+      };
+    });
+  }, []);
+
   const claimExpedition = useCallback((shipId: ShipId) => {
     setState((prev) => {
       const exp = prev.expeditions.find((e) => e.shipId === shipId);
       if (!exp || Date.now() < exp.completesAt) return prev;
       const def = getExpeditionById(exp.expeditionId);
+      const sector1Planets = [1, 2, 3, 4, 5];
+      const sector2Unlocked = sector1Planets.every((id) => prev.unlockedPlanetIds.includes(id));
+      const metalMultiplier = sector2Unlocked ? 5 : 1;
+      const baseRewards = { ...createDefaultMetalsState(), ...def.metalRewards };
+      const scaledRewards: typeof baseRewards = {
+        iron: baseRewards.iron * metalMultiplier,
+        titan: baseRewards.titan * metalMultiplier,
+        iridium: baseRewards.iridium * metalMultiplier,
+      };
+      const newMetals = addMetals(prev.metals, scaledRewards);
       return {
         ...prev,
-        metals: addMetals(prev.metals, { ...createDefaultMetalsState(), ...def.metalRewards }),
+        metals: newMetals,
+        discoveredMetals: mergeDiscovered(prev.discoveredMetals, newMetals),
         playerXP: prev.playerXP + def.xpReward,
         expeditions: prev.expeditions.filter((e) => e.shipId !== shipId),
       };
@@ -658,8 +700,10 @@ export function useGame(initial?: GameStateInit) {
     buildShip,
     repairShip,
     selectShip,
+    discoveredMetals: state.discoveredMetals,
     startBattle,
     attackBattle,
+    forfeitBattle,
     selectPlanet,
     startExpedition,
     claimExpedition,

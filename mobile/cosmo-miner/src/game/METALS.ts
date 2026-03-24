@@ -38,28 +38,31 @@ export const PLANET_DROP_TABLE: Record<PlanetId, { metalId: MetalId; chance: num
     { metalId: "iridium", chance: 0.10 },
   ],
   // Sector 2 — higher drop rates reflect greater resource density
+  // Iron drops on every planet (it's needed most for cannon upgrades)
   6: [
-    { metalId: "iron", chance: 0.20 },
-    { metalId: "titan", chance: 0.15 },
-    { metalId: "iridium", chance: 0.10 },
+    { metalId: "iron", chance: 0.25 },
+    { metalId: "titan", chance: 0.18 },
+    { metalId: "iridium", chance: 0.12 },
   ],
   7: [
-    { metalId: "iron", chance: 0.15 },
+    { metalId: "iron", chance: 0.25 },
     { metalId: "titan", chance: 0.20 },
     { metalId: "iridium", chance: 0.15 },
   ],
   8: [
-    { metalId: "titan", chance: 0.20 },
-    { metalId: "iridium", chance: 0.25 },
+    { metalId: "iron", chance: 0.25 },
+    { metalId: "titan", chance: 0.22 },
+    { metalId: "iridium", chance: 0.18 },
   ],
   9: [
-    { metalId: "titan", chance: 0.20 },
-    { metalId: "iridium", chance: 0.30 },
+    { metalId: "iron", chance: 0.28 },
+    { metalId: "titan", chance: 0.22 },
+    { metalId: "iridium", chance: 0.20 },
   ],
   10: [
-    { metalId: "iron", chance: 0.25 },
-    { metalId: "titan", chance: 0.30 },
-    { metalId: "iridium", chance: 0.35 },
+    { metalId: "iron", chance: 0.30 },
+    { metalId: "titan", chance: 0.25 },
+    { metalId: "iridium", chance: 0.22 },
   ],
 };
 
@@ -69,12 +72,13 @@ export function createDefaultMetalsState(): MetalsState {
   return { iron: 0, titan: 0, iridium: 0 };
 }
 
-export function rollMetalDrops(planetId: PlanetId, dropBonus = 0): MetalsState {
+export function rollMetalDrops(planetId: PlanetId, dropBonus = 0, planetBonus = 1): MetalsState {
   const drops = PLANET_DROP_TABLE[planetId] ?? [];
   const result = createDefaultMetalsState();
+  const amount = Math.max(1, Math.floor(Math.log10(Math.max(1, planetBonus))));
   for (const drop of drops) {
     if (Math.random() < Math.min(1, drop.chance + dropBonus)) {
-      result[drop.metalId] += 1;
+      result[drop.metalId] += amount;
     }
   }
   return result;

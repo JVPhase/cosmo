@@ -41,13 +41,13 @@ export const CANNONS: readonly CannonDefinition[] = [
     name: "Сплавная пушка",
     icon: "💥",
     damagePerLevel: 200,
-    baseCost: { iron: 30, titan: 20, iridium: 10 },
+    baseCost: { iron: 20, titan: 20, iridium: 20 },
     lore: "Засекречена в 14 галактиках. Разработана отделом, которого официально не существует.",
   },
 ] as const;
 
 export function computeCannonCost(cannon: CannonDefinition, currentLevel: number): Partial<MetalsState> {
-  const factor = Math.pow(1.4, currentLevel);
+  const factor = Math.pow(1.2, currentLevel);
   const result: Partial<MetalsState> = {};
   for (const [key, amount] of Object.entries(cannon.baseCost) as [MetalId, number][]) {
     result[key] = Math.floor(amount * factor);

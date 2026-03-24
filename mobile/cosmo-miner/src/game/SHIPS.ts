@@ -51,8 +51,8 @@ export const SHIPS: readonly ShipDefinition[] = [
     icon: "💫",
     image: require("../../assets/flagship.png"),
     damageMultiplier: 12,
-    baseCost: { iron: 40, titan: 30, iridium: 15 },
-    repairCost: { iron: 15, titan: 10, iridium: 5 },
+    baseCost: { iron: 28, titan: 28, iridium: 29 },
+    repairCost: { iron: 10, titan: 10, iridium: 10 },
     lore: "Форма допуска — 47 страниц. Форма техобслуживания — ещё 62. Зато летит как мечта.",
   },
 ] as const;

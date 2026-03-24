@@ -2,12 +2,13 @@ import React, { useState } from "react";
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { CANNONS, computeCannonCost, type CannonId } from "../game/CANNONS";
 import { EXPEDITIONS, type ExpeditionId } from "../game/EXPEDITIONS";
-import { METALS } from "../game/METALS";
+import { METALS, type MetalId } from "../game/METALS";
 import { SHIPS, type ShipId } from "../game/SHIPS";
 import type { ActiveExpedition, BattleState, FleetState, MetalsState } from "../game/types";
 
 export type ShipyardScreenProps = {
   metals: MetalsState;
+  discoveredMetals: MetalId[];
   fleet: FleetState;
   totalDamage: number;
   battle: BattleState | null;
@@ -45,8 +46,8 @@ function canAffordCost(metals: MetalsState, cost: Partial<MetalsState>): boolean
   return Object.entries(cost).every(([k, v]) => (metals[k as keyof MetalsState] ?? 0) >= v);
 }
 
-function costMetalsDiscovered(metals: MetalsState, cost: Partial<MetalsState>): boolean {
-  return Object.keys(cost).every((k) => (metals[k as keyof MetalsState] ?? 0) > 0);
+function costMetalsDiscovered(discoveredMetals: MetalId[], cost: Partial<MetalsState>): boolean {
+  return Object.keys(cost).every((k) => discoveredMetals.includes(k as MetalId));
 }
 
 function formatDuration(ms: number): string {
@@ -60,6 +61,7 @@ function formatDuration(ms: number): string {
 
 export function ShipyardScreen({
   metals,
+  discoveredMetals,
   fleet,
   totalDamage,
   battle,
@@ -81,7 +83,9 @@ export function ShipyardScreen({
   const ownedMap = new Map(fleet.ownedShips.map((s) => [s.shipId, s]));
   const expeditionShipIds = new Set(expeditions.map((e) => e.shipId));
   const expeditionsUnlocked = unlockedPlanetIds.length > 1;
-  const visibleShips = SHIPS.filter((s) => ownedMap.has(s.id) || costMetalsDiscovered(metals, s.baseCost));
+  const sector2Unlocked = [1, 2, 3, 4, 5].every((id) => unlockedPlanetIds.includes(id));
+  const expMetalMultiplier = sector2Unlocked ? 5 : 1;
+  const visibleShips = SHIPS.filter((s) => ownedMap.has(s.id) || costMetalsDiscovered(discoveredMetals, s.baseCost));
 
   return (
     <View style={styles.screen}>
@@ -257,7 +261,7 @@ export function ShipyardScreen({
                 {isOwned && isExpanded && !isOnExpedition && (
                   <View style={styles.cannonsSection}>
                     <Text style={styles.cannonsSectionTitle}>🔫 ВООРУЖЕНИЕ</Text>
-                    {CANNONS.filter((c) => costMetalsDiscovered(metals, c.baseCost)).map((cannon) => {
+                    {CANNONS.filter((c) => costMetalsDiscovered(discoveredMetals, c.baseCost)).map((cannon) => {
                       const level = owned.cannons[cannon.id] ?? 0;
                       const cost = computeCannonCost(cannon, level);
                       const canAfford = canAffordCost(metals, cost) && !isBattleActive;
@@ -353,8 +357,9 @@ export function ShipyardScreen({
                       <Text style={styles.activeExpRewards}>
                         Ожидаемый груз: {Object.entries(def.metalRewards).map(([k, v]) => {
                           const m = METALS.find((x) => x.id === k);
-                          return m ? `${m.icon} ×${v}` : "";
+                          return m ? `${m.icon} ×${v * expMetalMultiplier}` : "";
                         }).filter(Boolean).join("  ")}
+                        {sector2Unlocked ? "  ×5 СЕК.2" : ""}
                       </Text>
                     )}
                   </View>
@@ -419,10 +424,15 @@ export function ShipyardScreen({
                     return (
                       <View key={k} style={styles.expRewardItem}>
                         <Image source={m.image} style={styles.expRewardIcon} resizeMode="contain" />
-                        <Text style={styles.expRewardText}>×{v}</Text>
+                        <Text style={styles.expRewardText}>×{v * expMetalMultiplier}</Text>
                       </View>
                     );
                   })}
+                  {sector2Unlocked && (
+                    <View style={styles.expMultiplierBadge}>
+                      <Text style={styles.expMultiplierText}>×5 СЕКТОР 2</Text>
+                    </View>
+                  )}
                 </View>
                 <Pressable
                   onPress={() => canSend && expeditionShipId ? onStartExpedition(def.id, expeditionShipId) : undefined}
@@ -630,8 +640,17 @@ const styles = StyleSheet.create({
   expDuration: { fontSize: 9, color: "rgba(255,255,255,0.4)", fontWeight: "700" },
   expXp: { fontSize: 10, color: "rgba(0,212,255,0.6)", fontWeight: "800" },
   expLore: { fontSize: 10, color: "rgba(200,220,255,0.5)", lineHeight: 16, marginBottom: 8 },
-  expRewardsRow: { flexDirection: "row", gap: 10, marginBottom: 10, alignItems: "center" },
+  expRewardsRow: { flexDirection: "row", gap: 10, marginBottom: 10, alignItems: "center", flexWrap: "wrap" },
   expRewardItem: { flexDirection: "row", alignItems: "center", gap: 4 },
+  expMultiplierBadge: {
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: "rgba(0,212,255,0.35)",
+    backgroundColor: "rgba(0,212,255,0.08)",
+  },
+  expMultiplierText: { fontSize: 8, color: "#00d4ff", fontWeight: "900", letterSpacing: 0.5 },
   expRewardIcon: { width: 16, height: 16 },
   expRewardText: { fontSize: 10, color: "rgba(255,200,100,0.7)", fontWeight: "700" },
   sendBtn: { paddingVertical: 10, borderRadius: 10, borderWidth: 1, alignItems: "center" },
