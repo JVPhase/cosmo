@@ -127,7 +127,7 @@ export function ShipyardScreen({
 
           {/* Metal inventory */}
           <View style={styles.inventoryRow}>
-            {METALS.filter((m) => (metals[m.id] ?? 0) > 0).map((m) => (
+            {METALS.filter((m) => discoveredMetals.includes(m.id)).map((m) => (
               <View key={m.id} style={styles.metalBox}>
                 <Image source={m.image} style={styles.metalImage} resizeMode="contain" />
                 <Text style={styles.metalName}>{m.name}</Text>

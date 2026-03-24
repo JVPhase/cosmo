@@ -86,9 +86,15 @@ export function useGame(initial?: GameStateInit) {
     const unlockedSet = new Set<PlanetId>(initial?.unlockedPlanetIds ?? [BASE_PLANET_ID]);
     unlockedSet.add(BASE_PLANET_ID);
     const metals = { ...createDefaultMetalsState(), ...(initial?.metals ?? {}) };
-    // Restore discovered metals from save, or derive from current metal amounts for backwards compat
-    const discoveredMetals: MetalId[] = initial?.discoveredMetals
-      ?? (Object.keys(metals) as MetalId[]).filter((k) => metals[k] > 0);
+    // Restore discovered metals from save, or derive from current amounts + ship costs for backwards compat
+    const discoveredMetals: MetalId[] = initial?.discoveredMetals ?? (() => {
+      const set = new Set<MetalId>((Object.keys(metals) as MetalId[]).filter((k) => metals[k] > 0));
+      for (const owned of (initial?.fleet?.ownedShips ?? [])) {
+        const ship = SHIPS.find((s) => s.id === owned.shipId);
+        if (ship) Object.keys(ship.baseCost).forEach((k) => set.add(k as MetalId));
+      }
+      return Array.from(set);
+    })();
     const fleet = {
       ownedShips: (initial?.fleet?.ownedShips ?? []).map((s) => ({
         shipId: s.shipId,
