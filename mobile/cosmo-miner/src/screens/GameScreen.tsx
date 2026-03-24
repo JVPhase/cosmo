@@ -14,7 +14,7 @@ import {
 import { AnimatedMineEffects } from '../ui/AnimatedMineEffects';
 import { Popup } from '../ui/Popup';
 import { formatNum } from '../game/formatNum';
-import { METALS } from '../game/METALS';
+import { METALS, type MetalId } from '../game/METALS';
 import { SHIPS } from '../game/SHIPS';
 
 const ironMetal = METALS.find((m) => m.id === 'iron')!;
@@ -23,6 +23,16 @@ import { getPlayerTitle, xpAtLevelStart, xpForNextLevel } from '../game/PLAYER';
 import type { MetalsState } from '../game/types';
 
 type Point = { x: number; y: number };
+
+type MetalFloat = {
+  id: number;
+  born: number;
+  metalId: MetalId;
+  amount: number;
+  offsetX: number;
+  translateY: Animated.Value;
+  opacity: Animated.Value;
+};
 
 export type GameScreenProps = {
   energy: number;
@@ -101,6 +111,9 @@ export function GameScreen({
   const [showClickHint, setShowClickHint] = useState(true);
   const lastClickRef = useRef<number | null>(null);
   const hintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prevMetalsRef = useRef<MetalsState>(metals);
+  const metalFloatIdRef = useRef(0);
+  const [metalFloats, setMetalFloats] = useState<MetalFloat[]>([]);
   const glowScale = useRef(new Animated.Value(1)).current;
   const orbitRotation = useRef(new Animated.Value(0)).current;
   const orbitRotate = orbitRotation.interpolate({
@@ -193,6 +206,42 @@ export function GameScreen({
       if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
     };
   }, []);
+
+  useEffect(() => {
+    const prev = prevMetalsRef.current;
+    const deltas: { metalId: MetalId; amount: number }[] = [];
+
+    for (const m of METALS) {
+      const diff = (metals[m.id] ?? 0) - (prev[m.id] ?? 0);
+      if (diff > 0) deltas.push({ metalId: m.id, amount: diff });
+    }
+
+    prevMetalsRef.current = metals;
+
+    if (deltas.length === 0) return;
+
+    const now = Date.now();
+    const spacing = 54;
+    const newFloats: MetalFloat[] = deltas.map((d, i) => {
+      const offsetX = (i - (deltas.length - 1) / 2) * spacing;
+      const translateY = new Animated.Value(-85);
+      const opacity = new Animated.Value(1);
+
+      Animated.parallel([
+        Animated.timing(translateY, { toValue: -175, duration: 1000, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 0, duration: 1000, useNativeDriver: true }),
+      ]).start();
+
+      return { id: ++metalFloatIdRef.current, born: now, metalId: d.metalId, amount: d.amount, offsetX, translateY, opacity };
+    });
+
+    setMetalFloats((prev) => [...prev, ...newFloats]);
+
+    setTimeout(() => {
+      const t = Date.now();
+      setMetalFloats((prev) => prev.filter((f) => t - f.born < 1100));
+    }, 1100);
+  }, [metals]);
 
   return (
     <LinearGradient
@@ -411,6 +460,29 @@ export function GameScreen({
         </AnimatedMineEffects>
 
         <Text style={styles.hint}>◈ ДОБЫВАЙ {planet.resource} ◈</Text>
+
+        {/* Metal drop floats */}
+        <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.metalFloatOverlay]}>
+          {metalFloats.map((f) => {
+            const metal = METALS.find((m) => m.id === f.metalId)!;
+            return (
+              <Animated.View
+                key={f.id}
+                style={{
+                  position: 'absolute',
+                  opacity: f.opacity,
+                  transform: [{ translateX: f.offsetX }, { translateY: f.translateY }],
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 3,
+                }}
+              >
+                <Image source={metal.image} style={styles.metalFloatIcon} resizeMode="contain" />
+                <Text style={styles.metalFloatText}>+{f.amount}</Text>
+              </Animated.View>
+            );
+          })}
+        </View>
       </View>
 
       <Popup
@@ -844,4 +916,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   floatingBtnIcon: { fontSize: 16 },
+  metalFloatOverlay: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  metalFloatIcon: { width: 16, height: 16 },
+  metalFloatText: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: '#ffd700',
+    textShadowColor: 'rgba(255,200,0,0.8)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 8,
+  },
 });

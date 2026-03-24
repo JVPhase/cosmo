@@ -88,6 +88,7 @@ export async function saveGame(state: GameState): Promise<void> {
       selectedPlanetId: state.selectedPlanetId,
       achievements: state.achievements,
       metals: state.metals,
+      discoveredMetals: state.discoveredMetals,
       fleet: state.fleet,
       battle: state.battle,
       playerXP: state.playerXP,

@@ -21,6 +21,7 @@ export type BattleScreenProps = {
   totalDamage: number;
   defeatInfo: { shipName: string } | null;
   onAttack: () => void;
+  onForfeit: () => void;
   onGoToShipyard: () => void;
   onClearDefeat: () => void;
 };
@@ -31,6 +32,7 @@ export function BattleScreen({
   totalDamage,
   defeatInfo,
   onAttack,
+  onForfeit,
   onGoToShipyard,
   onClearDefeat
 }: BattleScreenProps) {
@@ -248,6 +250,13 @@ export function BattleScreen({
         </View>
       </View>
 
+      {/* Forfeit button */}
+      <View style={styles.forfeitRow}>
+        <Pressable onPress={onForfeit} style={styles.forfeitBtn}>
+          <Text style={styles.forfeitText}>✕ ОТСТУПИТЬ</Text>
+        </Pressable>
+      </View>
+
       {/* Main — clickable rocket */}
       <View style={styles.main}>
         <AnimatedHitEffects
@@ -389,6 +398,26 @@ const styles = StyleSheet.create({
   hpBarFill: { height: '100%', borderRadius: 6 },
   statsRow: { flexDirection: 'row', gap: 10 },
   statChip: { fontSize: 9, color: 'rgba(255,150,150,0.7)', fontWeight: '700' },
+  forfeitRow: {
+    alignItems: 'flex-end',
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+    zIndex: 2,
+  },
+  forfeitBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 18,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255,80,80,0.35)',
+    backgroundColor: 'rgba(255,40,40,0.1)',
+  },
+  forfeitText: {
+    fontSize: 11,
+    color: 'rgba(255,100,100,0.85)',
+    fontWeight: '900',
+    letterSpacing: 1.5,
+  },
   main: {
     flex: 1,
     alignItems: 'center',

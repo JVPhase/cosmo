@@ -177,6 +177,7 @@ function GameApp({ initial, tab, onSetTab }: { initial: GameStateInit; tab: TabI
       tabContent = (
         <ShipyardScreen
           metals={game.metals}
+          discoveredMetals={game.discoveredMetals}
           fleet={game.fleet}
           totalDamage={game.totalDamage}
           battle={game.battle}
@@ -200,6 +201,7 @@ function GameApp({ initial, tab, onSetTab }: { initial: GameStateInit; tab: TabI
           totalDamage={game.totalDamage}
           defeatInfo={game.defeatInfo}
           onAttack={game.attackBattle}
+          onForfeit={game.forfeitBattle}
           onGoToShipyard={() => onSetTab("shipyard")}
           onClearDefeat={game.clearDefeatInfo}
         />

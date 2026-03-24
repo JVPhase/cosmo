@@ -23,6 +23,7 @@ export type GameState = {
   selectedPlanetId: PlanetId;
   achievements: AchievementsState;
   metals: MetalsState;
+  discoveredMetals: MetalId[];
   fleet: FleetState;
   battle: BattleState | null;
   playerXP: number;
@@ -39,6 +40,7 @@ export type GameStateInit = {
   selectedPlanetId?: PlanetId;
   achievements?: { unlockedIds?: AchievementId[] };
   metals?: Partial<Record<MetalId, number>>;
+  discoveredMetals?: MetalId[];
   fleet?: {
     ownedShips?: Array<{
       shipId: ShipId;
