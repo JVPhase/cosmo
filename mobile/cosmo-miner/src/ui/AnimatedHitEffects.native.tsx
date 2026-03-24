@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Animated, StyleProp, StyleSheet, Text, View, ViewStyle } from "react-native";
+import { Animated, StyleSheet, Text, View } from "react-native";
+import type { AnimatedHitEffectsProps } from "./animatedHitEffectsShared";
+import { SPARK_COLORS } from "./animatedHitEffectsShared";
 
-type Point = { x: number; y: number };
+export type { AnimatedHitEffectsProps } from "./animatedHitEffectsShared";
 
 type Particle = {
   id: number;
@@ -38,18 +40,11 @@ type FloatingDmg = {
   scale: Animated.Value;
 };
 
-export type AnimatedHitEffectsProps = {
-  trigger: number;
-  origin?: Point;
-  damage: number;
-  style?: StyleProp<ViewStyle>;
-  children: React.ReactNode;
+type HitEffectLayers = {
+  particles: Particle[];
+  ripples: Ripple[];
+  floats: FloatingDmg[];
 };
-
-const SPARK_COLORS = [
-  "#ff3300", "#ff6600", "#ff9900", "#ffcc00",
-  "#ff4444", "#ff8800", "#ffdd00", "#ff2255",
-];
 
 export function AnimatedHitEffects({
   trigger,
@@ -63,19 +58,21 @@ export function AnimatedHitEffects({
   const rippleIdRef = useRef(0);
   const floatIdRef = useRef(0);
 
-  const [particles, setParticles] = useState<Particle[]>([]);
-  const [ripples, setRipples] = useState<Ripple[]>([]);
-  const [floats, setFloats] = useState<FloatingDmg[]>([]);
+  const [layers, setLayers] = useState<HitEffectLayers>({
+    particles: [],
+    ripples: [],
+    floats: [],
+  });
+  const { particles, ripples, floats } = layers;
 
   const originMemo = useMemo(
     () => (origin ? { x: origin.x, y: origin.y } : undefined),
-    [origin?.x, origin?.y]
+    [origin?.x, origin?.y],
   );
 
   useEffect(() => {
     if (trigger === 0) return;
 
-    // Pulse the container
     pulseScale.setValue(1);
     Animated.sequence([
       Animated.timing(pulseScale, { toValue: 1.06, duration: 80, useNativeDriver: true }),
@@ -89,14 +86,13 @@ export function AnimatedHitEffects({
     const x0 = originMemo.x;
     const y0 = originMemo.y;
 
-    // Sparks — burst outward in all directions
     const sparkCount = 14;
     const newParticles: Particle[] = [];
     for (let i = 0; i < sparkCount; i++) {
       const angle = (360 / sparkCount) * i + (Math.random() * 30 - 15);
       const rad = (angle * Math.PI) / 180;
       const dist = Math.random() * 90 + 30;
-      const color = SPARK_COLORS[Math.floor(Math.random() * SPARK_COLORS.length)];
+      const color = SPARK_COLORS[Math.floor(Math.random() * SPARK_COLORS.length)]!;
       const size = Math.random() * 4 + 3;
       const duration = Math.random() * 200 + 500;
 
@@ -110,8 +106,12 @@ export function AnimatedHitEffects({
         born: now,
         originX: x0,
         originY: y0,
-        x, y, opacity, scale,
-        color, size,
+        x,
+        y,
+        opacity,
+        scale,
+        color,
+        size,
       });
 
       Animated.parallel([
@@ -124,22 +124,23 @@ export function AnimatedHitEffects({
         ]),
       ]).start();
     }
-    setParticles((prev) => [...prev, ...newParticles]);
 
-    // Ripples — 3 expanding rings in red/orange
     const rippleColors = ["#ff4400", "#ff8800", "#ffcc00"];
     const newRipples: Ripple[] = [];
     for (let k = 0; k < 3; k++) {
       const scale = new Animated.Value(0.2);
       const opacity = new Animated.Value(0.9);
-      const color = rippleColors[k];
+      const color = rippleColors[k]!;
       const delay = k * 60;
 
       newRipples.push({
         id: ++rippleIdRef.current,
         born: now,
-        originX: x0, originY: y0,
-        scale, opacity, color,
+        originX: x0,
+        originY: y0,
+        scale,
+        opacity,
+        color,
       });
 
       setTimeout(() => {
@@ -149,9 +150,7 @@ export function AnimatedHitEffects({
         ]).start();
       }, delay);
     }
-    setRipples((prev) => [...prev, ...newRipples]);
 
-    // Floating damage number
     const translateY = new Animated.Value(0);
     const translateX = new Animated.Value(0);
     const opacity = new Animated.Value(0);
@@ -162,17 +161,18 @@ export function AnimatedHitEffects({
       value: damage,
       originX: x0,
       originY: y0,
-      translateY, translateX, opacity, scale,
+      translateY,
+      translateX,
+      opacity,
+      scale,
     };
 
     Animated.sequence([
-      // Pop in
       Animated.parallel([
         Animated.timing(scale, { toValue: 1.3, duration: 120, useNativeDriver: true }),
         Animated.timing(opacity, { toValue: 1, duration: 100, useNativeDriver: true }),
         Animated.timing(translateY, { toValue: -20, duration: 120, useNativeDriver: true }),
       ]),
-      // Float up and fade
       Animated.parallel([
         Animated.timing(scale, { toValue: 0.9, duration: 700, useNativeDriver: true }),
         Animated.timing(opacity, { toValue: 0, duration: 700, useNativeDriver: true }),
@@ -181,24 +181,29 @@ export function AnimatedHitEffects({
       ]),
     ]).start();
 
-    setFloats((prev) => [...prev, float]);
+    setLayers((prev) => ({
+      particles: [...prev.particles, ...newParticles],
+      ripples: [...prev.ripples, ...newRipples],
+      floats: [...prev.floats, float],
+    }));
 
-    // Cleanup
     const ttl = 900;
-    setTimeout(() => {
-      const t = Date.now();
-      setParticles((prev) => prev.filter((p) => t - p.born < ttl));
-      setRipples((prev) => prev.filter((r) => t - r.born < ttl));
-      setFloats((prev) => prev.filter((f) => t - f.born < ttl));
+    const t = setTimeout(() => {
+      const cutoff = Date.now();
+      setLayers((prev) => ({
+        particles: prev.particles.filter((p) => cutoff - p.born < ttl),
+        ripples: prev.ripples.filter((r) => cutoff - r.born < ttl),
+        floats: prev.floats.filter((f) => cutoff - f.born < ttl),
+      }));
     }, ttl);
-  }, [trigger]);
+    return () => clearTimeout(t);
+  }, [trigger, originMemo, damage]);
 
   return (
     <Animated.View style={[style, { transform: [{ scale: pulseScale }] }]}>
       {children}
 
       <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-        {/* Sparks */}
         {particles.map((p) => (
           <Animated.View
             key={p.id}
@@ -211,11 +216,7 @@ export function AnimatedHitEffects({
               borderRadius: p.size / 2,
               backgroundColor: p.color,
               opacity: p.opacity,
-              transform: [
-                { translateX: p.x },
-                { translateY: p.y },
-                { scale: p.scale },
-              ],
+              transform: [{ translateX: p.x }, { translateY: p.y }, { scale: p.scale }],
               shadowColor: p.color,
               shadowOpacity: 0.8,
               shadowRadius: 6,
@@ -223,7 +224,6 @@ export function AnimatedHitEffects({
           />
         ))}
 
-        {/* Ripple rings */}
         {ripples.map((r) => (
           <Animated.View
             key={r.id}
@@ -245,7 +245,6 @@ export function AnimatedHitEffects({
           />
         ))}
 
-        {/* Damage numbers */}
         {floats.map((f) => (
           <Animated.View
             key={f.id}

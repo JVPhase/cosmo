@@ -110,6 +110,7 @@ function GameApp({ initial, tab, onSetTab }: { initial: GameStateInit; tab: TabI
           clickPower={game.clickPower}
           passiveRate={game.passiveRate}
           metals={game.metals}
+          discoveredMetals={game.discoveredMetals}
           onMine={game.mineClick}
           planet={game.planet}
           clerkMessage={game.clerkMessage}

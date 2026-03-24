@@ -4,6 +4,7 @@ import {
   Animated,
   Easing,
   Image,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -40,6 +41,7 @@ export function BattleScreen({
   const [hitOrigin, setHitOrigin] = useState<
     { x: number; y: number } | undefined
   >(undefined);
+  const battleHitAreaRef = useRef<View>(null);
   const shakeAnim = useRef(new Animated.Value(0)).current;
 
   const stars = useMemo(
@@ -58,10 +60,26 @@ export function BattleScreen({
     const native = e.nativeEvent as unknown as {
       locationX?: number;
       locationY?: number;
+      pageX?: number;
+      pageY?: number;
     };
-    setHitOrigin({ x: native.locationX ?? 80, y: native.locationY ?? 80 });
-    onAttack();
-    setHitTrigger((t) => t + 1);
+
+    const commitHit = (x: number, y: number) => {
+      setHitOrigin({ x, y });
+      onAttack();
+      setHitTrigger((t) => t + 1);
+    };
+
+    if (Platform.OS === 'web' && battleHitAreaRef.current) {
+      battleHitAreaRef.current.measureInWindow((mx, my) => {
+        commitHit(
+          (native.pageX ?? 0) - mx,
+          (native.pageY ?? 0) - my
+        );
+      });
+    } else {
+      commitHit(native.locationX ?? 80, native.locationY ?? 80);
+    }
     Animated.sequence([
       Animated.timing(shakeAnim, {
         toValue: 8,
@@ -259,34 +277,40 @@ export function BattleScreen({
 
       {/* Main — clickable rocket */}
       <View style={styles.main}>
-        <AnimatedHitEffects
-          trigger={hitTrigger}
-          origin={hitOrigin}
-          damage={totalDamage}
-          style={styles.rocketBtn}
+        <View
+          ref={battleHitAreaRef}
+          style={styles.battleHitArea}
+          collapsable={false}
         >
-          <Pressable
-            onPressIn={handleAttack}
-            style={({ pressed }) => [
-              StyleSheet.absoluteFill,
-              styles.rocketPressable,
-              pressed ? { opacity: 0.9 } : null
-            ]}
+          <AnimatedHitEffects
+            trigger={hitTrigger}
+            origin={hitOrigin}
+            damage={totalDamage}
+            style={styles.rocketBtn}
           >
-            <Animated.View style={{ transform: [{ translateX: shakeAnim }] }}>
-              {alien?.image ? (
-                <Image
-                  source={alien.image}
-                  style={styles.alienShipImage}
-                  resizeMode="contain"
-                />
-              ) : (
-                <Text style={styles.rocketEmoji}>🚀</Text>
-              )}
-            </Animated.View>
-            <Text style={styles.clickHint}>АТАКОВАТЬ</Text>
-          </Pressable>
-        </AnimatedHitEffects>
+            <Pressable
+              onPressIn={handleAttack}
+              style={({ pressed }) => [
+                StyleSheet.absoluteFill,
+                styles.rocketPressable,
+                pressed ? { opacity: 0.9 } : null
+              ]}
+            >
+              <Animated.View style={{ transform: [{ translateX: shakeAnim }] }}>
+                {alien?.image ? (
+                  <Image
+                    source={alien.image}
+                    style={styles.alienShipImage}
+                    resizeMode="contain"
+                  />
+                ) : (
+                  <Text style={styles.rocketEmoji}>🚀</Text>
+                )}
+              </Animated.View>
+              <Text style={styles.clickHint}>АТАКОВАТЬ</Text>
+            </Pressable>
+          </AnimatedHitEffects>
+        </View>
 
         <Text style={styles.hint}>◈ ЖМИТЕ ДЛЯ АТАКИ ◈</Text>
       </View>
@@ -423,6 +447,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 2
+  },
+  battleHitArea: {
+    flex: 1,
+    alignSelf: 'stretch',
+    width: '100%',
+    minHeight: 0,
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center'
   },
   rocketBtn: {
     alignItems: 'center',

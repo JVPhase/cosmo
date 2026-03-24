@@ -4,6 +4,7 @@ import {
   Animated,
   Easing,
   Image,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -40,6 +41,7 @@ export type GameScreenProps = {
   clickPower: number;
   passiveRate: number; // per second
   metals: MetalsState;
+  discoveredMetals: MetalId[];
   onMine: () => void;
   planet: PlanetDefinition;
   clerkMessage: string | null;
@@ -76,6 +78,7 @@ export function GameScreen({
   clickPower,
   passiveRate,
   metals,
+  discoveredMetals,
   onMine,
   planet,
   clerkMessage,
@@ -109,6 +112,7 @@ export function GameScreen({
   const onHeaderLayout = (e: LayoutChangeEvent) => setHeaderHeight(e.nativeEvent.layout.height);
   const [ironInfoOpen, setIronInfoOpen] = useState(false);
   const [showClickHint, setShowClickHint] = useState(true);
+  const miningPlayAreaRef = useRef<View>(null);
   const lastClickRef = useRef<number | null>(null);
   const hintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevMetalsRef = useRef<MetalsState>(metals);
@@ -186,12 +190,26 @@ export function GameScreen({
     const nativeEvent = e.nativeEvent as unknown as {
       locationX?: number;
       locationY?: number;
+      pageX?: number;
+      pageY?: number;
     };
-    const x = nativeEvent.locationX ?? 0;
-    const y = nativeEvent.locationY ?? 0;
-    setOrigin({ x, y });
-    setTrigger((t) => t + 1);
-    onMine();
+
+    const commitTap = (x: number, y: number) => {
+      setOrigin({ x, y });
+      setTrigger((t) => t + 1);
+      onMine();
+    };
+
+    if (Platform.OS === 'web' && miningPlayAreaRef.current) {
+      miningPlayAreaRef.current.measureInWindow((mx, my) => {
+        commitTap(
+          (nativeEvent.pageX ?? 0) - mx,
+          (nativeEvent.pageY ?? 0) - my,
+        );
+      });
+    } else {
+      commitTap(nativeEvent.locationX ?? 0, nativeEvent.locationY ?? 0);
+    }
 
     lastClickRef.current = Date.now();
     setShowClickHint(false);
@@ -349,7 +367,7 @@ export function GameScreen({
 
         {/* Metal inventory */}
         <View style={styles.metalsRow}>
-          {METALS.filter((m) => (metals[m.id] ?? 0) > 0).map((m) => (
+          {METALS.filter((m) => discoveredMetals.includes(m.id)).map((m) => (
             <Pressable
               key={m.id}
               style={styles.metalItem}
@@ -430,34 +448,36 @@ export function GameScreen({
             <View style={styles.asteroidOrbitObject} />
           </Animated.View>
         </View>
-        <AnimatedMineEffects
-          trigger={trigger}
-          origin={origin}
-          clickPower={clickPower}
-          mineColor={planet.color}
-          style={styles.asteroidWrap}
-        >
-          <Pressable
-            onPressIn={handlePressIn}
-            style={({ pressed }) => [
-              styles.asteroid,
-              pressed ? { opacity: 0.92 } : null,
-            ]}
+        <View ref={miningPlayAreaRef} style={styles.miningPlayArea} collapsable={false}>
+          <AnimatedMineEffects
+            trigger={trigger}
+            origin={origin}
+            clickPower={clickPower}
+            mineColor={planet.color}
+            style={styles.asteroidWrap}
           >
-            <Image
-              source={planet.image}
-              resizeMode="contain"
-              style={styles.asteroidImage}
-            />
+            <Pressable
+              onPressIn={handlePressIn}
+              style={({ pressed }) => [
+                styles.asteroid,
+                pressed ? { opacity: 0.92 } : null,
+              ]}
+            >
+              <Image
+                source={planet.image}
+                resizeMode="contain"
+                style={styles.asteroidImage}
+              />
 
-            {showClickHint && (
-              <View style={styles.asteroidCenter}>
-                <Text style={styles.asteroidIcon}>⛏️</Text>
-                <Text style={styles.clickHint}>КЛИКНИ</Text>
-              </View>
-            )}
-          </Pressable>
-        </AnimatedMineEffects>
+              {showClickHint && (
+                <View style={styles.asteroidCenter}>
+                  <Text style={styles.asteroidIcon}>⛏️</Text>
+                  <Text style={styles.clickHint}>КЛИКНИ</Text>
+                </View>
+              )}
+            </Pressable>
+          </AnimatedMineEffects>
+        </View>
 
         <Text style={styles.hint}>◈ ДОБЫВАЙ {planet.resource} ◈</Text>
 
@@ -652,6 +672,15 @@ const styles = StyleSheet.create({
     paddingBottom: 28,
     zIndex: 2,
     height: 200,
+  },
+  miningPlayArea: {
+    flex: 1,
+    alignSelf: 'stretch',
+    width: '100%',
+    minHeight: 0,
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   asteroidOrbitContainer: {
     position: 'absolute',
