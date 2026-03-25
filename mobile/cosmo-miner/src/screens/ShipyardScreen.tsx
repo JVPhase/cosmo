@@ -275,7 +275,7 @@ export function ShipyardScreen({
                       const canAfford = canAffordCost(metals, cost) && !isBattleActive;
                       return (
                         <View key={cannon.id} style={styles.cannonRow}>
-                          <Text style={styles.cannonIcon}>{cannon.icon}</Text>
+                          <Image source={cannon.image} style={styles.cannonImage} resizeMode="contain" />
                           <View style={styles.cannonInfo}>
                             <Text style={styles.cannonName}>{cannon.name}</Text>
                             <Text style={styles.cannonDmg}>
@@ -590,7 +590,7 @@ const styles = StyleSheet.create({
   },
   cannonsSectionTitle: { fontSize: 9, color: "rgba(255,255,255,0.6)", letterSpacing: 2, fontWeight: "800", marginBottom: 4 },
   cannonRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 6, paddingHorizontal: 8, borderRadius: 8, backgroundColor: "rgba(0,0,0,0.2)" },
-  cannonIcon: { fontSize: 18 },
+  cannonImage: { width: 26, height: 26 },
   cannonInfo: { flex: 1 },
   cannonName: { fontSize: 10, color: "rgba(255,255,255,0.6)", fontWeight: "700" },
   cannonDmg: { fontSize: 8, color: "rgba(255,80,80,0.8)", marginTop: 1 },
