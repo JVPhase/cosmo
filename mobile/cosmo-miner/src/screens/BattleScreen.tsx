@@ -319,7 +319,7 @@ export function BattleScreen({
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, position: 'relative', overflow: 'hidden' },
+  screen: { flex: 1, position: 'relative', overflow: 'hidden', userSelect: 'none' },
   star: {
     position: 'absolute',
     backgroundColor: '#ffffff',

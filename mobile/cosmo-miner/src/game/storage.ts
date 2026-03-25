@@ -99,6 +99,10 @@ export async function saveGame(state: GameState): Promise<void> {
   await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
 }
 
+export async function clearGame(): Promise<void> {
+  await AsyncStorage.removeItem(STORAGE_KEY);
+}
+
 export async function loadIntroSeen(): Promise<boolean> {
   try {
     const raw = await AsyncStorage.getItem(INTRO_KEY);

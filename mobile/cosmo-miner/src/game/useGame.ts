@@ -48,7 +48,7 @@ function computeBaseShipDamage(fleet: GameState["fleet"]): number {
     (sum, c) => sum + c.damagePerLevel * (ownedShip.cannons[c.id] ?? 0),
     0
   );
-  return Math.max(1, Math.floor(cannonDamage * shipDef.damageMultiplier));
+  return Math.floor((1 + cannonDamage) * shipDef.damageMultiplier);
 }
 
 const BASE_PLANET_ID = PLANETS[0].id;
@@ -163,6 +163,7 @@ export function useGame(initial?: GameStateInit) {
   const [clerkMessage, setClerkMessage] = useState<string | null>(null);
   const [achievementToast, setAchievementToast] = useState<AchievementDefinition | null>(null);
   const [battleVictory, setBattleVictory] = useState<PlanetId | null>(null);
+  const [planetUnlockToast, setPlanetUnlockToast] = useState<PlanetDefinition | null>(null);
   const [defeatInfo, setDefeatInfo] = useState<{ shipName: string } | null>(null);
   const [levelUpToast, setLevelUpToast] = useState<number | null>(null);
   const [firstIronToast, setFirstIronToast] = useState(false);
@@ -175,14 +176,21 @@ export function useGame(initial?: GameStateInit) {
   const shownUnlocksRef = useRef<Set<string>>(computeInitialShownUnlocks(initial));
   const [firstShipToast, setFirstShipToast] = useState(false);
   const firstShipShownRef = useRef((initial?.fleet?.ownedShips?.length ?? 0) > 0);
+  const [shipyardUnlockToast, setShipyardUnlockToast] = useState(false);
+  const shipyardUnlockShownRef = useRef(
+    (initial?.fleet?.ownedShips?.length ?? 0) > 0 ||
+    hasEnoughMetals({ ...createDefaultMetalsState(), ...(initial?.metals ?? {}) }, SHIPS[0].baseCost)
+  );
 
   const closeClerk = useCallback(() => setClerkMessage(null), []);
   const closeAchievementToast = useCallback(() => setAchievementToast(null), []);
   const clearBattleVictory = useCallback(() => setBattleVictory(null), []);
+  const closePlanetUnlockToast = useCallback(() => setPlanetUnlockToast(null), []);
   const clearDefeatInfo = useCallback(() => setDefeatInfo(null), []);
   const closeLevelUpToast = useCallback(() => setLevelUpToast(null), []);
   const closeFirstIronToast = useCallback(() => setFirstIronToast(false), []);
   const closeFirstShipToast = useCallback(() => setFirstShipToast(false), []);
+  const closeShipyardUnlockToast = useCallback(() => setShipyardUnlockToast(false), []);
   const closeAchievementsUnlockToast = useCallback(() => setAchievementsUnlockToast(false), []);
   const closeUpgradesUnlockToast = useCallback(() => setUpgradesUnlockToast(false), []);
   const dismissUnlockToast = useCallback(() => setUnlockQueue((prev) => prev.slice(1)), []);
@@ -256,6 +264,14 @@ export function useGame(initial?: GameStateInit) {
       setFirstShipToast(true);
     }
   }, [state.fleet.ownedShips.length]);
+
+  // Shipyard unlock toast (when player can afford first ship)
+  useEffect(() => {
+    if (!shipyardUnlockShownRef.current && hasEnoughMetals(state.metals, SHIPS[0].baseCost)) {
+      shipyardUnlockShownRef.current = true;
+      setShipyardUnlockToast(true);
+    }
+  }, [state.metals]);
 
   // Achievements unlock toast (at 5 energy earned)
   useEffect(() => {
@@ -404,6 +420,8 @@ export function useGame(initial?: GameStateInit) {
       if (planetNowUnlocked) {
         setBattleVictory(prev.planetId);
         showClerk("planet");
+        const planet = PLANETS.find((p) => p.id === prev.planetId);
+        if (planet) setPlanetUnlockToast(planet);
       } else {
         const ship = SHIPS.find((s) => s.id === prev.shipId);
         if (ship) setDefeatInfo({ shipName: ship.name });
@@ -681,11 +699,15 @@ export function useGame(initial?: GameStateInit) {
     clerkMessage,
     achievementToast,
     battleVictory,
+    planetUnlockToast,
+    closePlanetUnlockToast,
     defeatInfo,
     levelUpToast,
     firstIronToast,
     firstShipToast,
     closeFirstShipToast,
+    shipyardUnlockToast,
+    closeShipyardUnlockToast,
     achievementsUnlocked: state.totalEarned >= 5,
     achievementsUnlockToast,
     closeAchievementsUnlockToast,
@@ -713,5 +735,18 @@ export function useGame(initial?: GameStateInit) {
     selectPlanet,
     startExpedition,
     claimExpedition,
+    debugSetValues: useCallback((patch: { energy?: number; iron?: number; titan?: number; iridium?: number; playerXP?: number }) => {
+      setState((prev) => ({
+        ...prev,
+        ...(patch.energy !== undefined ? { energy: patch.energy, totalEarned: Math.max(prev.totalEarned, patch.energy) } : {}),
+        ...(patch.playerXP !== undefined ? { playerXP: patch.playerXP } : {}),
+        metals: {
+          ...prev.metals,
+          ...(patch.iron !== undefined ? { iron: patch.iron } : {}),
+          ...(patch.titan !== undefined ? { titan: patch.titan } : {}),
+          ...(patch.iridium !== undefined ? { iridium: patch.iridium } : {}),
+        },
+      }));
+    }, []),
   };
 }

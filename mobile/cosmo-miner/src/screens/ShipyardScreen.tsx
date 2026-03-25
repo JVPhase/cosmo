@@ -153,11 +153,16 @@ export function ShipyardScreen({
 
             const canBuild = !isOwned && canAffordCost(metals, ship.baseCost) && !isBattleActive;
             const canRepair = isBroken && canAffordCost(metals, ship.repairCost) && !isBattleActive;
+            const hasAffordableCannon =
+              isOwned &&
+              CANNONS.some((c) =>
+                canAffordCost(metals, computeCannonCost(c, owned!.cannons[c.id] ?? 0))
+              );
 
             const shipCannonDmg = owned
               ? CANNONS.reduce((sum, c) => sum + c.damagePerLevel * (owned.cannons[c.id] ?? 0), 0)
               : 0;
-            const totalShipDmg = Math.floor(shipCannonDmg * ship.damageMultiplier);
+            const totalShipDmg = Math.floor((1 + shipCannonDmg) * ship.damageMultiplier);
 
             return (
               <View
@@ -169,6 +174,9 @@ export function ShipyardScreen({
                   isOnExpedition ? styles.cardOnExpedition : null,
                 ]}
               >
+                {hasAffordableCannon && (
+                  <View style={styles.shipBadge} />
+                )}
                 <Pressable
                   onPress={() => isOwned ? setExpandedShipId(isExpanded ? null : ship.id) : undefined}
                   style={styles.shipHeader}
@@ -457,7 +465,7 @@ export function ShipyardScreen({
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#050918" },
+  screen: { flex: 1, backgroundColor: "#050918", userSelect: 'none' },
   content: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 24 },
   // Sub-tabs
   subTabBar: {
@@ -478,7 +486,7 @@ const styles = StyleSheet.create({
   },
   subTabText: {
     fontSize: 10,
-    color: "rgba(255,255,255,0.3)",
+    color: "rgba(255,255,255,0.55)",
     fontWeight: "800",
     letterSpacing: 1,
   },
@@ -511,7 +519,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.03)",
   },
   metalImage: { width: 32, height: 32 },
-  metalName: { fontSize: 8, color: "rgba(255,255,255,0.4)", marginTop: 3, fontWeight: "700" },
+  metalName: { fontSize: 8, color: "rgba(255,255,255,0.65)", marginTop: 3, fontWeight: "700" },
   metalCount: { fontSize: 16, color: "#ffd700", fontWeight: "900", marginTop: 2 },
   damageBox: {
     flexDirection: "row",
@@ -535,7 +543,8 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   // Ship cards
-  shipCard: { borderRadius: 12, marginBottom: 10, borderWidth: 1, overflow: "hidden" },
+  shipCard: { borderRadius: 12, marginBottom: 10, borderWidth: 1, overflow: "hidden", position: "relative" },
+  shipBadge: { position: "absolute", top: 8, right: 8, width: 8, height: 8, borderRadius: 4, backgroundColor: "#ff3b3b", zIndex: 2 },
   cardSelected: { backgroundColor: "rgba(0,255,136,0.05)", borderColor: "rgba(0,255,136,0.3)" },
   cardOwned: { backgroundColor: "rgba(0,212,255,0.04)", borderColor: "rgba(0,212,255,0.18)" },
   cardBroken: { backgroundColor: "rgba(255,40,40,0.05)", borderColor: "rgba(255,80,80,0.3)" },
@@ -545,7 +554,7 @@ const styles = StyleSheet.create({
   shipImage: { width: 52, height: 52, marginTop: 2 },
   shipInfo: { flex: 1 },
   shipName: { fontSize: 12, fontWeight: "800", letterSpacing: 0.5, marginBottom: 2 },
-  shipLore: { fontSize: 9, color: "rgba(255,255,255,0.3)", lineHeight: 13, marginBottom: 4 },
+  shipLore: { fontSize: 9, color: "rgba(255,255,255,0.6)", lineHeight: 13, marginBottom: 4 },
   shipStatsRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   shipMult: { fontSize: 9, color: "rgba(255,80,80,0.6)", fontWeight: "700" },
   shipTotalDmg: { fontSize: 9, color: "rgba(255,150,150,0.7)", fontWeight: "700" },
@@ -579,12 +588,12 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     gap: 8,
   },
-  cannonsSectionTitle: { fontSize: 9, color: "rgba(255,255,255,0.3)", letterSpacing: 2, fontWeight: "800", marginBottom: 4 },
+  cannonsSectionTitle: { fontSize: 9, color: "rgba(255,255,255,0.6)", letterSpacing: 2, fontWeight: "800", marginBottom: 4 },
   cannonRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 6, paddingHorizontal: 8, borderRadius: 8, backgroundColor: "rgba(0,0,0,0.2)" },
   cannonIcon: { fontSize: 18 },
   cannonInfo: { flex: 1 },
   cannonName: { fontSize: 10, color: "rgba(255,255,255,0.6)", fontWeight: "700" },
-  cannonDmg: { fontSize: 8, color: "rgba(255,80,80,0.55)", marginTop: 1 },
+  cannonDmg: { fontSize: 8, color: "rgba(255,80,80,0.8)", marginTop: 1 },
   cannonRight: { alignItems: "flex-end", gap: 4 },
   cannonBtn: { paddingVertical: 4, paddingHorizontal: 8, borderRadius: 6, borderWidth: 1, alignItems: "center" },
   hint: { marginTop: 12, padding: 12, borderRadius: 10, backgroundColor: "rgba(0,212,255,0.04)", borderWidth: 1, borderColor: "rgba(0,212,255,0.1)" },
@@ -608,13 +617,13 @@ const styles = StyleSheet.create({
   activeExpHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 },
   activeExpIcon: { fontSize: 22 },
   activeExpName: { fontSize: 12, fontWeight: "800", color: "#f39c12", marginBottom: 1 },
-  activeExpShip: { fontSize: 9, color: "rgba(255,255,255,0.35)" },
+  activeExpShip: { fontSize: 9, color: "rgba(255,255,255,0.65)" },
   activeExpTimer: { fontSize: 14, fontWeight: "900", color: "#f39c12" },
   progressBarBg: { height: 6, borderRadius: 3, backgroundColor: "rgba(255,255,255,0.06)", overflow: "hidden", marginBottom: 8 },
   progressBarFill: { height: "100%", borderRadius: 3, backgroundColor: "#f39c12" },
   claimBtn: { paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: "rgba(0,255,136,0.4)", backgroundColor: "rgba(0,255,136,0.08)", alignItems: "center" },
   claimBtnText: { fontSize: 11, color: "#00ff88", fontWeight: "900", letterSpacing: 1 },
-  activeExpRewards: { fontSize: 9, color: "rgba(255,255,255,0.3)", marginTop: 2 },
+  activeExpRewards: { fontSize: 9, color: "rgba(255,255,255,0.6)", marginTop: 2 },
   // Ship selector
   shipSelector: { marginBottom: 14 },
   shipSelectorLabel: { fontSize: 9, color: "rgba(0,212,255,0.4)", fontWeight: "800", letterSpacing: 1, marginBottom: 6 },
@@ -631,7 +640,7 @@ const styles = StyleSheet.create({
   shipChipSelected: { borderColor: "rgba(243,156,18,0.5)", backgroundColor: "rgba(243,156,18,0.08)" },
   shipChipDisabled: { opacity: 0.4 },
   shipChipText: { fontSize: 9, color: "rgba(255,255,255,0.6)", fontWeight: "700" },
-  noShipsHint: { fontSize: 10, color: "rgba(255,255,255,0.25)", marginTop: 4 },
+  noShipsHint: { fontSize: 10, color: "rgba(255,255,255,0.6)", marginTop: 4 },
   // Expedition cards
   expCard: { borderRadius: 12, borderWidth: 1, borderColor: "rgba(243,156,18,0.15)", backgroundColor: "rgba(243,156,18,0.03)", padding: 12, marginBottom: 10 },
   expCardHeader: { flexDirection: "row", alignItems: "flex-start", gap: 10, marginBottom: 6 },
@@ -639,7 +648,7 @@ const styles = StyleSheet.create({
   expName: { fontSize: 12, fontWeight: "800", color: "#f39c12", marginBottom: 1 },
   expDuration: { fontSize: 9, color: "rgba(255,255,255,0.4)", fontWeight: "700" },
   expXp: { fontSize: 10, color: "rgba(0,212,255,0.6)", fontWeight: "800" },
-  expLore: { fontSize: 10, color: "rgba(200,220,255,0.5)", lineHeight: 16, marginBottom: 8 },
+  expLore: { fontSize: 10, color: "rgba(200,220,255,0.75)", lineHeight: 16, marginBottom: 8 },
   expRewardsRow: { flexDirection: "row", gap: 10, marginBottom: 10, alignItems: "center", flexWrap: "wrap" },
   expRewardItem: { flexDirection: "row", alignItems: "center", gap: 4 },
   expMultiplierBadge: {

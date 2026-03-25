@@ -45,7 +45,7 @@ export function UpgradesScreen({ energy, upgrades, onBuyUpgrade }: UpgradesScree
               </View>
 
               <View style={styles.costBox}>
-                <Text style={[styles.cost, { color: canBuy ? "#ffd700" : "rgba(255,200,0,0.3)" }]}>{formatNum(cost)}</Text>
+                <Text style={[styles.cost, { color: canBuy ? "#ffd700" : "rgba(255,200,0,0.5)" }]}>{formatNum(cost)}</Text>
                 <Text style={styles.costUnit}>⚡ энергий</Text>
               </View>
             </Pressable>
@@ -62,6 +62,7 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: "#050918",
+    userSelect: 'none',
   },
   content: {
     paddingHorizontal: 16,
@@ -109,18 +110,18 @@ const styles = StyleSheet.create({
   desc: {
     marginTop: 2,
     fontSize: 10,
-    color: "rgba(255,255,255,0.4)",
+    color: "rgba(255,255,255,0.65)",
   },
   bonus: {
     marginTop: 3,
     fontSize: 9,
-    color: "rgba(0,212,255,0.6)",
+    color: "rgba(0,212,255,0.75)",
     fontWeight: "700",
   },
   level: {
     marginTop: 4,
     fontSize: 9,
-    color: "rgba(120,255,120,0.65)",
+    color: "rgba(120,255,120,0.8)",
     fontWeight: "700",
   },
   costBox: {
@@ -133,7 +134,7 @@ const styles = StyleSheet.create({
   costUnit: {
     marginTop: 2,
     fontSize: 9,
-    color: "rgba(255,200,0,0.4)",
+    color: "rgba(255,200,0,0.6)",
     fontWeight: "700",
   },
   energyFooter: {

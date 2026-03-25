@@ -70,6 +70,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     inset: 0,
     zIndex: 1000,
+    userSelect: 'none',
     backgroundColor: "rgba(2,8,20,0.95)",
     alignItems: "center",
     justifyContent: "center",

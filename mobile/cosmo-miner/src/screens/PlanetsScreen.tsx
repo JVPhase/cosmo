@@ -141,7 +141,7 @@ export function PlanetsScreen({
               <View style={[styles.sectorHeader, sectorUnlocked ? styles.sectorHeaderUnlocked : styles.sectorHeaderLocked]}>
                 <Text style={styles.sectorIcon}>{sector.icon}</Text>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.sectorName, sectorUnlocked ? { color: "#00d4ff" } : { color: "rgba(255,255,255,0.25)" }]}>
+                  <Text style={[styles.sectorName, sectorUnlocked ? { color: "#00d4ff" } : { color: "rgba(255,255,255,0.5)" }]}>
                     СЕКТОР {sector.id} · {sector.name.toUpperCase()}
                   </Text>
                   {!sectorUnlocked && (
@@ -173,11 +173,11 @@ export function PlanetsScreen({
                   >
                     <Image
                       source={p.image}
-                      style={[styles.cardIcon, (grayed || (!unlocked && !isBattling)) ? { opacity: 0.25 } : null]}
+                      style={[styles.cardIcon, (grayed || (!unlocked && !isBattling)) ? { opacity: 0.5 } : null]}
                       resizeMode="contain"
                     />
                     <View style={{ flex: 1 }}>
-                      <Text style={[styles.cardName, unlocked ? { color: p.color } : { color: "rgba(255,255,255,0.25)" }]}>
+                      <Text style={[styles.cardName, unlocked ? { color: p.color } : { color: "rgba(255,255,255,0.5)" }]}>
                         {p.name}
                       </Text>
                       <Text style={styles.cardMeta}>
@@ -206,7 +206,7 @@ export function PlanetsScreen({
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#050918" },
+  screen: { flex: 1, backgroundColor: "#050918", userSelect: 'none' },
   content: { paddingHorizontal: 16, paddingTop: 18, paddingBottom: 24 },
   title: {
     textAlign: "center",
@@ -245,7 +245,7 @@ const styles = StyleSheet.create({
   },
   sectorIcon: { fontSize: 16 },
   sectorName: { fontSize: 9, fontWeight: "900", letterSpacing: 1.5 },
-  sectorLockHint: { fontSize: 9, color: "rgba(255,200,0,0.4)", marginTop: 1 },
+  sectorLockHint: { fontSize: 9, color: "rgba(255,200,0,0.7)", marginTop: 1 },
   lockIcon: { fontSize: 14 },
   // Detail view
   dossier: {
@@ -259,7 +259,7 @@ const styles = StyleSheet.create({
   dossierText: { fontSize: 12, color: "rgba(200,220,255,0.7)", lineHeight: 18 },
   alienHP: { marginTop: 6, fontSize: 10, color: "rgba(255,100,100,0.6)", fontWeight: "700" },
   planetName: { fontSize: 14, fontWeight: "900", letterSpacing: 2, marginTop: 8 },
-  meta: { marginTop: 3, fontSize: 11, color: "rgba(255,255,255,0.35)", fontWeight: "700" },
+  meta: { marginTop: 3, fontSize: 11, color: "rgba(255,255,255,0.65)", fontWeight: "700" },
   // Planet cards
   card: {
     flexDirection: "row",
@@ -290,7 +290,7 @@ const styles = StyleSheet.create({
   cardIcon: { width: 36, height: 36, marginRight: 2 },
   detailImage: { width: 90, height: 90 },
   cardName: { fontSize: 12, fontWeight: "900", letterSpacing: 1, marginBottom: 2 },
-  cardMeta: { fontSize: 10, color: "rgba(255,255,255,0.25)" },
+  cardMeta: { fontSize: 10, color: "rgba(255,255,255,0.55)" },
   activeLabel: { fontSize: 10, color: "rgba(120,255,120,0.65)", letterSpacing: 1, fontWeight: "900" },
   battleLabel: { fontSize: 10, color: "rgba(255,80,80,0.75)", letterSpacing: 1, fontWeight: "900" },
   chooseBtn: {
@@ -327,5 +327,5 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   attackingText: { color: "#ff6666", fontWeight: "900", letterSpacing: 2, fontSize: 11 },
-  attackingHint: { fontSize: 10, color: "rgba(255,255,255,0.25)" },
+  attackingHint: { fontSize: 10, color: "rgba(255,255,255,0.6)" },
 });
