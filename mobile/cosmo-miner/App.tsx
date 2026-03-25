@@ -1,46 +1,80 @@
-import { StatusBar } from "expo-status-bar";
-import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-import { AchievementsScreen } from "./src/screens/AchievementsScreen";
-import { BattleScreen } from "./src/screens/BattleScreen";
-import { GameScreen } from "./src/screens/GameScreen";
-import { PlanetsScreen } from "./src/screens/PlanetsScreen";
-import { ResearchScreen } from "./src/screens/ResearchScreen";
-import { ShipyardScreen } from "./src/screens/ShipyardScreen";
-import { UpgradesScreen } from "./src/screens/UpgradesScreen";
-import { IntroOverlay } from "./src/ui/IntroOverlay";
-import { ModalSheet } from "./src/ui/ModalSheet";
-import { PasswordScreen } from "./src/ui/PasswordScreen";
-import { useGame } from "./src/game/useGame";
-import { clearGame, loadGame, loadIntroSeen, saveGame, saveIntroSeen } from "./src/game/storage";
-import { ALIENS } from "./src/game/ALIENS";
-import { SHIPS } from "./src/game/SHIPS";
-import { CANNONS, computeCannonCost } from "./src/game/CANNONS";
-import { computeUpgradeCost, UPGRADES } from "./src/game/UPGRADES";
-import { RESEARCH } from "./src/game/RESEARCH";
-import type { GameStateInit } from "./src/game/types";
+import { StatusBar } from 'expo-status-bar';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View
+} from 'react-native';
+import { AchievementsScreen } from './src/screens/AchievementsScreen';
+import { BattleScreen } from './src/screens/BattleScreen';
+import { GameScreen } from './src/screens/GameScreen';
+import { PlanetsScreen } from './src/screens/PlanetsScreen';
+import { ResearchScreen } from './src/screens/ResearchScreen';
+import { ShipyardScreen } from './src/screens/ShipyardScreen';
+import { UpgradesScreen } from './src/screens/UpgradesScreen';
+import { IntroOverlay } from './src/ui/IntroOverlay';
+import { ModalSheet } from './src/ui/ModalSheet';
+import { PasswordScreen } from './src/ui/PasswordScreen';
+import { useGame } from './src/game/useGame';
+import {
+  clearGame,
+  loadGame,
+  loadIntroSeen,
+  saveGame,
+  saveIntroSeen
+} from './src/game/storage';
+import { ALIENS } from './src/game/ALIENS';
+import { SHIPS } from './src/game/SHIPS';
+import { CANNONS, computeCannonCost } from './src/game/CANNONS';
+import { computeUpgradeCost, UPGRADES } from './src/game/UPGRADES';
+import { RESEARCH } from './src/game/RESEARCH';
+import type { GameStateInit } from './src/game/types';
 
 const MIN_ATTACK_ENERGY = Math.min(...ALIENS.map((a) => a.attackEnergyCost));
 const MIN_UPGRADE_COST = Math.min(...UPGRADES.map((u) => u.baseCost));
 
-type TabId = "game" | "upgrades" | "planets" | "shipyard" | "battle";
+type TabId = 'game' | 'upgrades' | 'planets' | 'shipyard' | 'battle';
 
 const TABS: Array<{ id: TabId; icon: string; label: string }> = [
-  { id: "game",     icon: "⛏️", label: "ДОБЫЧА" },
-  { id: "upgrades", icon: "⚡",  label: "АПГР." },
-  { id: "planets",  icon: "🌍", label: "ПЛАН." },
-  { id: "shipyard", icon: "🛠️", label: "ВЕРФЬ" },
-  { id: "battle",   icon: "⚔️", label: "БОЙ" },
+  { id: 'game', icon: '⛏️', label: 'ДОБЫЧА' },
+  { id: 'upgrades', icon: '⚡', label: 'АПГР.' },
+  { id: 'planets', icon: '🌍', label: 'ПЛАН.' },
+  { id: 'shipyard', icon: '🛠️', label: 'ВЕРФЬ' },
+  { id: 'battle', icon: '⚔️', label: 'БОЙ' }
 ];
 
-function GameApp({ initial, tab, onSetTab, onReset }: { initial: GameStateInit; tab: TabId; onSetTab: (t: TabId) => void; onReset: () => void }) {
+function GameApp({
+  initial,
+  tab,
+  onSetTab,
+  onReset
+}: {
+  initial: GameStateInit;
+  tab: TabId;
+  onSetTab: (t: TabId) => void;
+  onReset: () => void;
+}) {
   const game = useGame(initial);
   const [researchOpen, setResearchOpen] = useState(false);
   const [achievementsOpen, setAchievementsOpen] = useState(false);
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
-  const [editorFields, setEditorFields] = useState({ energy: "0", iron: "0", titan: "0", iridium: "0", playerXP: "0" });
-  const [editorToggles, setEditorToggles] = useState({ unlockUpgrades: false, unlockShipyard: false, unlockPlanets: false });
+  const [editorFields, setEditorFields] = useState({
+    energy: '0',
+    iron: '0',
+    titan: '0',
+    iridium: '0',
+    playerXP: '0'
+  });
+  const [editorToggles, setEditorToggles] = useState({
+    unlockUpgrades: false,
+    unlockShipyard: false,
+    unlockPlanets: false
+  });
 
   const openEditor = () => {
     setEditorFields({
@@ -48,35 +82,43 @@ function GameApp({ initial, tab, onSetTab, onReset }: { initial: GameStateInit; 
       iron: String(game.metals.iron),
       titan: String(game.metals.titan),
       iridium: String(game.metals.iridium),
-      playerXP: String(game.playerXP),
+      playerXP: String(game.playerXP)
     });
     setEditorToggles({
       unlockUpgrades: upgradesUnlocked,
       unlockShipyard: shipyardUnlocked,
-      unlockPlanets: planetsUnlocked,
+      unlockPlanets: planetsUnlocked
     });
     setEditorOpen(true);
   };
 
   const applyEditor = () => {
-    const parse = (v: string) => { const n = Number(v); return isNaN(n) || n < 0 ? undefined : Math.floor(n); };
+    const parse = (v: string) => {
+      const n = Number(v);
+      return isNaN(n) || n < 0 ? undefined : Math.floor(n);
+    };
     let energy = parse(editorFields.energy) ?? game.energy;
     let iron = parse(editorFields.iron) ?? game.metals.iron;
-    if (editorToggles.unlockUpgrades) energy = Math.max(energy, MIN_UPGRADE_COST);
-    if (editorToggles.unlockPlanets) energy = Math.max(energy, MIN_ATTACK_ENERGY);
-    if (editorToggles.unlockShipyard) iron = Math.max(iron, SHIPS[0].baseCost.iron ?? 30);
+    if (editorToggles.unlockUpgrades)
+      energy = Math.max(energy, MIN_UPGRADE_COST);
+    if (editorToggles.unlockPlanets)
+      energy = Math.max(energy, MIN_ATTACK_ENERGY);
+    if (editorToggles.unlockShipyard)
+      iron = Math.max(iron, SHIPS[0].baseCost.iron ?? 30);
     game.debugSetValues({
       energy,
       iron,
       titan: parse(editorFields.titan),
       iridium: parse(editorFields.iridium),
-      playerXP: parse(editorFields.playerXP),
+      playerXP: parse(editorFields.playerXP)
     });
     setEditorOpen(false);
   };
 
   const latestRef = useRef(game);
-  useEffect(() => { latestRef.current = game; });
+  useEffect(() => {
+    latestRef.current = game;
+  });
 
   // Save every 3 seconds
   useEffect(() => {
@@ -95,7 +137,7 @@ function GameApp({ initial, tab, onSetTab, onReset }: { initial: GameStateInit; 
         battle: g.battle,
         playerXP: g.playerXP,
         research: g.research,
-        expeditions: g.expeditions,
+        expeditions: g.expeditions
       } as any).catch(() => {});
     }, 3000);
     return () => clearInterval(interval);
@@ -104,9 +146,14 @@ function GameApp({ initial, tab, onSetTab, onReset }: { initial: GameStateInit; 
   const firstShipCost = SHIPS[0].baseCost;
   const shipyardUnlocked =
     game.fleet.ownedShips.length > 0 ||
-    Object.entries(firstShipCost).every(([metal, qty]) => (game.metals[metal as keyof typeof game.metals] ?? 0) >= (qty ?? 0));
+    Object.entries(firstShipCost).every(
+      ([metal, qty]) =>
+        (game.metals[metal as keyof typeof game.metals] ?? 0) >= (qty ?? 0)
+    );
 
-  const upgradesUnlocked = game.energy >= MIN_UPGRADE_COST || Object.values(game.upgrades).some((v) => v > 0);
+  const upgradesUnlocked =
+    game.energy >= MIN_UPGRADE_COST ||
+    Object.values(game.upgrades).some((v) => v > 0);
 
   const planetsUnlocked =
     game.unlockedPlanetIds.length > 1 || game.energy >= MIN_ATTACK_ENERGY;
@@ -116,32 +163,32 @@ function GameApp({ initial, tab, onSetTab, onReset }: { initial: GameStateInit; 
 
   // Auto-switch away from hidden tabs
   useEffect(() => {
-    if (tab === "shipyard" && !shipyardUnlocked) onSetTab("game");
+    if (tab === 'shipyard' && !shipyardUnlocked) onSetTab('game');
   }, [shipyardUnlocked, tab]);
 
   useEffect(() => {
-    if (tab === "upgrades" && !upgradesUnlocked) onSetTab("game");
+    if (tab === 'upgrades' && !upgradesUnlocked) onSetTab('game');
   }, [upgradesUnlocked, tab]);
 
   useEffect(() => {
-    if (tab === "planets" && !planetsUnlocked) onSetTab("game");
+    if (tab === 'planets' && !planetsUnlocked) onSetTab('game');
   }, [planetsUnlocked, tab]);
 
   useEffect(() => {
-    if (tab === "battle" && !battleUnlocked) onSetTab("game");
+    if (tab === 'battle' && !battleUnlocked) onSetTab('game');
   }, [battleUnlocked, tab]);
 
   // Auto-switch to game tab after battle victory
   useEffect(() => {
     if (game.battleVictory) {
-      onSetTab("game");
+      onSetTab('game');
       game.clearBattleVictory();
     }
   }, [game.battleVictory]);
 
   let tabContent: React.ReactNode = null;
   switch (tab) {
-    case "game":
+    case 'game':
       tabContent = (
         <GameScreen
           energy={game.energy}
@@ -160,7 +207,7 @@ function GameApp({ initial, tab, onSetTab, onReset }: { initial: GameStateInit; 
                   id: game.achievementToast.id,
                   name: game.achievementToast.name,
                   icon: game.achievementToast.icon,
-                  lore: game.achievementToast.lore,
+                  lore: game.achievementToast.lore
                 }
               : null
           }
@@ -177,7 +224,7 @@ function GameApp({ initial, tab, onSetTab, onReset }: { initial: GameStateInit; 
               game.playerLevel >= n.requiredLevel &&
               n.requires.every((r) => game.research[r]) &&
               game.energy >= n.energyCost &&
-              (n.branch !== "battle" || battleUnlocked)
+              (n.branch !== 'battle' || battleUnlocked)
           )}
           onOpenResearch={() => setResearchOpen(true)}
           onOpenAchievements={() => setAchievementsOpen(true)}
@@ -186,21 +233,21 @@ function GameApp({ initial, tab, onSetTab, onReset }: { initial: GameStateInit; 
           onCloseAchievementsUnlockToast={game.closeAchievementsUnlockToast}
           upgradesUnlockToast={game.upgradesUnlockToast}
           onCloseUpgradesUnlockToast={game.closeUpgradesUnlockToast}
-          onOpenUpgrades={() => onSetTab("upgrades")}
+          onOpenUpgrades={() => onSetTab('upgrades')}
           currentUnlockToast={game.currentUnlockToast}
           onDismissUnlockToast={game.dismissUnlockToast}
           firstShipToast={game.firstShipToast}
           onCloseFirstShipToast={game.closeFirstShipToast}
           shipyardUnlockToast={game.shipyardUnlockToast}
           onCloseShipyardUnlockToast={game.closeShipyardUnlockToast}
-          onOpenShipyard={() => onSetTab("shipyard")}
+          onOpenShipyard={() => onSetTab('shipyard')}
           planetUnlockToast={game.planetUnlockToast}
           onClosePlanetUnlockToast={game.closePlanetUnlockToast}
-          onOpenPlanets={() => onSetTab("planets")}
+          onOpenPlanets={() => onSetTab('planets')}
         />
       );
       break;
-    case "upgrades":
+    case 'upgrades':
       tabContent = (
         <UpgradesScreen
           energy={game.energy}
@@ -209,7 +256,7 @@ function GameApp({ initial, tab, onSetTab, onReset }: { initial: GameStateInit; 
         />
       );
       break;
-    case "planets":
+    case 'planets':
       tabContent = (
         <PlanetsScreen
           unlockedPlanetIds={game.unlockedPlanetIds}
@@ -219,16 +266,16 @@ function GameApp({ initial, tab, onSetTab, onReset }: { initial: GameStateInit; 
           energy={game.energy}
           onAttackPlanet={(id) => {
             game.startBattle(id);
-            onSetTab("battle");
+            onSetTab('battle');
           }}
           onChoosePlanet={(id) => {
             game.selectPlanet(id);
-            onSetTab("game");
+            onSetTab('game');
           }}
         />
       );
       break;
-    case "shipyard":
+    case 'shipyard':
       tabContent = (
         <ShipyardScreen
           metals={game.metals}
@@ -242,13 +289,15 @@ function GameApp({ initial, tab, onSetTab, onReset }: { initial: GameStateInit; 
           onBuildShip={game.buildShip}
           onRepairShip={game.repairShip}
           onSelectShip={game.selectShip}
-          onCraftCannon={(shipId, cannonId) => game.craftCannon(shipId, cannonId)}
+          onCraftCannon={(shipId, cannonId) =>
+            game.craftCannon(shipId, cannonId)
+          }
           onStartExpedition={game.startExpedition}
           onClaimExpedition={game.claimExpedition}
         />
       );
       break;
-    case "battle":
+    case 'battle':
       tabContent = (
         <BattleScreen
           battle={game.battle}
@@ -257,7 +306,7 @@ function GameApp({ initial, tab, onSetTab, onReset }: { initial: GameStateInit; 
           defeatInfo={game.defeatInfo}
           onAttack={game.attackBattle}
           onForfeit={game.forfeitBattle}
-          onGoToShipyard={() => onSetTab("shipyard")}
+          onGoToShipyard={() => onSetTab('shipyard')}
           onClearDefeat={game.clearDefeatInfo}
         />
       );
@@ -269,7 +318,11 @@ function GameApp({ initial, tab, onSetTab, onReset }: { initial: GameStateInit; 
       <StatusBar style="light" />
       <View style={styles.content}>{tabContent}</View>
 
-      <ModalSheet visible={researchOpen} title="◈ ИССЛЕДОВАНИЯ · МГМР ◈" onClose={() => setResearchOpen(false)}>
+      <ModalSheet
+        visible={researchOpen}
+        title="◈ ИССЛЕДОВАНИЯ · МММРДР ◈"
+        onClose={() => setResearchOpen(false)}
+      >
         <ResearchScreen
           playerLevel={game.playerLevel}
           playerXP={game.playerXP}
@@ -280,77 +333,115 @@ function GameApp({ initial, tab, onSetTab, onReset }: { initial: GameStateInit; 
         />
       </ModalSheet>
 
-      <ModalSheet visible={achievementsOpen} title="◈ ЛИЧНОЕ ДЕЛО ◈" onClose={() => setAchievementsOpen(false)}>
+      <ModalSheet
+        visible={achievementsOpen}
+        title="◈ ЛИЧНОЕ ДЕЛО ◈"
+        onClose={() => setAchievementsOpen(false)}
+      >
         <AchievementsScreen achievements={game.achievements} />
       </ModalSheet>
 
       {(() => {
         const visibleTabs = TABS.filter((t) => {
-          if (t.id === "upgrades") return upgradesUnlocked;
-          if (t.id === "shipyard") return shipyardUnlocked;
-          if (t.id === "planets") return planetsUnlocked;
-          if (t.id === "battle") return battleUnlocked;
+          if (t.id === 'upgrades') return upgradesUnlocked;
+          if (t.id === 'shipyard') return shipyardUnlocked;
+          if (t.id === 'planets') return planetsUnlocked;
+          if (t.id === 'battle') return battleUnlocked;
           return true;
         });
         if (visibleTabs.length < 2) return null;
         return (
-      <View style={styles.tabBar}>
-        {visibleTabs.map((t) => {
-          const active = tab === t.id;
-          const hasBattle = t.id === "battle" && !!game.battle;
-          const hasDefeat = t.id === "battle" && !!game.defeatInfo;
-          const hasExpeditionDone =
-            t.id === "shipyard" &&
-            game.expeditions.some((e) => (game.expeditionRemainingMap[e.shipId] ?? 1) === 0);
-          const hasAffordableUpgrade =
-            t.id === "upgrades" &&
-            tab !== "upgrades" &&
-            UPGRADES.some((u) => game.energy >= computeUpgradeCost(u, game.upgrades[u.id] ?? 0));
-          const hasAffordableShipyard =
-            t.id === "shipyard" &&
-            tab !== "shipyard" &&
-            (
-              SHIPS.some(
-                (ship) =>
-                  !game.fleet.ownedShips.some((o) => o.shipId === ship.id) &&
-                  Object.entries(ship.baseCost).every(
-                    ([m, qty]) => (game.metals[m as keyof typeof game.metals] ?? 0) >= (qty ?? 0)
-                  )
-              ) ||
-              (game.fleet.ownedShips.length > 0 &&
-                CANNONS.some((cannon) =>
-                  game.fleet.ownedShips.some((ship) => {
-                    const cost = computeCannonCost(cannon, ship.cannons[cannon.id] ?? 0);
-                    return Object.entries(cost).every(
-                      ([m, qty]) => (game.metals[m as keyof typeof game.metals] ?? 0) >= (qty ?? 0)
-                    );
-                  })
-                ))
-            );
+          <View style={styles.tabBar}>
+            {visibleTabs.map((t) => {
+              const active = tab === t.id;
+              const hasBattle = t.id === 'battle' && !!game.battle;
+              const hasDefeat = t.id === 'battle' && !!game.defeatInfo;
+              const hasExpeditionDone =
+                t.id === 'shipyard' &&
+                game.expeditions.some(
+                  (e) => (game.expeditionRemainingMap[e.shipId] ?? 1) === 0
+                );
+              const hasAffordableUpgrade =
+                t.id === 'upgrades' &&
+                tab !== 'upgrades' &&
+                UPGRADES.some(
+                  (u) =>
+                    game.energy >=
+                    computeUpgradeCost(u, game.upgrades[u.id] ?? 0)
+                );
+              const hasAffordableShipyard =
+                t.id === 'shipyard' &&
+                tab !== 'shipyard' &&
+                (SHIPS.some(
+                  (ship) =>
+                    !game.fleet.ownedShips.some((o) => o.shipId === ship.id) &&
+                    Object.entries(ship.baseCost).every(
+                      ([m, qty]) =>
+                        (game.metals[m as keyof typeof game.metals] ?? 0) >=
+                        (qty ?? 0)
+                    )
+                ) ||
+                  (game.fleet.ownedShips.length > 0 &&
+                    CANNONS.some((cannon) =>
+                      game.fleet.ownedShips.some((ship) => {
+                        const cost = computeCannonCost(
+                          cannon,
+                          ship.cannons[cannon.id] ?? 0
+                        );
+                        return Object.entries(cost).every(
+                          ([m, qty]) =>
+                            (game.metals[m as keyof typeof game.metals] ?? 0) >=
+                            (qty ?? 0)
+                        );
+                      })
+                    )));
 
-          return (
-            <Pressable key={t.id} onPress={() => onSetTab(t.id)} style={styles.tabBtn}>
-              <Text style={styles.tabIcon}>{t.icon}</Text>
-              <Text style={[styles.tabLabel, active ? styles.tabLabelActive : null]}>{t.label}</Text>
-              {active ? <View style={styles.tabActiveLine} /> : null}
-              {(hasBattle || hasDefeat) ? (
-                <View style={[styles.tabBadge, hasDefeat ? { backgroundColor: "#ff9900" } : {}]} />
-              ) : null}
-              {(hasExpeditionDone || hasAffordableShipyard) ? (
-                <View style={[styles.tabBadge, { backgroundColor: "#ff3b3b" }]} />
-              ) : null}
-              {hasAffordableUpgrade ? (
-                <View style={[styles.tabBadge, { backgroundColor: "#ff3b3b" }]} />
-              ) : null}
-            </Pressable>
-          );
-        })}
-      </View>
+              return (
+                <Pressable
+                  key={t.id}
+                  onPress={() => onSetTab(t.id)}
+                  style={styles.tabBtn}
+                >
+                  <Text style={styles.tabIcon}>{t.icon}</Text>
+                  <Text
+                    style={[
+                      styles.tabLabel,
+                      active ? styles.tabLabelActive : null
+                    ]}
+                  >
+                    {t.label}
+                  </Text>
+                  {active ? <View style={styles.tabActiveLine} /> : null}
+                  {hasBattle || hasDefeat ? (
+                    <View
+                      style={[
+                        styles.tabBadge,
+                        hasDefeat ? { backgroundColor: '#ff9900' } : {}
+                      ]}
+                    />
+                  ) : null}
+                  {hasExpeditionDone || hasAffordableShipyard ? (
+                    <View
+                      style={[styles.tabBadge, { backgroundColor: '#ff3b3b' }]}
+                    />
+                  ) : null}
+                  {hasAffordableUpgrade ? (
+                    <View
+                      style={[styles.tabBadge, { backgroundColor: '#ff3b3b' }]}
+                    />
+                  ) : null}
+                </Pressable>
+              );
+            })}
+          </View>
         );
       })()}
 
       <View style={styles.sideButtons}>
-        <Pressable onPress={() => setResetConfirmOpen(true)} style={styles.resetBtn}>
+        <Pressable
+          onPress={() => setResetConfirmOpen(true)}
+          style={styles.resetBtn}
+        >
           <Text style={styles.resetIcon}>✕</Text>
           <Text style={styles.resetLabel}>СБРОС</Text>
         </Pressable>
@@ -360,50 +451,82 @@ function GameApp({ initial, tab, onSetTab, onReset }: { initial: GameStateInit; 
         </Pressable>
       </View>
 
-      <Modal visible={editorOpen} transparent animationType="fade" onRequestClose={() => setEditorOpen(false)}>
-        <Pressable style={styles.resetOverlay} onPress={() => setEditorOpen(false)}>
+      <Modal
+        visible={editorOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setEditorOpen(false)}
+      >
+        <Pressable
+          style={styles.resetOverlay}
+          onPress={() => setEditorOpen(false)}
+        >
           <Pressable style={styles.editorCard} onPress={() => {}}>
             <Text style={styles.editorCardTitle}>◈ РЕДАКТОР ПРОГРЕССА ◈</Text>
-            <ScrollView style={styles.editorScroll} keyboardShouldPersistTaps="handled">
-              {([
-                { key: "energy",   label: "Энергия" },
-                { key: "playerXP", label: "Опыт (XP)" },
-                { key: "iron",     label: "Железо" },
-                { key: "titan",    label: "Титан" },
-                { key: "iridium",  label: "Иридий" },
-              ] as { key: keyof typeof editorFields; label: string }[]).map(({ key, label }) => (
+            <ScrollView
+              style={styles.editorScroll}
+              keyboardShouldPersistTaps="handled"
+            >
+              {(
+                [
+                  { key: 'energy', label: 'Энергия' },
+                  { key: 'playerXP', label: 'Опыт (XP)' },
+                  { key: 'iron', label: 'Железо' },
+                  { key: 'titan', label: 'Титан' },
+                  { key: 'iridium', label: 'Иридий' }
+                ] as { key: keyof typeof editorFields; label: string }[]
+              ).map(({ key, label }) => (
                 <View key={key} style={styles.editorRow}>
                   <Text style={styles.editorFieldLabel}>{label}</Text>
                   <TextInput
                     style={styles.editorInput}
                     value={editorFields[key]}
-                    onChangeText={(v) => setEditorFields((f) => ({ ...f, [key]: v }))}
+                    onChangeText={(v) =>
+                      setEditorFields((f) => ({ ...f, [key]: v }))
+                    }
                     keyboardType="numeric"
                     selectTextOnFocus
                   />
                 </View>
               ))}
               <View style={styles.editorDivider} />
-              {([
-                { key: "unlockUpgrades", label: "Апгрейды открыты" },
-                { key: "unlockShipyard", label: "Верфь открыта" },
-                { key: "unlockPlanets",  label: "Планеты открыты" },
-              ] as { key: keyof typeof editorToggles; label: string }[]).map(({ key, label }) => (
+              {(
+                [
+                  { key: 'unlockUpgrades', label: 'Апгрейды открыты' },
+                  { key: 'unlockShipyard', label: 'Верфь открыта' },
+                  { key: 'unlockPlanets', label: 'Планеты открыты' }
+                ] as { key: keyof typeof editorToggles; label: string }[]
+              ).map(({ key, label }) => (
                 <View key={key} style={styles.editorRow}>
                   <Text style={styles.editorFieldLabel}>{label}</Text>
                   <Pressable
-                    onPress={() => setEditorToggles((t) => ({ ...t, [key]: !t[key] }))}
-                    style={[styles.editorToggle, editorToggles[key] ? styles.editorToggleOn : styles.editorToggleOff]}
+                    onPress={() =>
+                      setEditorToggles((t) => ({ ...t, [key]: !t[key] }))
+                    }
+                    style={[
+                      styles.editorToggle,
+                      editorToggles[key]
+                        ? styles.editorToggleOn
+                        : styles.editorToggleOff
+                    ]}
                   >
-                    <Text style={[styles.editorToggleText, editorToggles[key] ? styles.editorToggleTextOn : null]}>
-                      {editorToggles[key] ? "ВКЛ" : "ВЫКЛ"}
+                    <Text
+                      style={[
+                        styles.editorToggleText,
+                        editorToggles[key] ? styles.editorToggleTextOn : null
+                      ]}
+                    >
+                      {editorToggles[key] ? 'ВКЛ' : 'ВЫКЛ'}
                     </Text>
                   </Pressable>
                 </View>
               ))}
             </ScrollView>
             <View style={styles.resetCardButtons}>
-              <Pressable style={styles.resetCardCancel} onPress={() => setEditorOpen(false)}>
+              <Pressable
+                style={styles.resetCardCancel}
+                onPress={() => setEditorOpen(false)}
+              >
                 <Text style={styles.resetCardCancelText}>Отмена</Text>
               </Pressable>
               <Pressable style={styles.resetCardConfirm} onPress={applyEditor}>
@@ -414,16 +537,35 @@ function GameApp({ initial, tab, onSetTab, onReset }: { initial: GameStateInit; 
         </Pressable>
       </Modal>
 
-      <Modal visible={resetConfirmOpen} transparent animationType="fade" onRequestClose={() => setResetConfirmOpen(false)}>
-        <Pressable style={styles.resetOverlay} onPress={() => setResetConfirmOpen(false)}>
+      <Modal
+        visible={resetConfirmOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setResetConfirmOpen(false)}
+      >
+        <Pressable
+          style={styles.resetOverlay}
+          onPress={() => setResetConfirmOpen(false)}
+        >
           <Pressable style={styles.resetCard} onPress={() => {}}>
             <Text style={styles.resetCardTitle}>◈ СБРОС ПРОГРЕССА ◈</Text>
-            <Text style={styles.resetCardText}>Весь прогресс будет удалён без возможности восстановления.</Text>
+            <Text style={styles.resetCardText}>
+              Весь прогресс будет удалён без возможности восстановления.
+            </Text>
             <View style={styles.resetCardButtons}>
-              <Pressable style={styles.resetCardCancel} onPress={() => setResetConfirmOpen(false)}>
+              <Pressable
+                style={styles.resetCardCancel}
+                onPress={() => setResetConfirmOpen(false)}
+              >
                 <Text style={styles.resetCardCancelText}>Отмена</Text>
               </Pressable>
-              <Pressable style={styles.resetCardConfirm} onPress={() => { setResetConfirmOpen(false); onReset(); }}>
+              <Pressable
+                style={styles.resetCardConfirm}
+                onPress={() => {
+                  setResetConfirmOpen(false);
+                  onReset();
+                }}
+              >
                 <Text style={styles.resetCardConfirmText}>Сбросить</Text>
               </Pressable>
             </View>
@@ -436,7 +578,7 @@ function GameApp({ initial, tab, onSetTab, onReset }: { initial: GameStateInit; 
 
 export default function App() {
   const [unlocked, setUnlocked] = useState(false);
-  const [tab, setTab] = useState<TabId>("game");
+  const [tab, setTab] = useState<TabId>('game');
   const [initial, setInitial] = useState<GameStateInit | undefined>(undefined);
   const [introSeen, setIntroSeen] = useState<boolean | undefined>(undefined);
   const [gameKey, setGameKey] = useState(0);
@@ -449,13 +591,15 @@ export default function App() {
       setInitial(loaded ?? {});
       setIntroSeen(seen);
     })();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const handleReset = useCallback(async () => {
     await clearGame().catch(() => {});
     setInitial({});
-    setTab("game");
+    setTab('game');
     setGameKey((k) => k + 1);
   }, []);
 
@@ -481,7 +625,13 @@ export default function App() {
 
   return (
     <View style={styles.container}>
-      <GameApp key={gameKey} initial={initial} tab={tab} onSetTab={setTab} onReset={handleReset} />
+      <GameApp
+        key={gameKey}
+        initial={initial}
+        tab={tab}
+        onSetTab={setTab}
+        onReset={handleReset}
+      />
       <IntroOverlay
         visible={!introSeen}
         onDone={async () => {
@@ -494,194 +644,203 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#050918", userSelect: 'none' },
+  container: { flex: 1, backgroundColor: '#050918', userSelect: 'none' },
   content: { flex: 1 },
-  loading: { flex: 1, alignItems: "center", justifyContent: "center" },
-  loadingText: { color: "rgba(0,212,255,0.7)", fontWeight: "800" },
+  loading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  loadingText: { color: 'rgba(0,212,255,0.7)', fontWeight: '800' },
   tabBar: {
     height: 68,
-    flexDirection: "row",
+    flexDirection: 'row',
     borderTopWidth: 1,
-    borderTopColor: "rgba(0,212,255,0.15)",
-    backgroundColor: "rgba(0,10,30,0.95)",
+    borderTopColor: 'rgba(0,212,255,0.15)',
+    backgroundColor: 'rgba(0,10,30,0.95)'
   },
   tabBtn: {
     flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
     gap: 1,
-    position: "relative",
+    position: 'relative'
   },
   tabIcon: { fontSize: 14 },
   tabLabel: {
     marginTop: 1,
     fontSize: 7,
     letterSpacing: 0.3,
-    color: "rgba(255,255,255,0.3)",
-    fontWeight: "800",
+    color: 'rgba(255,255,255,0.3)',
+    fontWeight: '800'
   },
-  tabLabelActive: { color: "#00d4ff" },
+  tabLabelActive: { color: '#00d4ff' },
   tabActiveLine: {
-    position: "absolute",
+    position: 'absolute',
     left: 6,
     right: 6,
     bottom: 5,
     height: 2,
-    backgroundColor: "#00d4ff",
+    backgroundColor: '#00d4ff'
   },
-  resetBtn: { alignItems: "center", gap: 2 },
-  resetIcon: { fontSize: 12, color: "rgba(255,80,80,0.55)" },
+  resetBtn: { alignItems: 'center', gap: 2 },
+  resetIcon: { fontSize: 12, color: 'rgba(255,80,80,0.55)' },
   resetLabel: {
     fontSize: 6,
-    color: "rgba(255,80,80,0.45)",
-    fontWeight: "800",
-    letterSpacing: 0.3,
+    color: 'rgba(255,80,80,0.45)',
+    fontWeight: '800',
+    letterSpacing: 0.3
   },
   resetOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,5,20,0.75)",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 24,
+    backgroundColor: 'rgba(0,5,20,0.75)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24
   },
   resetCard: {
-    width: "100%",
-    backgroundColor: "rgba(4,16,45,0.98)",
+    width: '100%',
+    backgroundColor: 'rgba(4,16,45,0.98)',
     borderWidth: 1,
-    borderColor: "rgba(255,80,80,0.3)",
+    borderColor: 'rgba(255,80,80,0.3)',
     borderRadius: 16,
     padding: 20,
-    gap: 12,
+    gap: 12
   },
   resetCardTitle: {
     fontSize: 10,
-    fontWeight: "900",
-    color: "rgba(255,80,80,0.85)",
+    fontWeight: '900',
+    color: 'rgba(255,80,80,0.85)',
     letterSpacing: 2,
-    textAlign: "center",
+    textAlign: 'center'
   },
   resetCardText: {
     fontSize: 13,
-    color: "rgba(200,230,255,0.85)",
+    color: 'rgba(200,230,255,0.85)',
     lineHeight: 20,
-    textAlign: "center",
+    textAlign: 'center'
   },
   resetCardButtons: {
-    flexDirection: "row",
+    flexDirection: 'row',
     gap: 10,
-    marginTop: 4,
+    marginTop: 4
   },
   resetCardCancel: {
     flex: 1,
     paddingVertical: 10,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "rgba(0,212,255,0.3)",
-    alignItems: "center",
+    borderColor: 'rgba(0,212,255,0.3)',
+    alignItems: 'center'
   },
   resetCardCancelText: {
-    color: "rgba(0,212,255,0.8)",
-    fontWeight: "700",
-    fontSize: 13,
+    color: 'rgba(0,212,255,0.8)',
+    fontWeight: '700',
+    fontSize: 13
   },
   resetCardConfirm: {
     flex: 1,
     paddingVertical: 10,
     borderRadius: 8,
-    backgroundColor: "rgba(180,30,30,0.6)",
+    backgroundColor: 'rgba(180,30,30,0.6)',
     borderWidth: 1,
-    borderColor: "rgba(255,80,80,0.4)",
-    alignItems: "center",
+    borderColor: 'rgba(255,80,80,0.4)',
+    alignItems: 'center'
   },
   resetCardConfirmText: {
-    color: "rgba(255,120,120,0.95)",
-    fontWeight: "700",
-    fontSize: 13,
+    color: 'rgba(255,120,120,0.95)',
+    fontWeight: '700',
+    fontSize: 13
   },
   tabBadge: {
-    position: "absolute",
+    position: 'absolute',
     top: 6,
-    right: "20%",
+    right: '20%',
     width: 7,
     height: 7,
     borderRadius: 4,
-    backgroundColor: "#ff4444",
+    backgroundColor: '#ff4444'
   },
   sideButtons: {
-    position: "absolute",
+    position: 'absolute',
     left: 12,
-    top: "50%",
+    top: '50%',
     transform: [{ translateY: -38 }],
-    alignItems: "center",
-    gap: 8,
+    alignItems: 'center',
+    gap: 8
   },
-  editorBtn: { alignItems: "center", gap: 2 },
-  editorIcon: { fontSize: 14, color: "rgba(0,212,255,0.55)" },
-  editorLabel: { fontSize: 6, color: "rgba(0,212,255,0.45)", fontWeight: "800", letterSpacing: 0.3 },
+  editorBtn: { alignItems: 'center', gap: 2 },
+  editorIcon: { fontSize: 14, color: 'rgba(0,212,255,0.55)' },
+  editorLabel: {
+    fontSize: 6,
+    color: 'rgba(0,212,255,0.45)',
+    fontWeight: '800',
+    letterSpacing: 0.3
+  },
   editorCard: {
-    width: "100%",
-    backgroundColor: "rgba(4,16,45,0.98)",
+    width: '100%',
+    backgroundColor: 'rgba(4,16,45,0.98)',
     borderWidth: 1,
-    borderColor: "rgba(0,212,255,0.3)",
+    borderColor: 'rgba(0,212,255,0.3)',
     borderRadius: 16,
     padding: 20,
-    gap: 14,
+    gap: 14
   },
   editorCardTitle: {
     fontSize: 10,
-    fontWeight: "900",
-    color: "rgba(0,212,255,0.85)",
+    fontWeight: '900',
+    color: 'rgba(0,212,255,0.85)',
     letterSpacing: 2,
-    textAlign: "center",
+    textAlign: 'center'
   },
   editorScroll: { maxHeight: 280 },
   editorRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingVertical: 6,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(0,212,255,0.08)",
+    borderBottomColor: 'rgba(0,212,255,0.08)'
   },
-  editorFieldLabel: { fontSize: 12, color: "rgba(200,230,255,0.85)", fontWeight: "600" },
+  editorFieldLabel: {
+    fontSize: 12,
+    color: 'rgba(200,230,255,0.85)',
+    fontWeight: '600'
+  },
   editorInput: {
     width: 130,
     paddingVertical: 5,
     paddingHorizontal: 10,
-    backgroundColor: "rgba(0,212,255,0.06)",
+    backgroundColor: 'rgba(0,212,255,0.06)',
     borderWidth: 1,
-    borderColor: "rgba(0,212,255,0.25)",
+    borderColor: 'rgba(0,212,255,0.25)',
     borderRadius: 8,
-    color: "#00d4ff",
+    color: '#00d4ff',
     fontSize: 13,
-    fontWeight: "700",
-    textAlign: "right",
+    fontWeight: '700',
+    textAlign: 'right'
   },
   editorDivider: {
     height: 1,
-    backgroundColor: "rgba(0,212,255,0.12)",
-    marginVertical: 6,
+    backgroundColor: 'rgba(0,212,255,0.12)',
+    marginVertical: 6
   },
   editorToggle: {
     width: 70,
     paddingVertical: 5,
     borderRadius: 8,
     borderWidth: 1,
-    alignItems: "center",
+    alignItems: 'center'
   },
   editorToggleOn: {
-    backgroundColor: "rgba(0,212,255,0.15)",
-    borderColor: "rgba(0,212,255,0.5)",
+    backgroundColor: 'rgba(0,212,255,0.15)',
+    borderColor: 'rgba(0,212,255,0.5)'
   },
   editorToggleOff: {
-    backgroundColor: "rgba(255,255,255,0.03)",
-    borderColor: "rgba(255,255,255,0.12)",
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderColor: 'rgba(255,255,255,0.12)'
   },
   editorToggleText: {
     fontSize: 10,
-    fontWeight: "800",
+    fontWeight: '800',
     letterSpacing: 0.5,
-    color: "rgba(255,255,255,0.3)",
+    color: 'rgba(255,255,255,0.3)'
   },
-  editorToggleTextOn: { color: "#00d4ff" },
+  editorToggleTextOn: { color: '#00d4ff' }
 });

@@ -80,7 +80,13 @@ export type GameScreenProps = {
   shipyardUnlockToast: boolean;
   onCloseShipyardUnlockToast: () => void;
   onOpenShipyard: () => void;
-  planetUnlockToast: { name: string; icon: string; color: string; bonus: number; lore: string } | null;
+  planetUnlockToast: {
+    name: string;
+    icon: string;
+    color: string;
+    bonus: number;
+    lore: string;
+  } | null;
   onClosePlanetUnlockToast: () => void;
   onOpenPlanets: () => void;
 };
@@ -180,7 +186,6 @@ export function GameScreen({
       glowScale.stopAnimation();
     };
   }, [glowScale]);
-
 
   const handlePressIn = (e: GestureResponderEvent) => {
     const nativeEvent = e.nativeEvent as unknown as {
@@ -316,7 +321,7 @@ export function GameScreen({
       <View style={styles.header} onLayout={onHeaderLayout}>
         <View style={styles.headerRow}>
           <View>
-            <Text style={styles.headerLabel}>◈ МГМР · СОТ. №4,829,441 ◈</Text>
+            <Text style={styles.headerLabel}>◈ МММРДР · СОТ. №4,829,441 ◈</Text>
             <Text style={[styles.planetLine, { color: planet.color }]}>
               {planet.icon} {planet.name} · {planet.resource}
             </Text>
@@ -465,10 +470,7 @@ export function GameScreen({
           ]}
         />
         <View style={styles.asteroidOrbitContainer}>
-          <PassiveMiningFx
-            passiveRate={passiveRate}
-            mineColor={planet.color}
-          />
+          <PassiveMiningFx passiveRate={passiveRate} mineColor={planet.color} />
         </View>
         <View
           ref={miningPlayAreaRef}
@@ -592,7 +594,7 @@ export function GameScreen({
         title="◈ ПАССИВНЫЙ ДОХОД · КЛЕРК-7 ◈"
         onClose={() => setPassiveRateInfoOpen(false)}
         headerEmoji="⚡"
-        text={`Пассивный доход — энергия, накапливаемая автоматически каждую секунду без кликов.\n\nСейчас: ${formatNum(passiveRate)}/сек.\n\nУвеличивается через улучшения с дроном во вкладке «АПГР.». Пока вы спите — дроны работают. По регламенту МГМР, дроны не устают. Их чувства по этому поводу не изучались.`}
+        text={`Пассивный доход — энергия, накапливаемая автоматически каждую секунду без кликов.\n\nСейчас: ${formatNum(passiveRate)}/сек.\n\nУвеличивается через улучшения с дроном во вкладке «АПГР.». Пока вы спите — дроны работают. По регламенту МММРДР, дроны не устают. Их чувства по этому поводу не изучались.`}
         clerk
       />
 
@@ -612,7 +614,7 @@ export function GameScreen({
         onClose={() => setIronInfoOpen(false)}
         image={ironMetal.image}
         text={
-          'Железо — базовый промышленный металл. Добывайте его как можно больше.\n\nПо регламенту МГМР, минимальная норма сбора не установлена. Это не значит, что её нет — просто форма МН-2 «Установление нормы» находится на согласовании с 2341 года.\n\nВывод: добывайте. Много. Пока не спросили.'
+          'Железо — базовый промышленный металл. Добывайте его как можно больше.\n\nПо регламенту МММРДР, минимальная норма сбора не установлена. Это не значит, что её нет — просто форма МН-2 «Установление нормы» находится на согласовании с 2341 года.\n\nВывод: добывайте. Много. Пока не спросили.'
         }
         clerk
       />
@@ -633,7 +635,7 @@ export function GameScreen({
         onClose={onCloseFirstShipToast}
         image={SHIPS[0].image}
         text={
-          'Поздравляю с постройкой первого корабля!\n\nОднако для навигации необходимы данные из реестра МГМР. Министерство готово их предоставить — как только вы выйдете на связь. Для этого потребуется 10 000 единиц энергии. Форма НВГ-1 «Запрос навигационных данных» будет заполнена автоматически.'
+          'Поздравляю с постройкой первого корабля!\n\nОднако для навигации необходимы данные из реестра МММРДР. Министерство готово их предоставить — как только вы выйдете на связь. Для этого потребуется 10 000 единиц энергии. Форма НВГ-1 «Запрос навигационных данных» будет заполнена автоматически.'
         }
         clerk
         headerEmoji="🚀"
@@ -673,7 +675,9 @@ export function GameScreen({
         <View style={styles.clerkBubble}>
           <Text style={styles.clerkIcon}>🤖</Text>
           <View style={{ flex: 1 }}>
-            <Text style={styles.clerkHeader}>КЛЕРК-7 · ИИ-АССИСТЕНТ МГМР</Text>
+            <Text style={styles.clerkHeader}>
+              КЛЕРК-7 · ИИ-АССИСТЕНТ МММРДР
+            </Text>
             <Text style={styles.clerkText}>{clerkMessage}</Text>
           </View>
           <Pressable
