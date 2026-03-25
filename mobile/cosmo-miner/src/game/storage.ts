@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { METALS } from "./METALS";
-import { PLANETS } from "./PLANETS";
+import { PLANETS, type PlanetId } from "./PLANETS";
 import { UPGRADES } from "./UPGRADES";
 import type { GameState, GameStateInit } from "./types";
 
@@ -10,11 +10,13 @@ const INTRO_KEY = "cosmo_intro_seen_v1";
 type StoredGameV1 = {
   version: 1;
   state: GameStateInit;
+  savedAt?: number;
 };
 
 function isStoredGameV1(value: unknown): value is StoredGameV1 {
   if (typeof value !== "object" || value === null) return false;
-  const v = value as { version?: unknown; state?: unknown };
+  const v = value as { version?: unknown; state?: unknown; savedAt?: unknown };
+  if (v.savedAt !== undefined && typeof v.savedAt !== "number") return false;
   return v.version === 1 && typeof v.state === "object" && v.state !== null;
 }
 
@@ -34,7 +36,8 @@ function isValidState(s: unknown): s is GameStateInit {
   if (typeof state.upgrades !== "object" || state.upgrades === null) return false;
   const upgrades = state.upgrades as Record<string, unknown>;
   for (const upg of UPGRADES) {
-    if (typeof upgrades[upg.id] !== "number") return false;
+    const v = upgrades[String(upg.id)];
+    if (v !== undefined && typeof v !== "number") return false;
   }
 
   if (typeof state.metals !== "object" || state.metals === null) return false;
@@ -49,14 +52,14 @@ function isValidState(s: unknown): s is GameStateInit {
 
   // selectedPlanetId must be a valid planet id (now 1-10)
   const validPlanetIds = new Set(PLANETS.map((p) => p.id));
-  if (!validPlanetIds.has(state.selectedPlanetId as number)) return false;
-  if (!(state.unlockedPlanetIds as unknown[]).every((id) => validPlanetIds.has(id as number))) return false;
+  if (!validPlanetIds.has(state.selectedPlanetId as PlanetId)) return false;
+  if (!(state.unlockedPlanetIds as unknown[]).every((id) => validPlanetIds.has(id as PlanetId))) return false;
 
   // New fields are optional — defaults applied in useGame.ts if absent
   return true;
 }
 
-export async function loadGame(): Promise<GameStateInit | null> {
+export async function loadGame(): Promise<{ state: GameStateInit; savedAt: number } | null> {
   try {
     const raw = await AsyncStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
@@ -69,7 +72,7 @@ export async function loadGame(): Promise<GameStateInit | null> {
       await AsyncStorage.removeItem(STORAGE_KEY);
       return null;
     }
-    return parsed.state;
+    return { state: parsed.state, savedAt: parsed.savedAt ?? 0 };
   } catch {
     await AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
     return null;
@@ -79,6 +82,7 @@ export async function loadGame(): Promise<GameStateInit | null> {
 export async function saveGame(state: GameState): Promise<void> {
   const payload: StoredGameV1 = {
     version: 1,
+    savedAt: Date.now(),
     state: {
       energy: state.energy,
       totalEarned: state.totalEarned,

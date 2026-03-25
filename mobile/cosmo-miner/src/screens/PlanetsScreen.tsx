@@ -264,6 +264,13 @@ export function PlanetsScreen({
                 const alien = ALIENS.find((a) => a.planetId === p.id);
                 const grayed = !sectorUnlocked && !unlocked;
 
+                const showBadge =
+                  !!alien &&
+                  !unlocked &&
+                  sectorUnlocked &&
+                  !isBattling &&
+                  energy >= alien.attackEnergyCost;
+
                 return (
                   <Pressable
                     key={p.id}
@@ -277,6 +284,7 @@ export function PlanetsScreen({
                       pressed ? { opacity: 0.92 } : null
                     ]}
                   >
+                    {showBadge && <View style={styles.planetBadge} />}
                     <Image
                       source={p.image}
                       style={[
@@ -425,6 +433,15 @@ const styles = StyleSheet.create({
   cardLocked: {
     backgroundColor: 'rgba(255,255,255,0.01)',
     borderColor: 'rgba(255,255,255,0.03)'
+  },
+  planetBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: '#ff3b30'
   },
   cardIcon: { width: 36, height: 36, marginRight: 2 },
   detailImage: { width: 90, height: 90 },

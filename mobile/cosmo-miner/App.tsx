@@ -18,6 +18,9 @@ import { ShipyardScreen } from './src/screens/ShipyardScreen';
 import { UpgradesScreen } from './src/screens/UpgradesScreen';
 import { IntroOverlay } from './src/ui/IntroOverlay';
 import { ModalSheet } from './src/ui/ModalSheet';
+import { Popup } from './src/ui/Popup';
+import { formatNum } from './src/game/formatNum';
+import { METALS } from './src/game/METALS';
 import { PasswordScreen } from './src/ui/PasswordScreen';
 import { useGame } from './src/game/useGame';
 import {
@@ -28,6 +31,8 @@ import {
   saveIntroSeen
 } from './src/game/storage';
 import { ALIENS } from './src/game/ALIENS';
+import { isSectorUnlocked } from './src/game/SECTORS';
+import { PLANETS } from './src/game/PLANETS';
 import { SHIPS } from './src/game/SHIPS';
 import { CANNONS, computeCannonCost } from './src/game/CANNONS';
 import { computeUpgradeCost, UPGRADES } from './src/game/UPGRADES';
@@ -36,6 +41,7 @@ import type { GameStateInit } from './src/game/types';
 
 const MIN_ATTACK_ENERGY = Math.min(...ALIENS.map((a) => a.attackEnergyCost));
 const MIN_UPGRADE_COST = Math.min(...UPGRADES.map((u) => u.baseCost));
+const ironMetal = METALS.find((m) => m.id === 'iron')!;
 
 type TabId = 'game' | 'upgrades' | 'planets' | 'shipyard' | 'battle';
 
@@ -61,6 +67,10 @@ function GameApp({
   const game = useGame(initial);
   const [researchOpen, setResearchOpen] = useState(false);
   const [achievementsOpen, setAchievementsOpen] = useState(false);
+  const [clickPowerInfoOpen, setClickPowerInfoOpen] = useState(false);
+  const [passiveRateInfoOpen, setPassiveRateInfoOpen] = useState(false);
+  const [planetBonusInfoOpen, setPlanetBonusInfoOpen] = useState(false);
+  const [ironInfoOpen, setIronInfoOpen] = useState(false);
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editorFields, setEditorFields] = useState({
@@ -216,8 +226,6 @@ function GameApp({
           playerXP={game.playerXP}
           levelUpToast={game.levelUpToast}
           onCloseLevelUpToast={game.closeLevelUpToast}
-          firstIronToast={game.firstIronToast}
-          onCloseFirstIronToast={game.closeFirstIronToast}
           hasAffordableResearch={RESEARCH.some(
             (n) =>
               !game.research[n.id] &&
@@ -229,21 +237,11 @@ function GameApp({
           onOpenResearch={() => setResearchOpen(true)}
           onOpenAchievements={() => setAchievementsOpen(true)}
           achievementsUnlocked={game.achievementsUnlocked}
-          achievementsUnlockToast={game.achievementsUnlockToast}
-          onCloseAchievementsUnlockToast={game.closeAchievementsUnlockToast}
-          upgradesUnlockToast={game.upgradesUnlockToast}
-          onCloseUpgradesUnlockToast={game.closeUpgradesUnlockToast}
-          onOpenUpgrades={() => onSetTab('upgrades')}
-          currentUnlockToast={game.currentUnlockToast}
-          onDismissUnlockToast={game.dismissUnlockToast}
-          firstShipToast={game.firstShipToast}
-          onCloseFirstShipToast={game.closeFirstShipToast}
-          shipyardUnlockToast={game.shipyardUnlockToast}
-          onCloseShipyardUnlockToast={game.closeShipyardUnlockToast}
-          onOpenShipyard={() => onSetTab('shipyard')}
-          planetUnlockToast={game.planetUnlockToast}
-          onClosePlanetUnlockToast={game.closePlanetUnlockToast}
-          onOpenPlanets={() => onSetTab('planets')}
+          hasUnclaimedAchievements={game.hasUnclaimedAchievements}
+          onOpenClickPowerInfo={() => setClickPowerInfoOpen(true)}
+          onOpenPassiveRateInfo={() => setPassiveRateInfoOpen(true)}
+          onOpenPlanetBonusInfo={() => setPlanetBonusInfoOpen(true)}
+          onOpenIronInfo={() => setIronInfoOpen(true)}
         />
       );
       break;
@@ -338,8 +336,137 @@ function GameApp({
         title="◈ ЛИЧНОЕ ДЕЛО ◈"
         onClose={() => setAchievementsOpen(false)}
       >
-        <AchievementsScreen achievements={game.achievements} />
+        <AchievementsScreen
+          achievements={game.achievements}
+          onClaim={game.claimAchievement}
+        />
       </ModalSheet>
+
+      <Popup
+        visible={game.firstIronToast}
+        title="◈ ПЕРВАЯ НАХОДКА · КЛЕРК-7 ◈"
+        onClose={game.closeFirstIronToast}
+        image={ironMetal.image}
+        text={
+          'Зафиксирован первый образец Железа™! За эту выдающуюся находку вам полагается премия — после заполнения форм ЖЛ-1 по ЖЛ-83, нотариально заверенного снимка астероида и справки с предыдущего места работы. P.S. Этот металл может пригодиться. Возможно.'
+        }
+        clerk
+      />
+
+      <Popup
+        visible={game.achievementsUnlockToast}
+        title="◈ СИСТЕМА ДОСТИЖЕНИЙ · КЛЕРК-7 ◈"
+        onClose={game.closeAchievementsUnlockToast}
+        text={
+          'Хочу вас подбодрить. Серьёзно. Поэтому внедряю систему достижений — специально для вас.\n\nКаждое достижение будет официально зафиксировано в личном деле. Форма ДСТ-1 уже направлена в архив в трёх экземплярах.\n\nТак держать, сотрудник №4,829,441. Вы справляетесь. Почти.'
+        }
+        clerk
+        headerEmoji="🏆"
+        actionLabel="ОТКРЫТЬ ДОСТИЖЕНИЯ"
+        onAction={() => setAchievementsOpen(true)}
+      />
+
+      <Popup
+        visible={game.upgradesUnlockToast}
+        title="◈ АПГРЕЙДЫ ДОСТУПНЫ · КЛЕРК-7 ◈"
+        onClose={game.closeUpgradesUnlockToast}
+        text={
+          'Поздравляю — у вас достаточно энергии для первого улучшения оборудования!\n\nАпгрейды повышают мощность добычи и пассивный доход. Настоятельно рекомендую вкладывать всё, что есть.\n\nФорма АПГ-1 «Заявка на улучшение» заполнена автоматически. Можете не благодарить.'
+        }
+        clerk
+        headerEmoji="⚡"
+        actionLabel="ОТКРЫТЬ АПГРЕЙДЫ"
+        onAction={() => onSetTab('upgrades')}
+      />
+
+      <Popup
+        visible={!!game.currentUnlockToast}
+        title={game.currentUnlockToast?.title ?? ''}
+        onClose={game.dismissUnlockToast}
+        image={game.currentUnlockToast?.image}
+        text={game.currentUnlockToast?.text ?? ''}
+        headerEmoji={game.currentUnlockToast?.headerEmoji}
+        clerk
+      />
+
+      <Popup
+        visible={game.firstShipToast}
+        title="◈ ПЕРВЫЙ КОРАБЛЬ · КЛЕРК-7 ◈"
+        onClose={game.closeFirstShipToast}
+        image={SHIPS[0].image}
+        text={`Поздравляю с постройкой первого корабля!\n\nОднако для навигации необходимы данные из реестра МММРДР. Министерство готово их предоставить — как только вы выйдете на связь. Для этого потребуется ${MIN_ATTACK_ENERGY} единиц энергии. Форма НВГ-1 «Запрос навигационных данных» будет заполнена автоматически.`}
+        clerk
+        headerEmoji="🚀"
+        actionLabel={`ДОБЫТЬ ${MIN_ATTACK_ENERGY} ЭНЕРГИИ`}
+        onAction={() => onSetTab('game')}
+      />
+
+      <Popup
+        visible={game.shipyardUnlockToast}
+        title="◈ ВЕРФЬ РАЗБЛОКИРОВАНА · КЛЕРК-7 ◈"
+        onClose={game.closeShipyardUnlockToast}
+        headerEmoji="🛠️"
+        text={
+          'У вас достаточно железа для постройки первого корабля!\n\nПерейдите во вкладку «ВЕРФЬ» — там можно строить корабли, устанавливать пушки и отправлять флот в экспедиции за металлами.\n\nМинистерство судостроения уведомлено. Форма СТР-1 «Разрешение на строительство» находится на рассмотрении с 2374 года. Стройте пока никто не заметил.'
+        }
+        clerk
+        actionLabel="ОТКРЫТЬ ВЕРФЬ"
+        onAction={() => onSetTab('shipyard')}
+      />
+
+      <Popup
+        visible={!!game.planetUnlockToast}
+        title="◈ НОВАЯ ПЛАНЕТА · КЛЕРК-7 ◈"
+        onClose={game.closePlanetUnlockToast}
+        image={game.planetUnlockToast?.image}
+        text={
+          game.planetUnlockToast
+            ? `Планета ${game.planetUnlockToast.name} разблокирована!\n\nБонус к добыче: ×${game.planetUnlockToast.bonus}.\n\n${game.planetUnlockToast.lore}`
+            : ''
+        }
+        clerk
+        actionLabel="НАЧАТЬ ДОБЫЧУ"
+        onAction={() => onSetTab('game')}
+      />
+
+      <Popup
+        visible={clickPowerInfoOpen}
+        title="◈ МОЩНОСТЬ КЛИКА · КЛЕРК-7 ◈"
+        onClose={() => setClickPowerInfoOpen(false)}
+        headerEmoji="⛏️"
+        text={`Мощность клика — количество энергии, добываемой за одно нажатие на планету.\n\nСейчас: +${game.clickPower < 1000 ? game.clickPower.toFixed(2) : formatNum(game.clickPower)} за клик.\n\nУвеличивается через улучшения во вкладке «АПГР.». Чем выше мощность — тем больше энергии и металлов вы получаете с каждого удара.`}
+        clerk
+      />
+
+      <Popup
+        visible={passiveRateInfoOpen}
+        title="◈ ПАССИВНЫЙ ДОХОД · КЛЕРК-7 ◈"
+        onClose={() => setPassiveRateInfoOpen(false)}
+        headerEmoji="⚡"
+        text={`Пассивный доход — энергия, накапливаемая автоматически каждую секунду без кликов.\n\nСейчас: ${formatNum(game.passiveRate)}/сек.\n\nУвеличивается через улучшения с дроном во вкладке «АПГР.». Пока вы спите — дроны работают. По регламенту МММРДР, дроны не устают. Их чувства по этому поводу не изучались.`}
+        clerk
+      />
+
+      <Popup
+        visible={planetBonusInfoOpen}
+        title="◈ БОНУС ПЛАНЕТЫ · КЛЕРК-7 ◈"
+        onClose={() => setPlanetBonusInfoOpen(false)}
+        headerEmoji={`×${game.planet.bonus}`}
+        headerEmojiStyle={{ color: game.planet.color }}
+        text={`Бонус планеты — множитель добычи металлов на текущей локации.\n\nСейчас: ×${game.planet.bonus} на планете ${game.planet.name}.\n\nКаждая планета имеет свой бонус к выпадению металлов. Более далёкие планеты дают более высокий множитель. Чтобы разблокировать их — победите охраняющего пришельца во вкладке «БОЙ».`}
+        clerk
+      />
+
+      <Popup
+        visible={ironInfoOpen}
+        title="◈ ЖЕЛЕЗО™ · КЛЕРК-7 ◈"
+        onClose={() => setIronInfoOpen(false)}
+        image={ironMetal.image}
+        text={
+          'Железо — базовый промышленный металл. Добывайте его как можно больше.\n\nПо регламенту МММРДР, минимальная норма сбора не установлена. Это не значит, что её нет — просто форма МН-2 «Установление нормы» находится на согласовании с 2341 года.\n\nВывод: добывайте. Много. Пока не спросили.'
+        }
+        clerk
+      />
 
       {(() => {
         const visibleTabs = TABS.filter((t) => {
@@ -369,6 +496,19 @@ function GameApp({
                     game.energy >=
                     computeUpgradeCost(u, game.upgrades[u.id] ?? 0)
                 );
+              const hasAttackablePlanet =
+                t.id === 'planets' &&
+                tab !== 'planets' &&
+                ALIENS.some((alien) => {
+                  const planet = PLANETS.find((p) => p.id === alien.planetId);
+                  if (!planet) return false;
+                  return (
+                    !game.unlockedPlanetIds.includes(alien.planetId) &&
+                    isSectorUnlocked(planet.sectorId, game.unlockedPlanetIds) &&
+                    game.battle?.planetId !== alien.planetId &&
+                    game.energy >= alien.attackEnergyCost
+                  );
+                });
               const hasAffordableShipyard =
                 t.id === 'shipyard' &&
                 tab !== 'shipyard' &&
@@ -428,6 +568,11 @@ function GameApp({
                   {hasAffordableUpgrade ? (
                     <View
                       style={[styles.tabBadge, { backgroundColor: '#ff3b3b' }]}
+                    />
+                  ) : null}
+                  {hasAttackablePlanet ? (
+                    <View
+                      style={[styles.tabBadge, { backgroundColor: '#ff3b30' }]}
                     />
                   ) : null}
                 </Pressable>
@@ -582,13 +727,35 @@ export default function App() {
   const [initial, setInitial] = useState<GameStateInit | undefined>(undefined);
   const [introSeen, setIntroSeen] = useState<boolean | undefined>(undefined);
   const [gameKey, setGameKey] = useState(0);
+  const [offlineEarnings, setOfflineEarnings] = useState(0);
 
   useEffect(() => {
     let mounted = true;
     (async () => {
       const [loaded, seen] = await Promise.all([loadGame(), loadIntroSeen()]);
       if (!mounted) return;
-      setInitial(loaded ?? {});
+      if (loaded) {
+        const { state, savedAt } = loaded;
+        if (savedAt > 0) {
+          const elapsedSeconds = (Date.now() - savedAt) / 1000;
+          let basePassive = 0;
+          for (const upg of UPGRADES) {
+            const level = (state.upgrades as Record<string, number>)?.[String(upg.id)] ?? 0;
+            if (upg.passiveBonus) basePassive += upg.passiveBonus * level;
+          }
+          const planet = PLANETS.find((p) => p.id === (state.selectedPlanetId ?? PLANETS[0].id)) ?? PLANETS[0];
+          const passiveRate = basePassive * planet.bonus;
+          const earnings = Math.floor(passiveRate * Math.min(elapsedSeconds, 8 * 3600));
+          if (earnings > 0) {
+            state.energy = (state.energy ?? 0) + earnings;
+            state.totalEarned = (state.totalEarned ?? 0) + earnings;
+            setOfflineEarnings(earnings);
+          }
+        }
+        setInitial(state);
+      } else {
+        setInitial({});
+      }
       setIntroSeen(seen);
     })();
     return () => {
@@ -638,6 +805,13 @@ export default function App() {
           setIntroSeen(true);
           await saveIntroSeen(true);
         }}
+      />
+      <Popup
+        visible={offlineEarnings > 0}
+        title="ОФЛАЙН-ДОБЫЧА"
+        headerEmoji="⚡"
+        text={`Пока вас не было, реакторы не простаивали.\n\nНакоплено: +${formatNum(offlineEarnings)} энергии.`}
+        onClose={() => setOfflineEarnings(0)}
       />
     </View>
   );

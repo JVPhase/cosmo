@@ -8,6 +8,7 @@ import {
   View
 } from 'react-native';
 import { CANNONS, computeCannonCost, type CannonId } from '../game/CANNONS';
+import { TIMELY_CLAIM_WINDOW_MS } from '../game/useGame';
 import { EXPEDITIONS, type ExpeditionId } from '../game/EXPEDITIONS';
 import { METALS, type MetalId } from '../game/METALS';
 import { SHIPS, type ShipId } from '../game/SHIPS';
@@ -254,7 +255,7 @@ export function ShipyardScreen({
                   isOnExpedition ? styles.cardOnExpedition : null
                 ]}
               >
-                {hasAffordableCannon && <View style={styles.shipBadge} />}
+                {hasAffordableCannon && !isOnExpedition && <View style={styles.shipBadge} />}
                 <Pressable
                   onPress={() =>
                     isOwned
@@ -546,31 +547,47 @@ export function ShipyardScreen({
                         ]}
                       />
                     </View>
-                    {done && (
-                      <Pressable
-                        onPress={() => onClaimExpedition(exp.shipId)}
-                        style={({ pressed }) => [
-                          styles.claimBtn,
-                          pressed ? { opacity: 0.85 } : null
-                        ]}
-                      >
-                        <Text style={styles.claimBtnText}>✓ ЗАБРАТЬ ГРУЗ</Text>
-                      </Pressable>
-                    )}
+                    {done && (() => {
+                      const timely = Date.now() - exp.completesAt <= TIMELY_CLAIM_WINDOW_MS;
+                      return (
+                        <>
+                          {timely && (
+                            <Text style={styles.timelyBonusLabel}>+25% БОНУС · ЗАБЕРИТЕ ВОВРЕМЯ</Text>
+                          )}
+                          <Pressable
+                            onPress={() => onClaimExpedition(exp.shipId)}
+                            style={({ pressed }) => [
+                              styles.claimBtn,
+                              timely ? styles.claimBtnTimely : null,
+                              pressed ? { opacity: 0.85 } : null
+                            ]}
+                          >
+                            <Text style={styles.claimBtnText}>✓ ЗАБРАТЬ ГРУЗ</Text>
+                          </Pressable>
+                        </>
+                      );
+                    })()}
                     {!done && (
-                      <Text style={styles.activeExpRewards}>
-                        Ожидаемый груз:{' '}
-                        {Object.entries(def.metalRewards)
-                          .map(([k, v]) => {
-                            const m = METALS.find((x) => x.id === k);
-                            return m
-                              ? `${m.icon} ×${v * expMetalMultiplier}`
-                              : '';
-                          })
-                          .filter(Boolean)
-                          .join('  ')}
-                        {sector2Unlocked ? '  ×5 СЕК.2' : ''}
-                      </Text>
+                      <View style={styles.activeExpRewardsRow}>
+                        <Text style={styles.activeExpRewardsLabel}>Ожидаемый груз:</Text>
+                        {Object.entries(def.metalRewards).map(([k, v]) => {
+                          const m = METALS.find((x) => x.id === k);
+                          if (!m) return null;
+                          return (
+                            <View key={k} style={styles.expRewardItem}>
+                              <Image
+                                source={m.image}
+                                style={styles.expRewardIcon}
+                                resizeMode="contain"
+                              />
+                              <Text style={styles.activeExpRewards}>×{v * expMetalMultiplier}</Text>
+                            </View>
+                          );
+                        })}
+                        {sector2Unlocked && (
+                          <Text style={styles.activeExpRewards}>×5 СЕК.2</Text>
+                        )}
+                      </View>
                     )}
                   </View>
                 );
@@ -731,7 +748,7 @@ const styles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 4,
-    backgroundColor: '#00ff88'
+    backgroundColor: '#ff3b30'
   },
   title: {
     textAlign: 'center',
@@ -1033,10 +1050,32 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     letterSpacing: 1
   },
+  claimBtnTimely: {
+    borderColor: 'rgba(255,200,0,0.5)',
+    backgroundColor: 'rgba(255,200,0,0.08)'
+  },
+  timelyBonusLabel: {
+    fontSize: 9,
+    color: 'rgba(255,200,0,0.9)',
+    fontWeight: '900',
+    letterSpacing: 1,
+    textAlign: 'center',
+    marginBottom: 4
+  },
+  activeExpRewardsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+    flexWrap: 'wrap'
+  },
+  activeExpRewardsLabel: {
+    fontSize: 9,
+    color: 'rgba(255,255,255,0.6)'
+  },
   activeExpRewards: {
     fontSize: 9,
     color: 'rgba(255,255,255,0.6)',
-    marginTop: 2
   },
   // Ship selector
   shipSelector: { marginBottom: 14 },
