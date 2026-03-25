@@ -60,6 +60,7 @@ export function AnimatedMineEffects({
   const ripplesRef = useRef<RippleFx[]>([]);
   const floatsRef = useRef<FloatFx[]>([]);
   const rafRef = useRef<number | null>(null);
+  const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
   const mineColorRef = useRef(mineColor);
   mineColorRef.current = mineColor;
 
@@ -83,6 +84,7 @@ export function AnimatedMineEffects({
     const ctx = canvas.getContext("2d");
     if (ctx) {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctxRef.current = ctx;
     }
   };
 
@@ -98,11 +100,10 @@ export function AnimatedMineEffects({
   };
 
   const drawFrame = (now: number) => {
-    const canvas = canvasRef.current;
     const { w: lw, h: lh } = layoutRef.current;
-    if (!canvas || lw <= 0 || lh <= 0) return;
+    if (lw <= 0 || lh <= 0) return;
 
-    const ctx = canvas.getContext("2d");
+    const ctx = ctxRef.current;
     if (!ctx) return;
 
     const mc = mineColorRef.current;
@@ -164,8 +165,9 @@ export function AnimatedMineEffects({
       ctx.font = '900 16px system-ui, -apple-system, sans-serif';
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.shadowColor = "rgba(255,200,0,0.8)";
-      ctx.shadowBlur = 10;
+      ctx.strokeStyle = "rgba(120,60,0,0.85)";
+      ctx.lineWidth = 3;
+      ctx.strokeText(text, f.originX, f.originY + ty);
       ctx.fillStyle = "#ffd700";
       ctx.fillText(text, f.originX, f.originY + ty);
       ctx.restore();

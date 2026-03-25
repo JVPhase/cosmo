@@ -65,6 +65,7 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: "#050918",
+    userSelect: 'none',
     alignItems: "center",
     justifyContent: "center",
   },
