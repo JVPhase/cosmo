@@ -12,6 +12,7 @@ export type UpgradesState = Record<UpgradeId, number>;
 
 export type AchievementsState = {
   unlockedIds: AchievementId[];
+  claimedIds: AchievementId[];
 };
 
 export type GameState = {
@@ -38,7 +39,7 @@ export type GameStateInit = {
   upgrades?: Partial<UpgradesState>;
   unlockedPlanetIds?: PlanetId[];
   selectedPlanetId?: PlanetId;
-  achievements?: { unlockedIds?: AchievementId[] };
+  achievements?: { unlockedIds?: AchievementId[]; claimedIds?: AchievementId[] };
   metals?: Partial<Record<MetalId, number>>;
   discoveredMetals?: MetalId[];
   fleet?: {

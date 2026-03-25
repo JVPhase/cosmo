@@ -13,12 +13,8 @@ import {
 } from 'react-native';
 import { AnimatedMineEffects } from '../ui/AnimatedMineEffects';
 import { PassiveMiningFx } from '../ui/PassiveMiningFx';
-import { Popup } from '../ui/Popup';
 import { formatNum } from '../game/formatNum';
 import { METALS, type MetalId } from '../game/METALS';
-import { SHIPS } from '../game/SHIPS';
-
-const ironMetal = METALS.find((m) => m.id === 'iron')!;
 import type { PlanetDefinition } from '../game/PLANETS';
 import { getPlayerTitle, xpAtLevelStart, xpForNextLevel } from '../game/PLAYER';
 import type { MetalsState } from '../game/types';
@@ -57,38 +53,15 @@ export type GameScreenProps = {
   playerXP: number;
   levelUpToast: number | null;
   onCloseLevelUpToast: () => void;
-  firstIronToast: boolean;
-  onCloseFirstIronToast: () => void;
   hasAffordableResearch: boolean;
   onOpenResearch: () => void;
   onOpenAchievements: () => void;
   achievementsUnlocked: boolean;
-  achievementsUnlockToast: boolean;
-  onCloseAchievementsUnlockToast: () => void;
-  upgradesUnlockToast: boolean;
-  onCloseUpgradesUnlockToast: () => void;
-  onOpenUpgrades: () => void;
-  currentUnlockToast: {
-    title: string;
-    text: string;
-    image?: number;
-    headerEmoji?: string;
-  } | null;
-  onDismissUnlockToast: () => void;
-  firstShipToast: boolean;
-  onCloseFirstShipToast: () => void;
-  shipyardUnlockToast: boolean;
-  onCloseShipyardUnlockToast: () => void;
-  onOpenShipyard: () => void;
-  planetUnlockToast: {
-    name: string;
-    icon: string;
-    color: string;
-    bonus: number;
-    lore: string;
-  } | null;
-  onClosePlanetUnlockToast: () => void;
-  onOpenPlanets: () => void;
+  hasUnclaimedAchievements: boolean;
+  onOpenClickPowerInfo: () => void;
+  onOpenPassiveRateInfo: () => void;
+  onOpenPlanetBonusInfo: () => void;
+  onOpenIronInfo: () => void;
 };
 
 export function GameScreen({
@@ -108,27 +81,15 @@ export function GameScreen({
   playerXP,
   levelUpToast,
   onCloseLevelUpToast,
-  firstIronToast,
-  onCloseFirstIronToast,
   hasAffordableResearch,
   onOpenResearch,
   onOpenAchievements,
   achievementsUnlocked,
-  achievementsUnlockToast,
-  onCloseAchievementsUnlockToast,
-  upgradesUnlockToast,
-  onCloseUpgradesUnlockToast,
-  onOpenUpgrades,
-  currentUnlockToast,
-  onDismissUnlockToast,
-  firstShipToast,
-  onCloseFirstShipToast,
-  shipyardUnlockToast,
-  onCloseShipyardUnlockToast,
-  onOpenShipyard,
-  planetUnlockToast,
-  onClosePlanetUnlockToast,
-  onOpenPlanets
+  hasUnclaimedAchievements,
+  onOpenClickPowerInfo,
+  onOpenPassiveRateInfo,
+  onOpenPlanetBonusInfo,
+  onOpenIronInfo
 }: GameScreenProps) {
   const xpStart = xpAtLevelStart(playerLevel);
   const xpNext = xpForNextLevel(playerLevel);
@@ -141,10 +102,6 @@ export function GameScreen({
   const [headerHeight, setHeaderHeight] = useState(0);
   const onHeaderLayout = (e: LayoutChangeEvent) =>
     setHeaderHeight(e.nativeEvent.layout.height);
-  const [ironInfoOpen, setIronInfoOpen] = useState(false);
-  const [clickPowerInfoOpen, setClickPowerInfoOpen] = useState(false);
-  const [passiveRateInfoOpen, setPassiveRateInfoOpen] = useState(false);
-  const [planetBonusInfoOpen, setPlanetBonusInfoOpen] = useState(false);
   const [showClickHint, setShowClickHint] = useState(true);
   const miningPlayAreaRef = useRef<View>(null);
   const lastClickRef = useRef<number | null>(null);
@@ -339,7 +296,7 @@ export function GameScreen({
 
         <View style={styles.statsRow}>
           <Pressable
-            onPress={() => setClickPowerInfoOpen(true)}
+            onPress={onOpenClickPowerInfo}
             style={[
               styles.statBox,
               {
@@ -353,7 +310,7 @@ export function GameScreen({
             >{`+${clickPower < 1000 ? clickPower.toFixed(2) : formatNum(clickPower)}/клик`}</Text>
           </Pressable>
           <Pressable
-            onPress={() => setPassiveRateInfoOpen(true)}
+            onPress={onOpenPassiveRateInfo}
             style={[
               styles.statBox,
               {
@@ -367,7 +324,7 @@ export function GameScreen({
             >{`${formatNum(passiveRate)}/сек`}</Text>
           </Pressable>
           <Pressable
-            onPress={() => setPlanetBonusInfoOpen(true)}
+            onPress={onOpenPlanetBonusInfo}
             style={[
               styles.statBox,
               {
@@ -389,7 +346,7 @@ export function GameScreen({
               key={m.id}
               style={styles.metalItem}
               onPress={
-                m.id === 'iron' ? () => setIronInfoOpen(true) : undefined
+                m.id === 'iron' ? onOpenIronInfo : undefined
               }
             >
               <Image
@@ -436,6 +393,9 @@ export function GameScreen({
               ]}
             >
               <Text style={styles.floatingBtnIcon}>🏆</Text>
+              {hasUnclaimedAchievements && (
+                <View style={styles.floatingBtnBadge} />
+              )}
             </Pressable>
           )}
         </View>
@@ -542,133 +502,6 @@ export function GameScreen({
           })}
         </View>
       </View>
-
-      <Popup
-        visible={firstIronToast}
-        title="◈ ПЕРВАЯ НАХОДКА · КЛЕРК-7 ◈"
-        onClose={onCloseFirstIronToast}
-        image={ironMetal.image}
-        text={
-          'Зафиксирован первый образец Железа™! За эту выдающуюся находку вам полагается премия — после заполнения форм ЖЛ-1 по ЖЛ-83, нотариально заверенного снимка астероида и справки с предыдущего места работы. P.S. Этот металл может пригодиться. Возможно.'
-        }
-        clerk
-      />
-
-      <Popup
-        visible={achievementsUnlockToast}
-        title="◈ СИСТЕМА ДОСТИЖЕНИЙ · КЛЕРК-7 ◈"
-        onClose={onCloseAchievementsUnlockToast}
-        text={
-          'Хочу вас подбодрить. Серьёзно. Поэтому внедряю систему достижений — специально для вас.\n\nКаждое достижение будет официально зафиксировано в личном деле. Форма ДСТ-1 уже направлена в архив в трёх экземплярах.\n\nТак держать, сотрудник №4,829,441. Вы справляетесь. Почти.'
-        }
-        clerk
-        headerEmoji="🏆"
-        actionLabel="ОТКРЫТЬ ДОСТИЖЕНИЯ"
-        onAction={onOpenAchievements}
-      />
-
-      <Popup
-        visible={upgradesUnlockToast}
-        title="◈ АПГРЕЙДЫ ДОСТУПНЫ · КЛЕРК-7 ◈"
-        onClose={onCloseUpgradesUnlockToast}
-        text={
-          'Поздравляю — у вас достаточно энергии для первого улучшения оборудования!\n\nАпгрейды повышают мощность добычи и пассивный доход. Настоятельно рекомендую вкладывать всё, что есть.\n\nФорма АПГ-1 «Заявка на улучшение» заполнена автоматически. Можете не благодарить.'
-        }
-        clerk
-        headerEmoji="⚡"
-        actionLabel="ОТКРЫТЬ АПГРЕЙДЫ"
-        onAction={onOpenUpgrades}
-      />
-
-      <Popup
-        visible={clickPowerInfoOpen}
-        title="◈ МОЩНОСТЬ КЛИКА · КЛЕРК-7 ◈"
-        onClose={() => setClickPowerInfoOpen(false)}
-        headerEmoji="⛏️"
-        text={`Мощность клика — количество энергии, добываемой за одно нажатие на планету.\n\nСейчас: +${clickPower < 1000 ? clickPower.toFixed(2) : formatNum(clickPower)} за клик.\n\nУвеличивается через улучшения во вкладке «АПГР.». Чем выше мощность — тем больше энергии и металлов вы получаете с каждого удара.`}
-        clerk
-      />
-
-      <Popup
-        visible={passiveRateInfoOpen}
-        title="◈ ПАССИВНЫЙ ДОХОД · КЛЕРК-7 ◈"
-        onClose={() => setPassiveRateInfoOpen(false)}
-        headerEmoji="⚡"
-        text={`Пассивный доход — энергия, накапливаемая автоматически каждую секунду без кликов.\n\nСейчас: ${formatNum(passiveRate)}/сек.\n\nУвеличивается через улучшения с дроном во вкладке «АПГР.». Пока вы спите — дроны работают. По регламенту МММРДР, дроны не устают. Их чувства по этому поводу не изучались.`}
-        clerk
-      />
-
-      <Popup
-        visible={planetBonusInfoOpen}
-        title="◈ БОНУС ПЛАНЕТЫ · КЛЕРК-7 ◈"
-        onClose={() => setPlanetBonusInfoOpen(false)}
-        headerEmoji={`×${planet.bonus}`}
-        headerEmojiStyle={{ color: planet.color }}
-        text={`Бонус планеты — множитель добычи металлов на текущей локации.\n\nСейчас: ×${planet.bonus} на планете ${planet.name}.\n\nКаждая планета имеет свой бонус к выпадению металлов. Более далёкие планеты дают более высокий множитель. Чтобы разблокировать их — победите охраняющего пришельца во вкладке «БОЙ».`}
-        clerk
-      />
-
-      <Popup
-        visible={ironInfoOpen}
-        title="◈ ЖЕЛЕЗО™ · КЛЕРК-7 ◈"
-        onClose={() => setIronInfoOpen(false)}
-        image={ironMetal.image}
-        text={
-          'Железо — базовый промышленный металл. Добывайте его как можно больше.\n\nПо регламенту МММРДР, минимальная норма сбора не установлена. Это не значит, что её нет — просто форма МН-2 «Установление нормы» находится на согласовании с 2341 года.\n\nВывод: добывайте. Много. Пока не спросили.'
-        }
-        clerk
-      />
-
-      <Popup
-        visible={!!currentUnlockToast}
-        title={currentUnlockToast?.title ?? ''}
-        onClose={onDismissUnlockToast}
-        image={currentUnlockToast?.image}
-        text={currentUnlockToast?.text ?? ''}
-        headerEmoji={currentUnlockToast?.headerEmoji}
-        clerk
-      />
-
-      <Popup
-        visible={firstShipToast}
-        title="◈ ПЕРВЫЙ КОРАБЛЬ · КЛЕРК-7 ◈"
-        onClose={onCloseFirstShipToast}
-        image={SHIPS[0].image}
-        text={
-          'Поздравляю с постройкой первого корабля!\n\nОднако для навигации необходимы данные из реестра МММРДР. Министерство готово их предоставить — как только вы выйдете на связь. Для этого потребуется 10 000 единиц энергии. Форма НВГ-1 «Запрос навигационных данных» будет заполнена автоматически.'
-        }
-        clerk
-        headerEmoji="🚀"
-      />
-
-      <Popup
-        visible={shipyardUnlockToast}
-        title="◈ ВЕРФЬ РАЗБЛОКИРОВАНА · КЛЕРК-7 ◈"
-        onClose={onCloseShipyardUnlockToast}
-        headerEmoji="🛠️"
-        text={
-          'У вас достаточно железа для постройки первого корабля!\n\nПерейдите во вкладку «ВЕРФЬ» — там можно строить корабли, устанавливать пушки и отправлять флот в экспедиции за металлами.\n\nМинистерство судостроения уведомлено. Форма СТР-1 «Разрешение на строительство» находится на рассмотрении с 2374 года. Стройте пока никто не заметил.'
-        }
-        clerk
-        actionLabel="ОТКРЫТЬ ВЕРФЬ"
-        onAction={onOpenShipyard}
-      />
-
-      <Popup
-        visible={!!planetUnlockToast}
-        title="◈ НОВАЯ ПЛАНЕТА · КЛЕРК-7 ◈"
-        onClose={onClosePlanetUnlockToast}
-        headerEmoji={planetUnlockToast?.icon}
-        headerEmojiStyle={{ color: planetUnlockToast?.color }}
-        text={
-          planetUnlockToast
-            ? `Планета ${planetUnlockToast.name} разблокирована!\n\nБонус к добыче: ×${planetUnlockToast.bonus}.\n\n${planetUnlockToast.lore}`
-            : ''
-        }
-        clerk
-        actionLabel="ОТКРЫТЬ ПЛАНЕТЫ"
-        onAction={onOpenPlanets}
-      />
 
       {/* Clerk bubble */}
       {clerkMessage ? (

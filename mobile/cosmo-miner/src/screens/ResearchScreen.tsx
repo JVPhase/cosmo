@@ -213,6 +213,11 @@ export function ResearchScreen({
 
   const nodes = RESEARCH.filter((r) => r.branch === branch);
 
+  const branchHasAvailable = (b: ResearchBranch) =>
+    RESEARCH.filter((r) => r.branch === b).some(
+      (r) => getNodeState(r, playerLevel, energy, research) === 'available'
+    );
+
   return (
     <View style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content}>
@@ -251,6 +256,7 @@ export function ResearchScreen({
             >
               ⛏️ ДОБЫЧА
             </Text>
+            {branchHasAvailable('mining') && <View style={styles.branchTabBadge} />}
           </Pressable>
           {battleUnlocked && (
             <Pressable
@@ -268,6 +274,7 @@ export function ResearchScreen({
               >
                 ⚔️ БОЙ
               </Text>
+              {branchHasAvailable('battle') && <View style={styles.branchTabBadge} />}
             </Pressable>
           )}
         </View>
@@ -380,6 +387,15 @@ const styles = StyleSheet.create({
   },
   branchTabTextActive: {
     color: '#00d4ff'
+  },
+  branchTabBadge: {
+    position: 'absolute',
+    top: 7,
+    right: '25%',
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: '#ff3b30'
   },
   // Node card
   card: {

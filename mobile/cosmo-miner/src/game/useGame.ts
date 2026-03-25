@@ -87,6 +87,7 @@ function computeBaseShipDamage(fleet: GameState['fleet']): number {
 }
 
 const BASE_PLANET_ID = PLANETS[0].id;
+export const TIMELY_CLAIM_WINDOW_MS = 10 * 60 * 1000; // 10 min timely claim window
 
 function mergeDiscovered(
   current: MetalId[],
@@ -107,7 +108,7 @@ export function useGame(initial?: GameStateInit) {
       upgrades: createDefaultUpgradesState(),
       unlockedPlanetIds: [BASE_PLANET_ID],
       selectedPlanetId: BASE_PLANET_ID,
-      achievements: { unlockedIds: [] },
+      achievements: { unlockedIds: [], claimedIds: [] },
       metals: createDefaultMetalsState(),
       discoveredMetals: [],
       fleet: createDefaultFleetState(),
@@ -163,7 +164,10 @@ export function useGame(initial?: GameStateInit) {
       upgrades,
       unlockedPlanetIds: Array.from(unlockedSet),
       selectedPlanetId: initial?.selectedPlanetId ?? BASE_PLANET_ID,
-      achievements: { unlockedIds: initial?.achievements?.unlockedIds ?? [] },
+      achievements: {
+        unlockedIds: initial?.achievements?.unlockedIds ?? [],
+        claimedIds: initial?.achievements?.claimedIds ?? []
+      },
       metals,
       discoveredMetals,
       fleet,
@@ -255,6 +259,13 @@ export function useGame(initial?: GameStateInit) {
         SHIPS[0].baseCost
       )
   );
+
+  // Reactor boost — x5 clicks for the first 10 seconds of each session
+  const [reactorBoostActive, setReactorBoostActive] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setReactorBoostActive(false), 10_000);
+    return () => clearTimeout(t);
+  }, []);
 
   const closeClerk = useCallback(() => setClerkMessage(null), []);
   const closeAchievementToast = useCallback(
@@ -380,7 +391,10 @@ export function useGame(initial?: GameStateInit) {
 
   // Upgrades unlock toast (at 50 energy earned)
   useEffect(() => {
-    if (!upgradesUnlockShownRef.current && state.totalEarned >= 50) {
+    if (
+      !upgradesUnlockShownRef.current &&
+      state.totalEarned >= UPGRADES[0].baseCost
+    ) {
       upgradesUnlockShownRef.current = true;
       setUpgradesUnlockToast(true);
     }
@@ -409,7 +423,7 @@ export function useGame(initial?: GameStateInit) {
       enqueue('cannon_titan', {
         title: '◈ НОВОЕ ВООРУЖЕНИЕ · КЛЕРК-7 ◈',
         text: 'Титановая пушка разблокирована! +20 урона за уровень.\n\nКомиссия по вооружению одобрила её в 2381 году. Комиссия не пережила испытаний. Новую — на всякий случай не собирали. Стреляйте.',
-        headerEmoji: '⚙️'
+        image: CANNONS.find((c) => c.id === 'titan')!.image
       });
     }
 
@@ -427,7 +441,7 @@ export function useGame(initial?: GameStateInit) {
       enqueue('cannon_iridium', {
         title: '◈ НОВОЕ ВООРУЖЕНИЕ · КЛЕРК-7 ◈',
         text: 'Иридиевая пушка разблокирована! +60 урона за уровень.\n\nИридиевый сплав нестабилен при температуре ниже 4000К. Вы летите к звезде — так что всё в порядке. Относительно.',
-        headerEmoji: '🔮'
+        image: CANNONS.find((c) => c.id === 'iridium')!.image
       });
     }
 
@@ -440,7 +454,7 @@ export function useGame(initial?: GameStateInit) {
       enqueue('cannon_alloy', {
         title: '◈ НОВОЕ ВООРУЖЕНИЕ · КЛЕРК-7 ◈',
         text: 'Сплавная пушка разблокирована! +200 урона за уровень.\n\nЗасекречена в 14 галактиках. Разработана отделом, которого официально не существует. Похоже, «Отдел Б» снова отличился. Не спрашивайте — это безопаснее.',
-        headerEmoji: '💥'
+        image: CANNONS.find((c) => c.id === 'alloy')!.image
       });
     }
   }, [state.metals.iron, state.metals.titan, state.metals.iridium]);
@@ -475,6 +489,7 @@ export function useGame(initial?: GameStateInit) {
       return {
         ...prev,
         achievements: {
+          ...prev.achievements,
           unlockedIds: [
             ...prev.achievements.unlockedIds,
             ...newlyUnlocked.map((x) => x.id)
@@ -544,7 +559,7 @@ export function useGame(initial?: GameStateInit) {
   // ── ACTIONS ──
 
   const mineClick = useCallback(() => {
-    const add = derived.clickPower;
+    const add = derived.clickPower * (reactorBoostActive ? 5 : 1);
     setState((prev) => {
       const newTotalEarned = prev.totalEarned + add;
       const metalDrop =
@@ -567,7 +582,30 @@ export function useGame(initial?: GameStateInit) {
         playerXP: prev.playerXP + 1
       };
     });
-  }, [derived.clickPower, derived.metalDropBonus, derived.planetBonus]);
+  }, [
+    derived.clickPower,
+    derived.metalDropBonus,
+    derived.planetBonus,
+    reactorBoostActive
+  ]);
+
+  const claimAchievement = useCallback((id: AchievementDefinition['id']) => {
+    setState((prev) => {
+      if (!prev.achievements.unlockedIds.includes(id)) return prev;
+      if (prev.achievements.claimedIds.includes(id)) return prev;
+      const def = ACHIEVEMENTS.find((a) => a.id === id);
+      if (!def) return prev;
+      return {
+        ...prev,
+        energy: prev.energy + def.reward,
+        totalEarned: prev.totalEarned + def.reward,
+        achievements: {
+          ...prev.achievements,
+          claimedIds: [...prev.achievements.claimedIds, id]
+        }
+      };
+    });
+  }, []);
 
   const buyUpgrade = useCallback(
     (id: UpgradeId) => {
@@ -795,19 +833,21 @@ export function useGame(initial?: GameStateInit) {
       const exp = prev.expeditions.find((e) => e.shipId === shipId);
       if (!exp || Date.now() < exp.completesAt) return prev;
       const def = getExpeditionById(exp.expeditionId);
-      const sector1Planets = [1, 2, 3, 4, 5];
+      const sector1Planets: PlanetId[] = [1, 2, 3, 4, 5];
       const sector2Unlocked = sector1Planets.every((id) =>
         prev.unlockedPlanetIds.includes(id)
       );
       const metalMultiplier = sector2Unlocked ? 5 : 1;
+      const timely = Date.now() - exp.completesAt <= TIMELY_CLAIM_WINDOW_MS;
+      const timelyMultiplier = timely ? 1.25 : 1;
       const baseRewards = {
         ...createDefaultMetalsState(),
         ...def.metalRewards
       };
       const scaledRewards: typeof baseRewards = {
-        iron: baseRewards.iron * metalMultiplier,
-        titan: baseRewards.titan * metalMultiplier,
-        iridium: baseRewards.iridium * metalMultiplier
+        iron: Math.floor(baseRewards.iron * metalMultiplier * timelyMultiplier),
+        titan: Math.floor(baseRewards.titan * metalMultiplier * timelyMultiplier),
+        iridium: Math.floor(baseRewards.iridium * metalMultiplier * timelyMultiplier)
       };
       const newMetals = addMetals(prev.metals, scaledRewards);
       return {
@@ -856,7 +896,12 @@ export function useGame(initial?: GameStateInit) {
     clearDefeatInfo,
     closeLevelUpToast,
     closeFirstIronToast,
+    reactorBoostActive,
+    hasUnclaimedAchievements: state.achievements.unlockedIds.some(
+      (id) => !state.achievements.claimedIds.includes(id)
+    ),
     mineClick,
+    claimAchievement,
     buyUpgrade,
     buyResearch,
     craftCannon,

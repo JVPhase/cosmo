@@ -58,16 +58,25 @@ export function PassiveMiningFx({ passiveRate, mineColor }: Props) {
       const passive = passiveRef.current;
       const color = mineColorRef.current;
 
-      // Drone angle — both ring and beam use this same value
-      const elapsed = (now - startTimeRef.current) % ORBIT_PERIOD_MS;
-      const angle = (elapsed / ORBIT_PERIOD_MS) * Math.PI * 2 - Math.PI / 2;
+      // Drone angle — orbit speeds up with passiveRate (max 4x faster)
+      const orbitPeriod = passive <= 0
+        ? ORBIT_PERIOD_MS
+        : Math.max(ORBIT_PERIOD_MS / (1 + Math.log10(Math.max(1, passive)) * 0.5), ORBIT_PERIOD_MS / 4);
+      const elapsed = (now - startTimeRef.current) % orbitPeriod;
+      const angle = (elapsed / orbitPeriod) * Math.PI * 2 - Math.PI / 2;
       const dx = CENTER + ORBIT_RADIUS * Math.cos(angle);
       const dy = CENTER + ORBIT_RADIUS * Math.sin(angle);
 
-      // Spawn float particles when passive > 0
-      if (passive > 0 && now - lastSpawnRef.current >= FLOAT_INTERVAL_MS) {
+      // Spawn float particles when passive > 0; frequency scales with passiveRate
+      const spawnInterval = passive <= 0
+        ? Infinity
+        : Math.max(200, FLOAT_INTERVAL_MS / (1 + Math.log10(passive)));
+      if (passive > 0 && now - lastSpawnRef.current >= spawnInterval) {
         lastSpawnRef.current = now;
-        floatsRef.current.push({ born: now, x: CENTER + (Math.random() * 36 - 18) });
+        const burst = passive >= 100 ? 2 : 1;
+        for (let i = 0; i < burst; i++) {
+          floatsRef.current.push({ born: now + i, x: CENTER + (Math.random() * 36 - 18) });
+        }
       }
 
       // Expire old floats
