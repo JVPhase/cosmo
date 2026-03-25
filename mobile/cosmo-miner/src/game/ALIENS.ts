@@ -1,6 +1,10 @@
 import type { ShipId } from "./SHIPS";
 import type { PlanetId } from "./PLANETS";
 
+export type AlienAbility =
+  | { type: 'shield'; intervalMs: number; durationMs: number; damageMultiplier: number }
+  | { type: 'blur'; intervalMs: number; durationMs: number; damageMultiplier: number };
+
 export type AlienRace = {
   planetId: PlanetId;
   name: string;
@@ -10,6 +14,7 @@ export type AlienRace = {
   attackEnergyCost: number;
   xpReward: number;
   lore: string;
+  ability?: AlienAbility;
 };
 
 export const ALIENS: readonly AlienRace[] = [
@@ -33,6 +38,7 @@ export const ALIENS: readonly AlienRace[] = [
     attackEnergyCost: 50_000,
     xpReward: 500,
     lore: "Живут внутри кристаллов. Очень переживают за сохранность породы. Ваше появление расценили как незапланированный аудит.",
+    ability: { type: 'shield', intervalMs: 15_000, durationMs: 3_000, damageMultiplier: 0.5 },
   },
   {
     planetId: 4,
@@ -43,6 +49,7 @@ export const ALIENS: readonly AlienRace[] = [
     attackEnergyCost: 250_000,
     xpReward: 1_500,
     lore: "Полупрозрачные, высокомерные, имеют собственный парламент. Он заседает уже 300 лет без единого решения.",
+    ability: { type: 'blur', intervalMs: 8_000, durationMs: 2_000, damageMultiplier: 0.5 },
   },
   {
     planetId: 5,

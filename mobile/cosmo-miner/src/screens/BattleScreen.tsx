@@ -1,5 +1,5 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   Easing,
@@ -21,7 +21,7 @@ export type BattleScreenProps = {
   timeRemaining: number;
   totalDamage: number;
   defeatInfo: { shipName: string } | null;
-  onAttack: () => void;
+  onAttack: (multiplier?: number) => void;
   onForfeit: () => void;
   onGoToShipyard: () => void;
   onClearDefeat: () => void;
@@ -43,6 +43,24 @@ export function BattleScreen({
   >(undefined);
   const battleHitAreaRef = useRef<View>(null);
   const shakeAnim = useRef(new Animated.Value(0)).current;
+  const vulnPulseAnim = useRef(new Animated.Value(0)).current;
+  const vulnLoopRef = useRef<Animated.CompositeAnimation | null>(null);
+
+  // Battle mechanic state
+  const [vulnOpen, setVulnOpen] = useState(false);
+  const [abilityActive, setAbilityActive] = useState(false);
+  const [comboCount, setComboCount] = useState(0);
+  const [comboBonus, setComboBonus] = useState(false);
+
+  const vulnTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const abilityTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastHitDamageRef = useRef(0);
+
+  const alien = useMemo(
+    () => (battle ? ALIENS.find((a) => a.planetId === battle.planetId) ?? null : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [battle?.planetId]
+  );
 
   const stars = useMemo(
     () =>
@@ -56,6 +74,97 @@ export function BattleScreen({
     []
   );
 
+  // Vulnerability window cycle: 4s closed -> 1.5s open -> repeat
+  useEffect(() => {
+    if (!battle) {
+      if (vulnTimeoutRef.current) clearTimeout(vulnTimeoutRef.current);
+      setVulnOpen(false);
+      return;
+    }
+    let phase = false;
+    const schedule = () => {
+      const delay = phase ? 1500 : 4000;
+      vulnTimeoutRef.current = setTimeout(() => {
+        phase = !phase;
+        setVulnOpen(phase);
+        schedule();
+      }, delay);
+    };
+    schedule();
+    return () => {
+      if (vulnTimeoutRef.current) clearTimeout(vulnTimeoutRef.current);
+      setVulnOpen(false);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [!!battle]);
+
+  // Alien ability cycle
+  useEffect(() => {
+    if (!battle || !alien?.ability) {
+      if (abilityTimeoutRef.current) clearTimeout(abilityTimeoutRef.current);
+      setAbilityActive(false);
+      return;
+    }
+    const { ability } = alien;
+    let active = false;
+    const schedule = () => {
+      const delay = active ? ability.durationMs : ability.intervalMs;
+      abilityTimeoutRef.current = setTimeout(() => {
+        active = !active;
+        setAbilityActive(active);
+        schedule();
+      }, delay);
+    };
+    schedule();
+    return () => {
+      if (abilityTimeoutRef.current) clearTimeout(abilityTimeoutRef.current);
+      setAbilityActive(false);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [!!battle, alien?.ability?.type]);
+
+  // Vulnerability pulse animation
+  useEffect(() => {
+    if (vulnOpen) {
+      vulnLoopRef.current = Animated.loop(
+        Animated.sequence([
+          Animated.timing(vulnPulseAnim, {
+            toValue: 1,
+            duration: 400,
+            useNativeDriver: true,
+            easing: Easing.inOut(Easing.ease)
+          }),
+          Animated.timing(vulnPulseAnim, {
+            toValue: 0.2,
+            duration: 400,
+            useNativeDriver: true,
+            easing: Easing.inOut(Easing.ease)
+          })
+        ])
+      );
+      vulnLoopRef.current.start();
+    } else {
+      vulnLoopRef.current?.stop();
+      vulnPulseAnim.setValue(0);
+    }
+  }, [vulnOpen, vulnPulseAnim]);
+
+  // Reset combo when battle ends
+  useEffect(() => {
+    if (!battle) {
+      setComboCount(0);
+      setComboBonus(false);
+    }
+  }, [!!battle]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Effective damage multiplier
+  const effectiveMultiplier =
+    (vulnOpen ? 3 : 1) *
+    (abilityActive && alien?.ability ? alien.ability.damageMultiplier : 1) *
+    (comboBonus ? 1.5 : 1);
+
+  const effectiveDamage = Math.floor(totalDamage * effectiveMultiplier);
+
   const handleAttack = (e: GestureResponderEvent) => {
     const native = e.nativeEvent as unknown as {
       locationX?: number;
@@ -64,9 +173,34 @@ export function BattleScreen({
       pageY?: number;
     };
 
+    // Compute multiplier from current state
+    let multiplier = 1;
+    if (vulnOpen) multiplier *= 3;
+    if (abilityActive && alien?.ability) multiplier *= alien.ability.damageMultiplier;
+    const usingComboBonus = comboBonus;
+    if (usingComboBonus) {
+      multiplier *= 1.5;
+      setComboBonus(false);
+    }
+
+    // Update combo counter
+    if (vulnOpen) {
+      setComboCount((c) => {
+        const next = c + 1;
+        if (next >= 3) {
+          setComboBonus(true);
+          return 0;
+        }
+        return next;
+      });
+    } else {
+      setComboCount(0);
+    }
+
     const commitHit = (x: number, y: number) => {
+      lastHitDamageRef.current = Math.floor(totalDamage * multiplier);
       setHitOrigin({ x, y });
-      onAttack();
+      onAttack(multiplier);
       setHitTrigger((t) => t + 1);
     };
 
@@ -196,11 +330,13 @@ export function BattleScreen({
   }
 
   // Active battle
-  const alien = ALIENS.find((a) => a.planetId === battle!.planetId);
   const planet = PLANETS.find((p) => p.id === battle!.planetId);
   const hpPercent = battle!.maxHP > 0 ? battle!.currentHP / battle!.maxHP : 0;
   const hpColor =
     hpPercent > 0.6 ? '#ff4444' : hpPercent > 0.3 ? '#ff9900' : '#ffdd00';
+
+  const fmtMult = (m: number) =>
+    m % 1 === 0 ? `×${m}` : `×${m.toFixed(1)}`;
 
   return (
     <LinearGradient
@@ -265,6 +401,22 @@ export function BattleScreen({
 
         <View style={styles.statsRow}>
           <Text style={styles.statChip}>⚔️ {totalDamage}/клик</Text>
+          {effectiveMultiplier !== 1 && (
+            <Text style={[
+              styles.statChip,
+              { color: effectiveMultiplier > 1 ? '#ffd700' : '#ff8888' }
+            ]}>
+              = {effectiveDamage.toLocaleString()} {fmtMult(effectiveMultiplier)}
+            </Text>
+          )}
+          {comboCount > 0 && (
+            <Text style={[styles.statChip, { color: '#ff9900' }]}>
+              ⚡ {comboCount}/3
+            </Text>
+          )}
+          {comboBonus && (
+            <Text style={[styles.statChip, { color: '#ffd700' }]}>✨ +50%</Text>
+          )}
         </View>
       </View>
 
@@ -282,11 +434,43 @@ export function BattleScreen({
           style={styles.battleHitArea}
           collapsable={false}
         >
+          {/* Vulnerability ring */}
+          {vulnOpen && (
+            <Animated.View
+              style={[styles.vulnRing, { opacity: vulnPulseAnim }]}
+              pointerEvents="none"
+            />
+          )}
+
+          {/* Vulnerability badge */}
+          {vulnOpen && (
+            <Animated.View
+              style={[styles.vulnBadge, { opacity: vulnPulseAnim }]}
+              pointerEvents="none"
+            >
+              <Text style={styles.vulnBadgeText}>⚡ УЯЗВИМ ×3</Text>
+            </Animated.View>
+          )}
+
+          {/* Alien ability badge */}
+          {abilityActive && alien?.ability && (
+            <View style={styles.abilityBadge} pointerEvents="none">
+              <Text style={styles.abilityBadgeText}>
+                {alien.ability.type === 'shield' ? '🛡 ЩИТОВАН' : '👻 РАЗМЫТ'} ×0.5
+              </Text>
+            </View>
+          )}
+
           <AnimatedHitEffects
             trigger={hitTrigger}
             origin={hitOrigin}
-            damage={totalDamage}
-            style={styles.rocketBtn}
+            damage={lastHitDamageRef.current || effectiveDamage}
+            style={[
+              styles.rocketBtn,
+              vulnOpen && styles.rocketBtnVuln,
+              abilityActive && styles.rocketBtnAbility,
+              comboBonus && styles.rocketBtnCombo,
+            ]}
           >
             <Pressable
               onPressIn={handleAttack}
@@ -300,7 +484,10 @@ export function BattleScreen({
                 {alien?.image ? (
                   <Image
                     source={alien.image}
-                    style={styles.alienShipImage}
+                    style={[
+                      styles.alienShipImage,
+                      abilityActive && alien?.ability?.type === 'blur' && styles.alienBlurred
+                    ]}
                     resizeMode="contain"
                   />
                 ) : (
@@ -312,7 +499,9 @@ export function BattleScreen({
           </AnimatedHitEffects>
         </View>
 
-        <Text style={styles.hint}>◈ ЖМИТЕ ДЛЯ АТАКИ ◈</Text>
+        <Text style={styles.hint}>
+          {vulnOpen ? '⚡ УЯЗВИМ — АТАКУЙТЕ! ⚡' : '◈ ЖМИТЕ ДЛЯ АТАКИ ◈'}
+        </Text>
       </View>
     </LinearGradient>
   );
@@ -420,7 +609,7 @@ const styles = StyleSheet.create({
     marginBottom: 8
   },
   hpBarFill: { height: '100%', borderRadius: 6 },
-  statsRow: { flexDirection: 'row', gap: 10 },
+  statsRow: { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
   statChip: { fontSize: 9, color: 'rgba(255,150,150,0.7)', fontWeight: '700' },
   forfeitRow: {
     alignItems: 'flex-end',
@@ -467,6 +656,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,80,80,0.3)'
   },
+  rocketBtnVuln: {
+    borderColor: 'rgba(255,215,0,0.6)',
+    backgroundColor: 'rgba(255,215,0,0.06)',
+  },
+  rocketBtnAbility: {
+    borderColor: 'rgba(100,150,255,0.5)',
+    backgroundColor: 'rgba(80,120,255,0.06)',
+  },
+  rocketBtnCombo: {
+    borderColor: 'rgba(255,180,0,0.8)',
+  },
   rocketPressable: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -474,6 +674,7 @@ const styles = StyleSheet.create({
   },
   rocketEmoji: { fontSize: 108 },
   alienShipImage: { width: 150, height: 150 },
+  alienBlurred: { opacity: 0.35 },
   clickHint: {
     marginTop: 8,
     fontSize: 10,
@@ -488,5 +689,46 @@ const styles = StyleSheet.create({
     color: 'rgba(255,80,80,0.25)',
     letterSpacing: 3,
     fontWeight: '700'
-  }
+  },
+  vulnRing: {
+    position: 'absolute',
+    width: 272,
+    height: 272,
+    borderRadius: 136,
+    borderWidth: 3,
+    borderColor: '#ffd700',
+    backgroundColor: 'rgba(255,215,0,0.04)',
+  },
+  vulnBadge: {
+    position: 'absolute',
+    top: '15%',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,215,0,0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,215,0,0.5)',
+  },
+  vulnBadgeText: {
+    fontSize: 10,
+    color: '#ffd700',
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
+  abilityBadge: {
+    position: 'absolute',
+    bottom: '15%',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: 'rgba(100,150,255,0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(100,150,255,0.5)',
+  },
+  abilityBadgeText: {
+    fontSize: 10,
+    color: '#88aaff',
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
 });

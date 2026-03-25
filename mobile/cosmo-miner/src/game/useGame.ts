@@ -753,11 +753,11 @@ export function useGame(initial?: GameStateInit) {
     [derived.battleTimerMs]
   );
 
-  const attackBattle = useCallback(() => {
+  const attackBattle = useCallback((multiplier: number = 1) => {
     setState((prev) => {
       if (!prev.battle) return prev;
       const damage = Math.floor(
-        computeBaseShipDamage(prev.fleet) * derived.damageResearchMultiplier
+        computeBaseShipDamage(prev.fleet) * derived.damageResearchMultiplier * multiplier
       );
       if (damage <= 0) return prev;
       const newHP = Math.max(0, prev.battle.currentHP - damage);
