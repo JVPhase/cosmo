@@ -15,6 +15,7 @@ import { ALIENS } from '../game/ALIENS';
 import { PLANETS } from '../game/PLANETS';
 import type { BattleState } from '../game/types';
 import { AnimatedHitEffects } from '../ui/AnimatedHitEffects';
+import { SkillCheckRing } from '../ui/SkillCheckRing';
 
 export type BattleScreenProps = {
   battle: BattleState | null;
@@ -22,6 +23,7 @@ export type BattleScreenProps = {
   totalDamage: number;
   defeatInfo: { shipName: string } | null;
   onAttack: (multiplier?: number) => void;
+  onReflect: (penaltyMs?: number) => void;
   onForfeit: () => void;
   onGoToShipyard: () => void;
   onClearDefeat: () => void;
@@ -33,6 +35,7 @@ export function BattleScreen({
   totalDamage,
   defeatInfo,
   onAttack,
+  onReflect,
   onForfeit,
   onGoToShipyard,
   onClearDefeat
@@ -43,17 +46,18 @@ export function BattleScreen({
   >(undefined);
   const battleHitAreaRef = useRef<View>(null);
   const shakeAnim = useRef(new Animated.Value(0)).current;
-  const vulnPulseAnim = useRef(new Animated.Value(0)).current;
-  const vulnLoopRef = useRef<Animated.CompositeAnimation | null>(null);
 
-  // Battle mechanic state
-  const [vulnOpen, setVulnOpen] = useState(false);
   const [abilityActive, setAbilityActive] = useState(false);
-  const [comboCount, setComboCount] = useState(0);
-  const [comboBonus, setComboBonus] = useState(false);
-
-  const vulnTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [shieldWarning, setShieldWarning] = useState(false);
+  const [qteAttempted, setQteAttempted] = useState(false);
+  const [successZoneStart, setSuccessZoneStart] = useState(0);
+  const [opportunityActive, setOpportunityActive] = useState(false);
   const abilityTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const warnTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const opportunityTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const breakShieldEarlyRef = useRef<(() => void) | null>(null);
+  const warnAnim = useRef(new Animated.Value(1)).current;
+  const warnAnimRef = useRef<Animated.CompositeAnimation | null>(null);
   const lastHitDamageRef = useRef(0);
 
   const alien = useMemo(
@@ -74,96 +78,101 @@ export function BattleScreen({
     []
   );
 
-  // Vulnerability window cycle: 4s closed -> 1.5s open -> repeat
-  useEffect(() => {
-    if (!battle) {
-      if (vulnTimeoutRef.current) clearTimeout(vulnTimeoutRef.current);
-      setVulnOpen(false);
-      return;
-    }
-    let phase = false;
-    const schedule = () => {
-      const delay = phase ? 1500 : 4000;
-      vulnTimeoutRef.current = setTimeout(() => {
-        phase = !phase;
-        setVulnOpen(phase);
-        schedule();
-      }, delay);
-    };
-    schedule();
-    return () => {
-      if (vulnTimeoutRef.current) clearTimeout(vulnTimeoutRef.current);
-      setVulnOpen(false);
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [!!battle]);
-
   // Alien ability cycle
   useEffect(() => {
     if (!battle || !alien?.ability) {
       if (abilityTimeoutRef.current) clearTimeout(abilityTimeoutRef.current);
+      if (warnTimeoutRef.current) clearTimeout(warnTimeoutRef.current);
       setAbilityActive(false);
+      setShieldWarning(false);
       return;
     }
     const { ability } = alien;
+    const WARN_MS = 2000;
     let active = false;
     const schedule = () => {
       const delay = active ? ability.durationMs : ability.intervalMs;
+      // Schedule warning 2s before shield activates (only during idle phase)
+      if (!active && delay > WARN_MS) {
+        warnTimeoutRef.current = setTimeout(() => setShieldWarning(true), delay - WARN_MS);
+      }
       abilityTimeoutRef.current = setTimeout(() => {
         active = !active;
+        setShieldWarning(false);
         setAbilityActive(active);
         schedule();
       }, delay);
     };
+    // Allow external early termination of the shield
+    breakShieldEarlyRef.current = () => {
+      if (abilityTimeoutRef.current) clearTimeout(abilityTimeoutRef.current);
+      if (warnTimeoutRef.current) clearTimeout(warnTimeoutRef.current);
+      active = false;
+      setAbilityActive(false);
+      setShieldWarning(false);
+      schedule();
+    };
     schedule();
     return () => {
       if (abilityTimeoutRef.current) clearTimeout(abilityTimeoutRef.current);
+      if (warnTimeoutRef.current) clearTimeout(warnTimeoutRef.current);
+      if (opportunityTimeoutRef.current) clearTimeout(opportunityTimeoutRef.current);
       setAbilityActive(false);
+      setShieldWarning(false);
+      setOpportunityActive(false);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [!!battle, alien?.ability?.type]);
 
-  // Vulnerability pulse animation
+  // Accelerating blink when shield is about to activate
   useEffect(() => {
-    if (vulnOpen) {
-      vulnLoopRef.current = Animated.loop(
-        Animated.sequence([
-          Animated.timing(vulnPulseAnim, {
-            toValue: 1,
-            duration: 400,
-            useNativeDriver: true,
-            easing: Easing.inOut(Easing.ease)
-          }),
-          Animated.timing(vulnPulseAnim, {
-            toValue: 0.2,
-            duration: 400,
-            useNativeDriver: true,
-            easing: Easing.inOut(Easing.ease)
-          })
-        ])
-      );
-      vulnLoopRef.current.start();
+    if (shieldWarning) {
+      const blink = (dur: number) => [
+        Animated.timing(warnAnim, { toValue: 0.1, duration: dur / 2, useNativeDriver: true, easing: Easing.linear }),
+        Animated.timing(warnAnim, { toValue: 1,   duration: dur / 2, useNativeDriver: true, easing: Easing.linear }),
+      ];
+      warnAnimRef.current = Animated.sequence([
+        // slow   ~600ms: 2 × 300ms
+        ...blink(300), ...blink(300),
+        // medium ~600ms: 3 × 200ms
+        ...blink(200), ...blink(200), ...blink(200),
+        // fast   ~480ms: 6 × 80ms
+        ...blink(80), ...blink(80), ...blink(80), ...blink(80), ...blink(80), ...blink(80),
+        // turbo  ~240ms: 6 × 40ms
+        ...blink(40), ...blink(40), ...blink(40), ...blink(40), ...blink(40), ...blink(40),
+      ]);
+      warnAnimRef.current.start();
     } else {
-      vulnLoopRef.current?.stop();
-      vulnPulseAnim.setValue(0);
+      warnAnimRef.current?.stop();
+      warnAnim.setValue(1);
     }
-  }, [vulnOpen, vulnPulseAnim]);
+  }, [shieldWarning, warnAnim]);
 
-  // Reset combo when battle ends
+  // Randomise success zone position and reset QTE on each shield activation
   useEffect(() => {
-    if (!battle) {
-      setComboCount(0);
-      setComboBonus(false);
+    if (abilityActive) {
+      setSuccessZoneStart(Math.floor(Math.random() * 360));
+      setQteAttempted(false);
     }
-  }, [!!battle]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [abilityActive]);
 
-  // Effective damage multiplier
-  const effectiveMultiplier =
-    (vulnOpen ? 3 : 1) *
-    (abilityActive && alien?.ability ? alien.ability.damageMultiplier : 1) *
-    (comboBonus ? 1.5 : 1);
+  const handleQteSuccess = () => {
+    setQteAttempted(true);
+    breakShieldEarlyRef.current?.();
+    // Open opportunity window for the duration the shield would have lasted
+    const durationMs = alien?.ability?.durationMs ?? 3000;
+    setOpportunityActive(true);
+    if (opportunityTimeoutRef.current) clearTimeout(opportunityTimeoutRef.current);
+    opportunityTimeoutRef.current = setTimeout(() => setOpportunityActive(false), durationMs);
+  };
 
-  const effectiveDamage = Math.floor(totalDamage * effectiveMultiplier);
+  const handleQteFail = () => {
+    setQteAttempted(true);
+    onReflect(2000); // -2s за провал QTE
+  };
+
+  const attackMultiplier = opportunityActive ? 2 : 1;
+  const effectiveDamage = abilityActive ? 0 : Math.floor(totalDamage * attackMultiplier);
 
   const handleAttack = (e: GestureResponderEvent) => {
     const native = e.nativeEvent as unknown as {
@@ -173,34 +182,34 @@ export function BattleScreen({
       pageY?: number;
     };
 
-    // Compute multiplier from current state
-    let multiplier = 1;
-    if (vulnOpen) multiplier *= 3;
-    if (abilityActive && alien?.ability) multiplier *= alien.ability.damageMultiplier;
-    const usingComboBonus = comboBonus;
-    if (usingComboBonus) {
-      multiplier *= 1.5;
-      setComboBonus(false);
-    }
-
-    // Update combo counter
-    if (vulnOpen) {
-      setComboCount((c) => {
-        const next = c + 1;
-        if (next >= 3) {
-          setComboBonus(true);
-          return 0;
-        }
-        return next;
-      });
-    } else {
-      setComboCount(0);
+    // After failed QTE — clicks still penalise timer and deal half damage
+    if (abilityActive && qteAttempted) {
+      onReflect(1000); // -1s
+      const commitReflectHit = (x: number, y: number) => {
+        lastHitDamageRef.current = Math.floor(totalDamage * 0.5);
+        setHitOrigin({ x, y });
+        onAttack(0.5);
+        setHitTrigger((t) => t + 1);
+      };
+      if (Platform.OS === 'web' && battleHitAreaRef.current) {
+        battleHitAreaRef.current.measureInWindow((mx, my) => {
+          commitReflectHit((native.pageX ?? 0) - mx, (native.pageY ?? 0) - my);
+        });
+      } else {
+        commitReflectHit(native.locationX ?? 80, native.locationY ?? 80);
+      }
+      Animated.sequence([
+        Animated.timing(shakeAnim, { toValue: -10, duration: 50, useNativeDriver: true, easing: Easing.linear }),
+        Animated.timing(shakeAnim, { toValue: 10, duration: 50, useNativeDriver: true, easing: Easing.linear }),
+        Animated.timing(shakeAnim, { toValue: 0, duration: 60, useNativeDriver: true, easing: Easing.linear }),
+      ]).start();
+      return;
     }
 
     const commitHit = (x: number, y: number) => {
-      lastHitDamageRef.current = Math.floor(totalDamage * multiplier);
+      lastHitDamageRef.current = Math.floor(totalDamage * attackMultiplier);
       setHitOrigin({ x, y });
-      onAttack(multiplier);
+      onAttack(attackMultiplier);
       setHitTrigger((t) => t + 1);
     };
 
@@ -215,30 +224,10 @@ export function BattleScreen({
       commitHit(native.locationX ?? 80, native.locationY ?? 80);
     }
     Animated.sequence([
-      Animated.timing(shakeAnim, {
-        toValue: 8,
-        duration: 50,
-        useNativeDriver: true,
-        easing: Easing.linear
-      }),
-      Animated.timing(shakeAnim, {
-        toValue: -8,
-        duration: 50,
-        useNativeDriver: true,
-        easing: Easing.linear
-      }),
-      Animated.timing(shakeAnim, {
-        toValue: 4,
-        duration: 50,
-        useNativeDriver: true,
-        easing: Easing.linear
-      }),
-      Animated.timing(shakeAnim, {
-        toValue: 0,
-        duration: 50,
-        useNativeDriver: true,
-        easing: Easing.linear
-      })
+      Animated.timing(shakeAnim, { toValue: 8, duration: 50, useNativeDriver: true, easing: Easing.linear }),
+      Animated.timing(shakeAnim, { toValue: -8, duration: 50, useNativeDriver: true, easing: Easing.linear }),
+      Animated.timing(shakeAnim, { toValue: 4, duration: 50, useNativeDriver: true, easing: Easing.linear }),
+      Animated.timing(shakeAnim, { toValue: 0, duration: 50, useNativeDriver: true, easing: Easing.linear })
     ]).start();
   };
 
@@ -335,9 +324,6 @@ export function BattleScreen({
   const hpColor =
     hpPercent > 0.6 ? '#ff4444' : hpPercent > 0.3 ? '#ff9900' : '#ffdd00';
 
-  const fmtMult = (m: number) =>
-    m % 1 === 0 ? `×${m}` : `×${m.toFixed(1)}`;
-
   return (
     <LinearGradient
       colors={['#050918', '#0a0a28', '#061020']}
@@ -400,22 +386,21 @@ export function BattleScreen({
         </View>
 
         <View style={styles.statsRow}>
-          <Text style={styles.statChip}>⚔️ {totalDamage}/клик</Text>
-          {effectiveMultiplier !== 1 && (
-            <Text style={[
-              styles.statChip,
-              { color: effectiveMultiplier > 1 ? '#ffd700' : '#ff8888' }
-            ]}>
-              = {effectiveDamage.toLocaleString()} {fmtMult(effectiveMultiplier)}
+          <Text style={styles.statChip}>⚔️ {effectiveDamage}/клик</Text>
+          {abilityActive && !qteAttempted && (
+            <Text style={[styles.statChip, { color: '#00dc64' }]}>
+              🎯 QTE — снимите щит!
             </Text>
           )}
-          {comboCount > 0 && (
+          {abilityActive && qteAttempted && (
+            <Text style={[styles.statChip, { color: '#ff8844' }]}>
+              🛡 ×0.5 урон / −1с за клик
+            </Text>
+          )}
+          {opportunityActive && (
             <Text style={[styles.statChip, { color: '#ff9900' }]}>
-              ⚡ {comboCount}/3
+              ⚡ ×2 АТАКА!
             </Text>
-          )}
-          {comboBonus && (
-            <Text style={[styles.statChip, { color: '#ffd700' }]}>✨ +50%</Text>
           )}
         </View>
       </View>
@@ -434,73 +419,62 @@ export function BattleScreen({
           style={styles.battleHitArea}
           collapsable={false}
         >
-          {/* Vulnerability ring */}
-          {vulnOpen && (
-            <Animated.View
-              style={[styles.vulnRing, { opacity: vulnPulseAnim }]}
-              pointerEvents="none"
-            />
-          )}
-
-          {/* Vulnerability badge */}
-          {vulnOpen && (
-            <Animated.View
-              style={[styles.vulnBadge, { opacity: vulnPulseAnim }]}
-              pointerEvents="none"
-            >
-              <Text style={styles.vulnBadgeText}>⚡ УЯЗВИМ ×3</Text>
-            </Animated.View>
-          )}
-
-          {/* Alien ability badge */}
-          {abilityActive && alien?.ability && (
-            <View style={styles.abilityBadge} pointerEvents="none">
-              <Text style={styles.abilityBadgeText}>
-                {alien.ability.type === 'shield' ? '🛡 ЩИТОВАН' : '👻 РАЗМЫТ'} ×0.5
-              </Text>
-            </View>
-          )}
-
           <AnimatedHitEffects
             trigger={hitTrigger}
             origin={hitOrigin}
             damage={lastHitDamageRef.current || effectiveDamage}
-            style={[
-              styles.rocketBtn,
-              vulnOpen && styles.rocketBtnVuln,
-              abilityActive && styles.rocketBtnAbility,
-              comboBonus && styles.rocketBtnCombo,
-            ]}
+            style={[styles.rocketBtn, abilityActive && styles.rocketBtnShield, opportunityActive && styles.rocketBtnOpportunity]}
           >
             <Pressable
-              onPressIn={handleAttack}
+              onPressIn={abilityActive && !qteAttempted ? undefined : handleAttack}
               style={({ pressed }) => [
                 StyleSheet.absoluteFill,
                 styles.rocketPressable,
-                pressed ? { opacity: 0.9 } : null
+                pressed && !abilityActive ? { opacity: 0.9 } : null
               ]}
             >
-              <Animated.View style={{ transform: [{ translateX: shakeAnim }] }}>
+              <Animated.View style={{ transform: [{ translateX: shakeAnim }], opacity: shieldWarning ? warnAnim : 1 }}>
                 {alien?.image ? (
                   <Image
                     source={alien.image}
-                    style={[
-                      styles.alienShipImage,
-                      abilityActive && alien?.ability?.type === 'blur' && styles.alienBlurred
-                    ]}
+                    style={styles.alienShipImage}
                     resizeMode="contain"
                   />
                 ) : (
                   <Text style={styles.rocketEmoji}>🚀</Text>
                 )}
               </Animated.View>
-              <Text style={styles.clickHint}>АТАКОВАТЬ</Text>
+              {(!abilityActive || opportunityActive) && (
+                <Text style={[styles.clickHint, opportunityActive && { color: '#ff9900' }]}>
+                  {opportunityActive ? '⚡ АТАКОВАТЬ' : 'АТАКОВАТЬ'}
+                </Text>
+              )}
             </Pressable>
           </AnimatedHitEffects>
+
+          {/* QTE ring overlay — поверх корабля, скрывается после попытки */}
+          {abilityActive && !qteAttempted && (
+            <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]} pointerEvents="box-none">
+              <SkillCheckRing
+                active={abilityActive}
+                speedMs={1800}
+                successZoneDeg={65}
+                successZoneStart={successZoneStart}
+                attempted={qteAttempted}
+                onSuccess={handleQteSuccess}
+                onFail={handleQteFail}
+                size={220}
+              />
+            </View>
+          )}
         </View>
 
         <Text style={styles.hint}>
-          {vulnOpen ? '⚡ УЯЗВИМ — АТАКУЙТЕ! ⚡' : '◈ ЖМИТЕ ДЛЯ АТАКИ ◈'}
+          {opportunityActive
+            ? '⚡ ОКНО ВОЗМОЖНОСТЕЙ — АТАКУЙТЕ! ⚡'
+            : abilityActive
+              ? (qteAttempted ? '⌛ ЩИТ ДЕРЖИТСЯ...' : '🎯 НАЖМИТЕ В КРАСНУЮ ЗОНУ!')
+              : '◈ ЖМИТЕ ДЛЯ АТАКИ ◈'}
         </Text>
       </View>
     </LinearGradient>
@@ -656,16 +630,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,80,80,0.3)'
   },
-  rocketBtnVuln: {
-    borderColor: 'rgba(255,215,0,0.6)',
-    backgroundColor: 'rgba(255,215,0,0.06)',
+  rocketBtnShield: {
+    backgroundColor: 'rgba(50,100,255,0.08)',
+    borderColor: 'rgba(80,150,255,0.35)',
   },
-  rocketBtnAbility: {
-    borderColor: 'rgba(100,150,255,0.5)',
-    backgroundColor: 'rgba(80,120,255,0.06)',
-  },
-  rocketBtnCombo: {
-    borderColor: 'rgba(255,180,0,0.8)',
+  rocketBtnOpportunity: {
+    backgroundColor: 'rgba(255,130,0,0.1)',
+    borderColor: 'rgba(255,160,0,0.6)',
   },
   rocketPressable: {
     alignItems: 'center',
@@ -674,7 +645,6 @@ const styles = StyleSheet.create({
   },
   rocketEmoji: { fontSize: 108 },
   alienShipImage: { width: 150, height: 150 },
-  alienBlurred: { opacity: 0.35 },
   clickHint: {
     marginTop: 8,
     fontSize: 10,
@@ -690,45 +660,5 @@ const styles = StyleSheet.create({
     letterSpacing: 3,
     fontWeight: '700'
   },
-  vulnRing: {
-    position: 'absolute',
-    width: 272,
-    height: 272,
-    borderRadius: 136,
-    borderWidth: 3,
-    borderColor: '#ffd700',
-    backgroundColor: 'rgba(255,215,0,0.04)',
-  },
-  vulnBadge: {
-    position: 'absolute',
-    top: '15%',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255,215,0,0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,215,0,0.5)',
-  },
-  vulnBadgeText: {
-    fontSize: 10,
-    color: '#ffd700',
-    fontWeight: '900',
-    letterSpacing: 1,
-  },
-  abilityBadge: {
-    position: 'absolute',
-    bottom: '15%',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-    backgroundColor: 'rgba(100,150,255,0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(100,150,255,0.5)',
-  },
-  abilityBadgeText: {
-    fontSize: 10,
-    color: '#88aaff',
-    fontWeight: '900',
-    letterSpacing: 1,
-  },
 });
+

@@ -303,6 +303,7 @@ function GameApp({
           totalDamage={game.totalDamage}
           defeatInfo={game.defeatInfo}
           onAttack={game.attackBattle}
+          onReflect={game.reflectBattle}
           onForfeit={game.forfeitBattle}
           onGoToShipyard={() => onSetTab('shipyard')}
           onClearDefeat={game.clearDefeatInfo}
