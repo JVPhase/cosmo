@@ -753,11 +753,11 @@ export function useGame(initial?: GameStateInit) {
     [derived.battleTimerMs]
   );
 
-  const attackBattle = useCallback(() => {
+  const attackBattle = useCallback((multiplier: number = 1) => {
     setState((prev) => {
       if (!prev.battle) return prev;
       const damage = Math.floor(
-        computeBaseShipDamage(prev.fleet) * derived.damageResearchMultiplier
+        computeBaseShipDamage(prev.fleet) * derived.damageResearchMultiplier * multiplier
       );
       if (damage <= 0) return prev;
       const newHP = Math.max(0, prev.battle.currentHP - damage);
@@ -810,6 +810,27 @@ export function useGame(initial?: GameStateInit) {
     },
     []
   );
+
+  const reflectBattle = useCallback((penaltyMs: number = 1000) => {
+    setState((prev) => {
+      if (!prev.battle) return prev;
+      const newExpires = prev.battle.expiresAt - penaltyMs;
+      if (Date.now() >= newExpires) {
+        const { shipId } = prev.battle;
+        return {
+          ...prev,
+          battle: null,
+          fleet: {
+            ...prev.fleet,
+            ownedShips: prev.fleet.ownedShips.map((s) =>
+              s.shipId === shipId ? { ...s, broken: true } : s
+            )
+          }
+        };
+      }
+      return { ...prev, battle: { ...prev.battle, expiresAt: newExpires } };
+    });
+  }, []);
 
   const forfeitBattle = useCallback(() => {
     setState((prev) => {
@@ -911,6 +932,7 @@ export function useGame(initial?: GameStateInit) {
     discoveredMetals: state.discoveredMetals,
     startBattle,
     attackBattle,
+    reflectBattle,
     forfeitBattle,
     selectPlanet,
     startExpedition,

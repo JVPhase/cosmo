@@ -1,6 +1,12 @@
 import type { ShipId } from "./SHIPS";
 import type { PlanetId } from "./PLANETS";
 
+export type AlienAbility = {
+  type: 'shield';
+  intervalMs: number;
+  durationMs: number;
+};
+
 export type AlienRace = {
   planetId: PlanetId;
   name: string;
@@ -10,6 +16,7 @@ export type AlienRace = {
   attackEnergyCost: number;
   xpReward: number;
   lore: string;
+  ability?: AlienAbility;
 };
 
 export const ALIENS: readonly AlienRace[] = [
@@ -33,6 +40,7 @@ export const ALIENS: readonly AlienRace[] = [
     attackEnergyCost: 50_000,
     xpReward: 500,
     lore: "Живут внутри кристаллов. Очень переживают за сохранность породы. Ваше появление расценили как незапланированный аудит.",
+    ability: { type: 'shield', intervalMs: 15_000, durationMs: 3_000 },
   },
   {
     planetId: 4,
@@ -43,6 +51,7 @@ export const ALIENS: readonly AlienRace[] = [
     attackEnergyCost: 250_000,
     xpReward: 1_500,
     lore: "Полупрозрачные, высокомерные, имеют собственный парламент. Он заседает уже 300 лет без единого решения.",
+    ability: { type: 'shield', intervalMs: 8_000, durationMs: 2_000 },
   },
   {
     planetId: 5,
@@ -64,6 +73,7 @@ export const ALIENS: readonly AlienRace[] = [
     attackEnergyCost: 6_250_000,
     xpReward: 8_000,
     lore: "Охраняют горизонт событий уже 4 миллиарда лет. Форму на вторжение не заполнили. Ничто не выходит, включая жалобы.",
+    ability: { type: 'shield', intervalMs: 12_000, durationMs: 2_500 },
   },
   {
     planetId: 7,
@@ -74,6 +84,7 @@ export const ALIENS: readonly AlienRace[] = [
     attackEnergyCost: 30_000_000,
     xpReward: 20_000,
     lore: "Существа с плотностью ядерного вещества. Очень сжатые, очень злые. Документация — 1 байт. Содержание: «Нет».",
+    ability: { type: 'shield', intervalMs: 10_000, durationMs: 3_000 },
   },
   {
     planetId: 8,
@@ -84,6 +95,7 @@ export const ALIENS: readonly AlienRace[] = [
     attackEnergyCost: 150_000_000,
     xpReward: 50_000,
     lore: "Одновременно атакуют и не атакуют. Шрёдингер подал патент. Министерство ответило: «уточните».",
+    ability: { type: 'shield', intervalMs: 8_000, durationMs: 3_500 },
   },
   {
     planetId: 9,
@@ -94,6 +106,7 @@ export const ALIENS: readonly AlienRace[] = [
     attackEnergyCost: 750_000_000,
     xpReward: 120_000,
     lore: "Существуют в суперпозиции агрессии. При наблюдении коллапсируют в очень агрессивное состояние.",
+    ability: { type: 'shield', intervalMs: 6_000, durationMs: 4_000 },
   },
   {
     planetId: 10,
@@ -104,6 +117,7 @@ export const ALIENS: readonly AlienRace[] = [
     attackEnergyCost: 5_000_000_000,
     xpReward: 300_000,
     lore: "Финальные защитники. Старше Вселенной. Уже 3 раза подавали на нас в суд. Дело рассматривается.",
+    ability: { type: 'shield', intervalMs: 5_000, durationMs: 5_000 },
   },
 ] as const;
 
