@@ -98,6 +98,7 @@ export async function saveGame(state: GameState): Promise<void> {
       playerXP: state.playerXP,
       research: state.research,
       expeditions: state.expeditions,
+      tabsUnlocked: state.tabsUnlocked,
     },
   };
   await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(payload));

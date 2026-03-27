@@ -10,6 +10,12 @@ import type { UpgradeId } from "./UPGRADES";
 
 export type UpgradesState = Record<UpgradeId, number>;
 
+export type TabsUnlockedState = {
+  shipyard: boolean;
+  upgrades: boolean;
+  planets: boolean;
+};
+
 export type AchievementsState = {
   unlockedIds: AchievementId[];
   claimedIds: AchievementId[];
@@ -30,6 +36,7 @@ export type GameState = {
   playerXP: number;
   research: ResearchState;
   expeditions: ActiveExpedition[];
+  tabsUnlocked: TabsUnlockedState;
 };
 
 export type GameStateInit = {
@@ -54,6 +61,7 @@ export type GameStateInit = {
   playerXP?: number;
   research?: ResearchState;
   expeditions?: ActiveExpedition[];
+  tabsUnlocked?: Partial<TabsUnlockedState>;
 };
 
 export type { ActiveExpedition, BattleState, FleetState, MetalsState, OwnedShip, ResearchId, ResearchState };
