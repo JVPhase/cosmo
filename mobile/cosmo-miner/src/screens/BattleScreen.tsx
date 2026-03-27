@@ -1,5 +1,5 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   Easing,
@@ -15,13 +15,15 @@ import { ALIENS } from '../game/ALIENS';
 import { PLANETS } from '../game/PLANETS';
 import type { BattleState } from '../game/types';
 import { AnimatedHitEffects } from '../ui/AnimatedHitEffects';
+import { SkillCheckRing } from '../ui/SkillCheckRing';
 
 export type BattleScreenProps = {
   battle: BattleState | null;
   timeRemaining: number;
   totalDamage: number;
   defeatInfo: { shipName: string } | null;
-  onAttack: () => void;
+  onAttack: (multiplier?: number) => void;
+  onReflect: (penaltyMs?: number) => void;
   onForfeit: () => void;
   onGoToShipyard: () => void;
   onClearDefeat: () => void;
@@ -33,6 +35,7 @@ export function BattleScreen({
   totalDamage,
   defeatInfo,
   onAttack,
+  onReflect,
   onForfeit,
   onGoToShipyard,
   onClearDefeat
@@ -43,6 +46,25 @@ export function BattleScreen({
   >(undefined);
   const battleHitAreaRef = useRef<View>(null);
   const shakeAnim = useRef(new Animated.Value(0)).current;
+
+  const [abilityActive, setAbilityActive] = useState(false);
+  const [shieldWarning, setShieldWarning] = useState(false);
+  const [qteAttempted, setQteAttempted] = useState(false);
+  const [successZoneStart, setSuccessZoneStart] = useState(0);
+  const [opportunityActive, setOpportunityActive] = useState(false);
+  const abilityTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const warnTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const opportunityTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const breakShieldEarlyRef = useRef<(() => void) | null>(null);
+  const warnAnim = useRef(new Animated.Value(1)).current;
+  const warnAnimRef = useRef<Animated.CompositeAnimation | null>(null);
+  const lastHitDamageRef = useRef(0);
+
+  const alien = useMemo(
+    () => (battle ? ALIENS.find((a) => a.planetId === battle.planetId) ?? null : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [battle?.planetId]
+  );
 
   const stars = useMemo(
     () =>
@@ -56,6 +78,102 @@ export function BattleScreen({
     []
   );
 
+  // Alien ability cycle
+  useEffect(() => {
+    if (!battle || !alien?.ability) {
+      if (abilityTimeoutRef.current) clearTimeout(abilityTimeoutRef.current);
+      if (warnTimeoutRef.current) clearTimeout(warnTimeoutRef.current);
+      setAbilityActive(false);
+      setShieldWarning(false);
+      return;
+    }
+    const { ability } = alien;
+    const WARN_MS = 2000;
+    let active = false;
+    const schedule = () => {
+      const delay = active ? ability.durationMs : ability.intervalMs;
+      // Schedule warning 2s before shield activates (only during idle phase)
+      if (!active && delay > WARN_MS) {
+        warnTimeoutRef.current = setTimeout(() => setShieldWarning(true), delay - WARN_MS);
+      }
+      abilityTimeoutRef.current = setTimeout(() => {
+        active = !active;
+        setShieldWarning(false);
+        setAbilityActive(active);
+        schedule();
+      }, delay);
+    };
+    // Allow external early termination of the shield
+    breakShieldEarlyRef.current = () => {
+      if (abilityTimeoutRef.current) clearTimeout(abilityTimeoutRef.current);
+      if (warnTimeoutRef.current) clearTimeout(warnTimeoutRef.current);
+      active = false;
+      setAbilityActive(false);
+      setShieldWarning(false);
+      schedule();
+    };
+    schedule();
+    return () => {
+      if (abilityTimeoutRef.current) clearTimeout(abilityTimeoutRef.current);
+      if (warnTimeoutRef.current) clearTimeout(warnTimeoutRef.current);
+      if (opportunityTimeoutRef.current) clearTimeout(opportunityTimeoutRef.current);
+      setAbilityActive(false);
+      setShieldWarning(false);
+      setOpportunityActive(false);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [!!battle, alien?.ability?.type]);
+
+  // Accelerating blink when shield is about to activate
+  useEffect(() => {
+    if (shieldWarning) {
+      const blink = (dur: number) => [
+        Animated.timing(warnAnim, { toValue: 0.1, duration: dur / 2, useNativeDriver: true, easing: Easing.linear }),
+        Animated.timing(warnAnim, { toValue: 1,   duration: dur / 2, useNativeDriver: true, easing: Easing.linear }),
+      ];
+      warnAnimRef.current = Animated.sequence([
+        // slow   ~600ms: 2 × 300ms
+        ...blink(300), ...blink(300),
+        // medium ~600ms: 3 × 200ms
+        ...blink(200), ...blink(200), ...blink(200),
+        // fast   ~480ms: 6 × 80ms
+        ...blink(80), ...blink(80), ...blink(80), ...blink(80), ...blink(80), ...blink(80),
+        // turbo  ~240ms: 6 × 40ms
+        ...blink(40), ...blink(40), ...blink(40), ...blink(40), ...blink(40), ...blink(40),
+      ]);
+      warnAnimRef.current.start();
+    } else {
+      warnAnimRef.current?.stop();
+      warnAnim.setValue(1);
+    }
+  }, [shieldWarning, warnAnim]);
+
+  // Randomise success zone position and reset QTE on each shield activation
+  useEffect(() => {
+    if (abilityActive) {
+      setSuccessZoneStart(Math.floor(Math.random() * 360));
+      setQteAttempted(false);
+    }
+  }, [abilityActive]);
+
+  const handleQteSuccess = () => {
+    setQteAttempted(true);
+    breakShieldEarlyRef.current?.();
+    // Open opportunity window for the duration the shield would have lasted
+    const durationMs = alien?.ability?.durationMs ?? 3000;
+    setOpportunityActive(true);
+    if (opportunityTimeoutRef.current) clearTimeout(opportunityTimeoutRef.current);
+    opportunityTimeoutRef.current = setTimeout(() => setOpportunityActive(false), durationMs);
+  };
+
+  const handleQteFail = () => {
+    setQteAttempted(true);
+    onReflect(2000); // -2s за провал QTE
+  };
+
+  const attackMultiplier = opportunityActive ? 2 : 1;
+  const effectiveDamage = abilityActive ? 0 : Math.floor(totalDamage * attackMultiplier);
+
   const handleAttack = (e: GestureResponderEvent) => {
     const native = e.nativeEvent as unknown as {
       locationX?: number;
@@ -64,9 +182,34 @@ export function BattleScreen({
       pageY?: number;
     };
 
+    // After failed QTE — clicks still penalise timer and deal half damage
+    if (abilityActive && qteAttempted) {
+      onReflect(1000); // -1s
+      const commitReflectHit = (x: number, y: number) => {
+        lastHitDamageRef.current = Math.floor(totalDamage * 0.5);
+        setHitOrigin({ x, y });
+        onAttack(0.5);
+        setHitTrigger((t) => t + 1);
+      };
+      if (Platform.OS === 'web' && battleHitAreaRef.current) {
+        battleHitAreaRef.current.measureInWindow((mx, my) => {
+          commitReflectHit((native.pageX ?? 0) - mx, (native.pageY ?? 0) - my);
+        });
+      } else {
+        commitReflectHit(native.locationX ?? 80, native.locationY ?? 80);
+      }
+      Animated.sequence([
+        Animated.timing(shakeAnim, { toValue: -10, duration: 50, useNativeDriver: true, easing: Easing.linear }),
+        Animated.timing(shakeAnim, { toValue: 10, duration: 50, useNativeDriver: true, easing: Easing.linear }),
+        Animated.timing(shakeAnim, { toValue: 0, duration: 60, useNativeDriver: true, easing: Easing.linear }),
+      ]).start();
+      return;
+    }
+
     const commitHit = (x: number, y: number) => {
+      lastHitDamageRef.current = Math.floor(totalDamage * attackMultiplier);
       setHitOrigin({ x, y });
-      onAttack();
+      onAttack(attackMultiplier);
       setHitTrigger((t) => t + 1);
     };
 
@@ -81,30 +224,10 @@ export function BattleScreen({
       commitHit(native.locationX ?? 80, native.locationY ?? 80);
     }
     Animated.sequence([
-      Animated.timing(shakeAnim, {
-        toValue: 8,
-        duration: 50,
-        useNativeDriver: true,
-        easing: Easing.linear
-      }),
-      Animated.timing(shakeAnim, {
-        toValue: -8,
-        duration: 50,
-        useNativeDriver: true,
-        easing: Easing.linear
-      }),
-      Animated.timing(shakeAnim, {
-        toValue: 4,
-        duration: 50,
-        useNativeDriver: true,
-        easing: Easing.linear
-      }),
-      Animated.timing(shakeAnim, {
-        toValue: 0,
-        duration: 50,
-        useNativeDriver: true,
-        easing: Easing.linear
-      })
+      Animated.timing(shakeAnim, { toValue: 8, duration: 50, useNativeDriver: true, easing: Easing.linear }),
+      Animated.timing(shakeAnim, { toValue: -8, duration: 50, useNativeDriver: true, easing: Easing.linear }),
+      Animated.timing(shakeAnim, { toValue: 4, duration: 50, useNativeDriver: true, easing: Easing.linear }),
+      Animated.timing(shakeAnim, { toValue: 0, duration: 50, useNativeDriver: true, easing: Easing.linear })
     ]).start();
   };
 
@@ -196,7 +319,6 @@ export function BattleScreen({
   }
 
   // Active battle
-  const alien = ALIENS.find((a) => a.planetId === battle!.planetId);
   const planet = PLANETS.find((p) => p.id === battle!.planetId);
   const hpPercent = battle!.maxHP > 0 ? battle!.currentHP / battle!.maxHP : 0;
   const hpColor =
@@ -264,7 +386,22 @@ export function BattleScreen({
         </View>
 
         <View style={styles.statsRow}>
-          <Text style={styles.statChip}>⚔️ {totalDamage}/клик</Text>
+          <Text style={styles.statChip}>⚔️ {effectiveDamage}/клик</Text>
+          {abilityActive && !qteAttempted && (
+            <Text style={[styles.statChip, { color: '#00dc64' }]}>
+              🎯 QTE — снимите щит!
+            </Text>
+          )}
+          {abilityActive && qteAttempted && (
+            <Text style={[styles.statChip, { color: '#ff8844' }]}>
+              🛡 ×0.5 урон / −1с за клик
+            </Text>
+          )}
+          {opportunityActive && (
+            <Text style={[styles.statChip, { color: '#ff9900' }]}>
+              ⚡ ×2 АТАКА!
+            </Text>
+          )}
         </View>
       </View>
 
@@ -285,18 +422,18 @@ export function BattleScreen({
           <AnimatedHitEffects
             trigger={hitTrigger}
             origin={hitOrigin}
-            damage={totalDamage}
-            style={styles.rocketBtn}
+            damage={lastHitDamageRef.current || effectiveDamage}
+            style={[styles.rocketBtn, abilityActive && styles.rocketBtnShield, opportunityActive && styles.rocketBtnOpportunity]}
           >
             <Pressable
-              onPressIn={handleAttack}
+              onPressIn={abilityActive && !qteAttempted ? undefined : handleAttack}
               style={({ pressed }) => [
                 StyleSheet.absoluteFill,
                 styles.rocketPressable,
-                pressed ? { opacity: 0.9 } : null
+                pressed && !abilityActive ? { opacity: 0.9 } : null
               ]}
             >
-              <Animated.View style={{ transform: [{ translateX: shakeAnim }] }}>
+              <Animated.View style={{ transform: [{ translateX: shakeAnim }], opacity: shieldWarning ? warnAnim : 1 }}>
                 {alien?.image ? (
                   <Image
                     source={alien.image}
@@ -307,12 +444,38 @@ export function BattleScreen({
                   <Text style={styles.rocketEmoji}>🚀</Text>
                 )}
               </Animated.View>
-              <Text style={styles.clickHint}>АТАКОВАТЬ</Text>
+              {(!abilityActive || opportunityActive) && (
+                <Text style={[styles.clickHint, opportunityActive && { color: '#ff9900' }]}>
+                  {opportunityActive ? '⚡ АТАКОВАТЬ' : 'АТАКОВАТЬ'}
+                </Text>
+              )}
             </Pressable>
           </AnimatedHitEffects>
+
+          {/* QTE ring overlay — поверх корабля, скрывается после попытки */}
+          {abilityActive && !qteAttempted && (
+            <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]} pointerEvents="box-none">
+              <SkillCheckRing
+                active={abilityActive}
+                speedMs={1800}
+                successZoneDeg={65}
+                successZoneStart={successZoneStart}
+                attempted={qteAttempted}
+                onSuccess={handleQteSuccess}
+                onFail={handleQteFail}
+                size={220}
+              />
+            </View>
+          )}
         </View>
 
-        <Text style={styles.hint}>◈ ЖМИТЕ ДЛЯ АТАКИ ◈</Text>
+        <Text style={styles.hint}>
+          {opportunityActive
+            ? '⚡ ОКНО ВОЗМОЖНОСТЕЙ — АТАКУЙТЕ! ⚡'
+            : abilityActive
+              ? (qteAttempted ? '⌛ ЩИТ ДЕРЖИТСЯ...' : '🎯 НАЖМИТЕ В КРАСНУЮ ЗОНУ!')
+              : '◈ ЖМИТЕ ДЛЯ АТАКИ ◈'}
+        </Text>
       </View>
     </LinearGradient>
   );
@@ -420,7 +583,7 @@ const styles = StyleSheet.create({
     marginBottom: 8
   },
   hpBarFill: { height: '100%', borderRadius: 6 },
-  statsRow: { flexDirection: 'row', gap: 10 },
+  statsRow: { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
   statChip: { fontSize: 9, color: 'rgba(255,150,150,0.7)', fontWeight: '700' },
   forfeitRow: {
     alignItems: 'flex-end',
@@ -467,6 +630,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,80,80,0.3)'
   },
+  rocketBtnShield: {
+    backgroundColor: 'rgba(50,100,255,0.08)',
+    borderColor: 'rgba(80,150,255,0.35)',
+  },
+  rocketBtnOpportunity: {
+    backgroundColor: 'rgba(255,130,0,0.1)',
+    borderColor: 'rgba(255,160,0,0.6)',
+  },
   rocketPressable: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -488,5 +659,6 @@ const styles = StyleSheet.create({
     color: 'rgba(255,80,80,0.25)',
     letterSpacing: 3,
     fontWeight: '700'
-  }
+  },
 });
+
