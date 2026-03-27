@@ -2,9 +2,11 @@ import React, { useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { INTRO_SLIDES } from "../game/INTRO_SLIDES";
+import { TypewriterText } from "./TypewriterText";
 
 export function IntroOverlay({ visible, onDone }: { visible: boolean; onDone: () => void }) {
   const [slide, setSlide] = useState(0);
+  const [textDone, setTextDone] = useState(false);
 
   const stars = useMemo(() => {
     return Array.from({ length: 50 }, (_, i) => ({
@@ -20,6 +22,15 @@ export function IntroOverlay({ visible, onDone }: { visible: boolean; onDone: ()
 
   const cur = INTRO_SLIDES[slide];
   const isLast = slide === INTRO_SLIDES.length - 1;
+
+  function goNext() {
+    if (isLast) {
+      onDone();
+    } else {
+      setSlide((v) => v + 1);
+      setTextDone(false);
+    }
+  }
 
   return (
     <View style={styles.overlay} pointerEvents="auto">
@@ -38,15 +49,18 @@ export function IntroOverlay({ visible, onDone }: { visible: boolean; onDone: ()
       <View style={styles.content}>
         <Text style={styles.icon}>{cur.icon}</Text>
         <Text style={styles.title}>{cur.title}</Text>
-        <Text style={styles.text}>{cur.text}</Text>
+        <TypewriterText
+          key={slide}
+          text={cur.text}
+          speed={25}
+          style={styles.text}
+          onDone={() => setTextDone(true)}
+        />
 
         <View style={styles.btnRow}>
           <Pressable
-            onPress={() => {
-              if (isLast) onDone();
-              else setSlide((v) => v + 1);
-            }}
-            style={({ pressed }) => [styles.primaryBtn, pressed ? { opacity: 0.92 } : null]}
+            onPress={goNext}
+            style={({ pressed }) => [styles.primaryBtn, !textDone && styles.primaryBtnDim, pressed ? { opacity: 0.92 } : null]}
           >
             <Text style={styles.primaryBtnText}>{isLast ? "ПРИСТУПИТЬ К РАБОТЕ ▶" : "ДАЛЕЕ ▶"}</Text>
           </Pressable>
@@ -114,6 +128,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(0,212,255,0.5)",
     backgroundColor: "rgba(0,212,255,0.1)",
+  },
+  primaryBtnDim: {
+    borderColor: "rgba(0,212,255,0.2)",
+    backgroundColor: "rgba(0,212,255,0.04)",
   },
   primaryBtnText: {
     color: "#00d4ff",

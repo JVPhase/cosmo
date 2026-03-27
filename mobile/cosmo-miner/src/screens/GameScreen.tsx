@@ -256,7 +256,10 @@ export function GameScreen({
 
       {/* Achievement toast */}
       {achievementToast ? (
-        <View style={styles.achievementToast}>
+        <Pressable
+          style={({ pressed }) => [styles.achievementToast, pressed && { opacity: 0.85 }]}
+          onPress={() => { onCloseAchievementToast(); onOpenAchievements(); }}
+        >
           <Text style={styles.achievementIcon}>{achievementToast.icon}</Text>
           <View style={{ flex: 1 }}>
             <Text style={styles.achievementLabel}>
@@ -266,12 +269,12 @@ export function GameScreen({
             <Text style={styles.achievementLore}>{achievementToast.lore}</Text>
           </View>
           <Pressable
-            onPress={onCloseAchievementToast}
+            onPress={(e) => { e.stopPropagation?.(); onCloseAchievementToast(); }}
             style={({ pressed }) => (pressed ? { opacity: 0.9 } : null)}
           >
             <Text style={styles.achievementClose}>✕</Text>
           </Pressable>
-        </View>
+        </Pressable>
       ) : null}
 
       {/* Header */}

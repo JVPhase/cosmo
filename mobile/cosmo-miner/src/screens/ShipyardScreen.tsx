@@ -120,6 +120,8 @@ export function ShipyardScreen({
     unlockedPlanetIds.includes(id)
   );
   const expMetalMultiplier = sector2Unlocked ? 5 : 1;
+  const selectedShipDef = expeditionShipId ? SHIPS.find((s) => s.id === expeditionShipId) : null;
+  const shipExpMultiplier = selectedShipDef?.expeditionMultiplier ?? 1;
   const visibleShips = SHIPS.filter(
     (s) =>
       ownedMap.has(s.id) || costMetalsDiscovered(discoveredMetals, s.baseCost)
@@ -668,7 +670,7 @@ export function ShipyardScreen({
                           resizeMode="contain"
                         />
                         <Text style={styles.expRewardText}>
-                          ×{v * expMetalMultiplier}
+                          ×{Math.floor(v * expMetalMultiplier * shipExpMultiplier)}
                         </Text>
                       </View>
                     );
@@ -676,6 +678,11 @@ export function ShipyardScreen({
                   {sector2Unlocked && (
                     <View style={styles.expMultiplierBadge}>
                       <Text style={styles.expMultiplierText}>×5 СЕКТОР 2</Text>
+                    </View>
+                  )}
+                  {shipExpMultiplier > 1 && (
+                    <View style={[styles.expMultiplierBadge, { backgroundColor: 'rgba(0,200,255,0.15)', borderColor: '#00c8ff' }]}>
+                      <Text style={[styles.expMultiplierText, { color: '#00c8ff' }]}>×{shipExpMultiplier} КОРАБЛЬ</Text>
                     </View>
                   )}
                 </View>

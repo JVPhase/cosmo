@@ -40,7 +40,6 @@ import { RESEARCH } from './src/game/RESEARCH';
 import type { GameStateInit } from './src/game/types';
 
 const MIN_ATTACK_ENERGY = Math.min(...ALIENS.map((a) => a.attackEnergyCost));
-const MIN_UPGRADE_COST = Math.min(...UPGRADES.map((u) => u.baseCost));
 const ironMetal = METALS.find((m) => m.id === 'iron')!;
 
 type TabId = 'game' | 'upgrades' | 'planets' | 'shipyard' | 'battle';
@@ -62,9 +61,10 @@ function GameApp({
   initial: GameStateInit;
   tab: TabId;
   onSetTab: (t: TabId) => void;
-  onReset: () => void;
+  onReset: (showIntro?: boolean) => void;
 }) {
   const game = useGame(initial);
+  const screenGreetedRef = useRef<Set<string>>(new Set());
   const [researchOpen, setResearchOpen] = useState(false);
   const [achievementsOpen, setAchievementsOpen] = useState(false);
   const [clickPowerInfoOpen, setClickPowerInfoOpen] = useState(false);
@@ -72,6 +72,7 @@ function GameApp({
   const [planetBonusInfoOpen, setPlanetBonusInfoOpen] = useState(false);
   const [ironInfoOpen, setIronInfoOpen] = useState(false);
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
+  const [resetShowIntro, setResetShowIntro] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editorFields, setEditorFields] = useState({
     energy: '0',
@@ -85,6 +86,27 @@ function GameApp({
     unlockShipyard: false,
     unlockPlanets: false
   });
+
+  // Show CLERK-7 onboarding hint the first time each screen is opened
+  useEffect(() => {
+    const screenTriggers: Partial<Record<TabId, string>> = {
+      upgrades: 'screen_upgrades',
+      battle: 'screen_battle',
+      shipyard: 'screen_shipyard',
+      planets: 'screen_planets',
+    };
+    const trigger = screenTriggers[tab];
+    if (trigger && !screenGreetedRef.current.has(tab)) {
+      screenGreetedRef.current.add(tab);
+      game.showClerk(trigger as any);
+    }
+  }, [tab]);
+
+  const goToTab = (t: TabId) => {
+    setResearchOpen(false);
+    setAchievementsOpen(false);
+    onSetTab(t);
+  };
 
   const openEditor = () => {
     setEditorFields({
@@ -109,18 +131,17 @@ function GameApp({
     };
     let energy = parse(editorFields.energy) ?? game.energy;
     let iron = parse(editorFields.iron) ?? game.metals.iron;
-    if (editorToggles.unlockUpgrades)
-      energy = Math.max(energy, MIN_UPGRADE_COST);
-    if (editorToggles.unlockPlanets)
-      energy = Math.max(energy, MIN_ATTACK_ENERGY);
-    if (editorToggles.unlockShipyard)
-      iron = Math.max(iron, SHIPS[0].baseCost.iron ?? 30);
     game.debugSetValues({
       energy,
       iron,
       titan: parse(editorFields.titan),
       iridium: parse(editorFields.iridium),
-      playerXP: parse(editorFields.playerXP)
+      playerXP: parse(editorFields.playerXP),
+      tabsUnlocked: {
+        upgrades: editorToggles.unlockUpgrades,
+        shipyard: editorToggles.unlockShipyard,
+        planets: editorToggles.unlockPlanets,
+      }
     });
     setEditorOpen(false);
   };
@@ -153,20 +174,9 @@ function GameApp({
     return () => clearInterval(interval);
   }, []);
 
-  const firstShipCost = SHIPS[0].baseCost;
-  const shipyardUnlocked =
-    game.fleet.ownedShips.length > 0 ||
-    Object.entries(firstShipCost).every(
-      ([metal, qty]) =>
-        (game.metals[metal as keyof typeof game.metals] ?? 0) >= (qty ?? 0)
-    );
-
-  const upgradesUnlocked =
-    game.energy >= MIN_UPGRADE_COST ||
-    Object.values(game.upgrades).some((v) => v > 0);
-
-  const planetsUnlocked =
-    game.unlockedPlanetIds.length > 1 || game.energy >= MIN_ATTACK_ENERGY;
+  const shipyardUnlocked = game.tabsUnlocked.shipyard;
+  const upgradesUnlocked = game.tabsUnlocked.upgrades;
+  const planetsUnlocked = game.tabsUnlocked.planets;
 
   const battleUnlocked =
     !!game.battle || game.unlockedPlanetIds.length > 1 || !!game.defeatInfo;
@@ -234,7 +244,13 @@ function GameApp({
               game.energy >= n.energyCost &&
               (n.branch !== 'battle' || battleUnlocked)
           )}
-          onOpenResearch={() => setResearchOpen(true)}
+          onOpenResearch={() => {
+            if (!screenGreetedRef.current.has('research')) {
+              screenGreetedRef.current.add('research');
+              game.showClerk('screen_research');
+            }
+            setResearchOpen(true);
+          }}
           onOpenAchievements={() => setAchievementsOpen(true)}
           achievementsUnlocked={game.achievementsUnlocked}
           hasUnclaimedAchievements={game.hasUnclaimedAchievements}
@@ -377,7 +393,7 @@ function GameApp({
         clerk
         headerEmoji="⚡"
         actionLabel="ОТКРЫТЬ АПГРЕЙДЫ"
-        onAction={() => onSetTab('upgrades')}
+        onAction={() => goToTab('upgrades')}
       />
 
       <Popup
@@ -398,8 +414,21 @@ function GameApp({
         text={`Поздравляю с постройкой первого корабля!\n\nОднако для навигации необходимы данные из реестра МММРДР. Министерство готово их предоставить — как только вы выйдете на связь. Для этого потребуется ${MIN_ATTACK_ENERGY} единиц энергии. Форма НВГ-1 «Запрос навигационных данных» будет заполнена автоматически.`}
         clerk
         headerEmoji="🚀"
-        actionLabel={`ДОБЫТЬ ${MIN_ATTACK_ENERGY} ЭНЕРГИИ`}
-        onAction={() => onSetTab('game')}
+        actionLabel={planetsUnlocked ? 'ПЕРЕЙТИ К ПЛАНЕТАМ' : `ДОБЫТЬ ${MIN_ATTACK_ENERGY} ЭНЕРГИИ`}
+        onAction={() => { game.closeFirstShipToast(); goToTab(planetsUnlocked ? 'planets' : 'game'); }}
+      />
+
+      <Popup
+        visible={game.planetsUnlockToast}
+        title="◈ ПЛАНЕТЫ ДОСТУПНЫ · КЛЕРК-7 ◈"
+        onClose={game.closePlanetsUnlockToast}
+        headerEmoji="🌍"
+        text={
+          'У вас достаточно энергии для атаки! Вкладка «ПЛАН.» разблокирована.\n\nЗдесь вы можете выбирать планеты и вступать в бой с инопланетными захватчиками. Победа откроет новые планеты с бонусами к добыче.\n\nМинистерство межпланетных отношений категорически не рекомендует вступать в контакт с пришельцами. Так что, возможно, сначала постройте корабль.'
+        }
+        clerk
+        actionLabel="ОТКРЫТЬ ПЛАНЕТЫ"
+        onAction={() => goToTab('planets')}
       />
 
       <Popup
@@ -412,7 +441,7 @@ function GameApp({
         }
         clerk
         actionLabel="ОТКРЫТЬ ВЕРФЬ"
-        onAction={() => onSetTab('shipyard')}
+        onAction={() => goToTab('shipyard')}
       />
 
       <Popup
@@ -427,7 +456,7 @@ function GameApp({
         }
         clerk
         actionLabel="НАЧАТЬ ДОБЫЧУ"
-        onAction={() => onSetTab('game')}
+        onAction={() => goToTab('game')}
       />
 
       <Popup
@@ -698,6 +727,15 @@ function GameApp({
             <Text style={styles.resetCardText}>
               Весь прогресс будет удалён без возможности восстановления.
             </Text>
+            <Pressable
+              style={styles.resetCheckboxRow}
+              onPress={() => setResetShowIntro((v) => !v)}
+            >
+              <View style={[styles.resetCheckbox, resetShowIntro && styles.resetCheckboxChecked]}>
+                {resetShowIntro ? <Text style={styles.resetCheckboxMark}>✓</Text> : null}
+              </View>
+              <Text style={styles.resetCheckboxLabel}>Показать интро</Text>
+            </Pressable>
             <View style={styles.resetCardButtons}>
               <Pressable
                 style={styles.resetCardCancel}
@@ -709,7 +747,8 @@ function GameApp({
                 style={styles.resetCardConfirm}
                 onPress={() => {
                   setResetConfirmOpen(false);
-                  onReset();
+                  onReset(resetShowIntro);
+                  setResetShowIntro(false);
                 }}
               >
                 <Text style={styles.resetCardConfirmText}>Сбросить</Text>
@@ -764,8 +803,12 @@ export default function App() {
     };
   }, []);
 
-  const handleReset = useCallback(async () => {
+  const handleReset = useCallback(async (showIntro?: boolean) => {
     await clearGame().catch(() => {});
+    if (showIntro) {
+      await saveIntroSeen(false).catch(() => {});
+      setIntroSeen(false);
+    }
     setInitial({});
     setTab('game');
     setGameKey((k) => k + 1);
@@ -922,6 +965,35 @@ const styles = StyleSheet.create({
     color: 'rgba(255,120,120,0.95)',
     fontWeight: '700',
     fontSize: 13
+  },
+  resetCheckboxRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 2,
+  },
+  resetCheckbox: {
+    width: 18,
+    height: 18,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(0,212,255,0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  resetCheckboxChecked: {
+    backgroundColor: 'rgba(0,212,255,0.15)',
+    borderColor: 'rgba(0,212,255,0.8)',
+  },
+  resetCheckboxMark: {
+    color: '#00d4ff',
+    fontSize: 12,
+    fontWeight: '900',
+    lineHeight: 14,
+  },
+  resetCheckboxLabel: {
+    fontSize: 13,
+    color: 'rgba(200,230,255,0.75)',
   },
   tabBadge: {
     position: 'absolute',
