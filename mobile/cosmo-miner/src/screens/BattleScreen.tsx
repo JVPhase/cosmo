@@ -1,5 +1,5 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   Easing,
@@ -18,10 +18,31 @@ import { formatNum } from '../game/formatNum';
 import type { BattleState } from '../game/types';
 import { AnimatedHitEffects } from '../ui/AnimatedHitEffects';
 import { SkillCheckRing } from '../ui/SkillCheckRing';
+import { StarField } from '../ui/StarField';
+
+const BattleTimer = React.memo(function BattleTimer({ expiresAt }: { expiresAt: number }) {
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 100);
+    return () => clearInterval(id);
+  }, []);
+
+  const ms = Math.max(0, expiresAt - now);
+  const secs = Math.floor(ms / 1000);
+  const centis = Math.floor((ms % 1000) / 10);
+  const label = `${secs}.${centis.toString().padStart(2, '0')}`;
+  const color = ms > 20000 ? '#00d4ff' : ms > 10000 ? '#ff9900' : '#ff3333';
+
+  return (
+    <View style={[styles.timerBox, { borderColor: `${color}66` }]}>
+      <Text style={styles.timerLabel}>ВРЕМЯ</Text>
+      <Text style={[styles.timerValue, { color }]}>{label}</Text>
+    </View>
+  );
+});
 
 export type BattleScreenProps = {
   battle: BattleState | null;
-  timeRemaining: number;
   totalDamage: number;
   defeatInfo: { shipName: string } | null;
   equippedModule: ModuleDefinition | null;
@@ -36,7 +57,6 @@ export type BattleScreenProps = {
 
 export function BattleScreen({
   battle,
-  timeRemaining,
   totalDamage,
   defeatInfo,
   equippedModule,
@@ -48,10 +68,7 @@ export function BattleScreen({
   onClearDefeat,
   onAddBattleTime,
 }: BattleScreenProps) {
-  const [hitTrigger, setHitTrigger] = useState(0);
-  const [hitOrigin, setHitOrigin] = useState<
-    { x: number; y: number } | undefined
-  >(undefined);
+  const [hitState, setHitState] = useState<{ count: number; origin?: { x: number; y: number } }>({ count: 0 });
   const battleHitAreaRef = useRef<View>(null);
   const shakeAnim = useRef(new Animated.Value(0)).current;
 
@@ -59,8 +76,7 @@ export function BattleScreen({
   const [shieldWarning, setShieldWarning] = useState(false);
   const [qteAttempted, setQteAttempted] = useState(false);
   const [qteFailed, setQteFailed] = useState(false);
-  const [healTrigger, setHealTrigger] = useState(0);
-  const [healOrigin, setHealOrigin] = useState<{ x: number; y: number } | undefined>(undefined);
+  const [healState, setHealState] = useState<{ count: number; origin?: { x: number; y: number } }>({ count: 0 });
   const [successZoneStart, setSuccessZoneStart] = useState(0);
   const [opportunityActive, setOpportunityActive] = useState(false);
   const abilityTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -95,18 +111,6 @@ export function BattleScreen({
     () => (battle ? ALIENS.find((a) => a.planetId === battle.planetId) ?? null : null),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [battle?.planetId]
-  );
-
-  const stars = useMemo(
-    () =>
-      Array.from({ length: 60 }, (_, i) => ({
-        id: i,
-        top: Math.random() * 100,
-        left: Math.random() * 100,
-        size: Math.random() * 2 + 0.5,
-        opacity: Math.random() * 0.5 + 0.2
-      })),
-    []
   );
 
   // Alien ability cycle
@@ -222,7 +226,7 @@ export function BattleScreen({
   const hitsToCharge = equippedModule?.hitsToCharge ?? 0;
   const ultReady = equippedModule !== null && ultCharge >= hitsToCharge && !ultActive;
 
-  const handleActivateUlt = () => {
+  const handleActivateUlt = useCallback(() => {
     if (!ultReady || !equippedModule) return;
     setUltCharge(0);
     setUltActive(true);
@@ -250,9 +254,9 @@ export function BattleScreen({
         setUltActive(false);
       }, equippedModule.ultDurationMs);
     }
-  };
+  }, [ultReady, equippedModule, abilityActive, isIllusion, onAddBattleTime]);
 
-  const handleAttack = (e: GestureResponderEvent) => {
+  const handleAttack = useCallback((e: GestureResponderEvent) => {
     const native = e.nativeEvent as unknown as {
       locationX?: number;
       locationY?: number;
@@ -263,8 +267,7 @@ export function BattleScreen({
     // Illusion failed — clicks heal the enemy instead of dealing damage
     if (abilityActive && qteAttempted && qteFailed && isIllusion) {
       const commitHealHit = (x: number, y: number) => {
-        setHealOrigin({ x, y });
-        setHealTrigger((t) => t + 1);
+        setHealState((prev) => ({ count: prev.count + 1, origin: { x, y } }));
         onHeal(0.05); // +5% maxHP за клик
       };
       if (Platform.OS === 'web' && battleHitAreaRef.current) {
@@ -282,9 +285,8 @@ export function BattleScreen({
       onReflect(1000); // -1s
       const commitReflectHit = (x: number, y: number) => {
         lastHitDamageRef.current = Math.floor(totalDamage * 0.5);
-        setHitOrigin({ x, y });
         onAttack(0.5);
-        setHitTrigger((t) => t + 1);
+        setHitState((prev) => ({ count: prev.count + 1, origin: { x, y } }));
       };
       if (Platform.OS === 'web' && battleHitAreaRef.current) {
         battleHitAreaRef.current.measureInWindow((mx, my) => {
@@ -303,9 +305,8 @@ export function BattleScreen({
 
     const commitHit = (x: number, y: number) => {
       lastHitDamageRef.current = Math.floor(totalDamage * attackMultiplier);
-      setHitOrigin({ x, y });
       onAttack(attackMultiplier);
-      setHitTrigger((t) => t + 1);
+      setHitState((prev) => ({ count: prev.count + 1, origin: { x, y } }));
       if (equippedModule && !ultActive) {
         setUltCharge((prev) => Math.min(equippedModule.hitsToCharge, prev + 1));
       }
@@ -327,21 +328,8 @@ export function BattleScreen({
       Animated.timing(shakeAnim, { toValue: 4, duration: 50, useNativeDriver: true, easing: Easing.linear }),
       Animated.timing(shakeAnim, { toValue: 0, duration: 50, useNativeDriver: true, easing: Easing.linear })
     ]).start();
-  };
+  }, [abilityActive, qteAttempted, qteFailed, isIllusion, attackMultiplier, totalDamage, onHeal, onReflect, onAttack, equippedModule, ultActive]);
 
-  const timerColor =
-    timeRemaining > 20000
-      ? '#00d4ff'
-      : timeRemaining > 10000
-        ? '#ff9900'
-        : '#ff3333';
-
-  const formatTimer = (ms: number) => {
-    const totalMs = Math.max(0, ms);
-    const secs = Math.floor(totalMs / 1000);
-    const centis = Math.floor((totalMs % 1000) / 10);
-    return `${secs}.${centis.toString().padStart(2, '0')}`;
-  };
 
   // No battle and no recent defeat
   if (!battle && !defeatInfo) {
@@ -350,21 +338,7 @@ export function BattleScreen({
         colors={['#050918', '#0a1628', '#061020']}
         style={styles.screen}
       >
-        {stars.map((s) => (
-          <View
-            key={s.id}
-            style={[
-              styles.star,
-              {
-                top: `${s.top}%`,
-                left: `${s.left}%`,
-                width: s.size,
-                height: s.size,
-                opacity: s.opacity
-              }
-            ]}
-          />
-        ))}
+        <StarField />
         <View style={styles.empty}>
           <Text style={styles.emptyIcon}>⚔️</Text>
           <Text style={styles.emptyTitle}>НЕТ АКТИВНОГО БОЯ</Text>
@@ -383,21 +357,7 @@ export function BattleScreen({
         colors={['#1a0505', '#200a0a', '#0a0505']}
         style={styles.screen}
       >
-        {stars.map((s) => (
-          <View
-            key={s.id}
-            style={[
-              styles.star,
-              {
-                top: `${s.top}%`,
-                left: `${s.left}%`,
-                width: s.size,
-                height: s.size,
-                opacity: s.opacity * 0.5
-              }
-            ]}
-          />
-        ))}
+        <StarField dimmed />
         <View style={styles.empty}>
           <Text style={styles.emptyIcon}>💥</Text>
           <Text style={[styles.emptyTitle, { color: '#ff4444' }]}>
@@ -427,21 +387,7 @@ export function BattleScreen({
       colors={['#050918', '#0a0a28', '#061020']}
       style={styles.screen}
     >
-      {stars.map((s) => (
-        <View
-          key={s.id}
-          style={[
-            styles.star,
-            {
-              top: `${s.top}%`,
-              left: `${s.left}%`,
-              width: s.size,
-              height: s.size,
-              opacity: s.opacity
-            }
-          ]}
-        />
-      ))}
+      <StarField />
 
       {/* Header */}
       <View style={styles.header}>
@@ -455,12 +401,7 @@ export function BattleScreen({
             </Text>
           </View>
           {/* Timer */}
-          <View style={[styles.timerBox, { borderColor: `${timerColor}66` }]}>
-            <Text style={styles.timerLabel}>ВРЕМЯ</Text>
-            <Text style={[styles.timerValue, { color: timerColor }]}>
-              {formatTimer(timeRemaining)}
-            </Text>
-          </View>
+          {battle && <BattleTimer expiresAt={battle.expiresAt} />}
         </View>
 
         {/* HP bar */}
@@ -559,8 +500,8 @@ export function BattleScreen({
           collapsable={false}
         >
           <AnimatedHitEffects
-            trigger={hitTrigger}
-            origin={hitOrigin}
+            trigger={hitState.count}
+            origin={hitState.origin}
             damage={lastHitDamageRef.current || effectiveDamage}
             style={[
               styles.rocketBtn,
@@ -605,7 +546,7 @@ export function BattleScreen({
           </AnimatedHitEffects>
 
           {/* Heal effect overlay — green +5% HP floater */}
-          {healTrigger > 0 && healOrigin && (
+          {healState.count > 0 && healState.origin && (
             <View
               style={[StyleSheet.absoluteFill, styles.healOverlay]}
               pointerEvents="none"
@@ -613,7 +554,7 @@ export function BattleScreen({
               <Text
                 style={[
                   styles.healFloatText,
-                  { left: healOrigin.x - 28, top: healOrigin.y - 20 },
+                  { left: healState.origin.x - 28, top: healState.origin.y - 20 },
                 ]}
               >
                 +5% HP
@@ -654,12 +595,6 @@ export function BattleScreen({
 
 const styles = StyleSheet.create({
   screen: { flex: 1, position: 'relative', overflow: 'hidden', userSelect: 'none' },
-  star: {
-    position: 'absolute',
-    backgroundColor: '#ffffff',
-    borderRadius: 10,
-    zIndex: 0
-  },
   empty: {
     flex: 1,
     alignItems: 'center',

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { getCharacterById, getRandomMessage, type CharacterId } from './CHARACTERS';
 import { CLERK_MESSAGES, type ClerkTrigger } from './CLERK_MESSAGES';
 import { ACHIEVEMENTS, type AchievementDefinition } from './ACHIEVEMENTS';
 import { ALIENS, type BattleState } from './ALIENS';
@@ -65,6 +66,11 @@ function computeInitialShownUnlocks(initial?: GameStateInit): Set<string> {
     shown.add('ship_flagship');
     shown.add('cannon_alloy');
   }
+  const voidCrystal = initial?.metals?.voidCrystal ?? 0;
+  const echoShard = initial?.metals?.echoShard ?? 0;
+  if (voidCrystal > 0 || echoShard > 0) {
+    shown.add('sector3_metals');
+  }
   return shown;
 }
 
@@ -120,6 +126,8 @@ export function useGame(initial?: GameStateInit) {
       expeditions: [],
       tabsUnlocked: { shipyard: false, upgrades: false, planets: false },
       craftedModules: [],
+      chosenCharacterId: null,
+      metalDealDone: false,
     }),
     [],
   );
@@ -203,6 +211,8 @@ export function useGame(initial?: GameStateInit) {
             (initial?.energy ?? 0) >= Math.min(...ALIENS.map((a) => a.attackEnergyCost))),
       },
       craftedModules: initial?.craftedModules ?? [],
+      chosenCharacterId: initial?.chosenCharacterId ?? null,
+      metalDealDone: initial?.metalDealDone ?? false,
     };
   });
 
@@ -236,7 +246,7 @@ export function useGame(initial?: GameStateInit) {
     if (!hasTimed) return;
     const interval = setInterval(
       () => setNow(Date.now()),
-      state.battle ? 50 : 1000,
+      1000,
     );
     return () => clearInterval(interval);
   }, [!!state.battle, state.expeditions.length]);
@@ -256,6 +266,7 @@ export function useGame(initial?: GameStateInit) {
 
   // Toast state
   const [clerkMessage, setClerkMessage] = useState<string | null>(null);
+  const [characterMessage, setCharacterMessage] = useState<string | null>(null);
   const [achievementToast, setAchievementToast] =
     useState<AchievementDefinition | null>(null);
   const [battleVictory, setBattleVictory] = useState<PlanetId | null>(null);
@@ -294,6 +305,11 @@ export function useGame(initial?: GameStateInit) {
         Math.min(...ALIENS.map((a) => a.attackEnergyCost)),
   );
 
+  // Character select flow — triggered after planet 9 unlocked
+  const [characterFlowStep, setCharacterFlowStep] = useState<'select' | 'garbled' | 'explain' | 'metalDeal_intro' | 'metalDeal_offer' | null>(null);
+  const characterFlowShownRef = useRef((initial?.chosenCharacterId ?? null) !== null || (initial?.unlockedPlanetIds ?? []).includes(10 as PlanetId));
+  const metalDealDoneRef = useRef(initial?.metalDealDone ?? false);
+
   // Reactor boost — x5 clicks for the first 10 seconds of each session
   const [reactorBoostActive, setReactorBoostActive] = useState(false);
   useEffect(() => {
@@ -302,6 +318,7 @@ export function useGame(initial?: GameStateInit) {
   }, []);
 
   const closeClerk = useCallback(() => setClerkMessage(null), []);
+  const closeCharacterMessage = useCallback(() => setCharacterMessage(null), []);
   const closeAchievementToast = useCallback(
     () => setAchievementToast(null),
     [],
@@ -391,6 +408,18 @@ export function useGame(initial?: GameStateInit) {
     }, 22000);
     return () => clearInterval(interval);
   }, [clerkMessage]);
+
+  // Character messages — shown every 45s only after planet 10 is defeated (full signal restored)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (clerkMessage || characterMessage) return;
+      const charId = state.chosenCharacterId;
+      if (!charId) return;
+      if (!state.unlockedPlanetIds.includes(10 as PlanetId)) return;
+      setCharacterMessage(getRandomMessage(charId));
+    }, 45000);
+    return () => clearInterval(interval);
+  }, [clerkMessage, characterMessage, state.chosenCharacterId, state.unlockedPlanetIds]);
 
   // First iron discovery toast
   useEffect(() => {
@@ -628,6 +657,14 @@ export function useGame(initial?: GameStateInit) {
         showClerk('planet');
         const planet = PLANETS.find((p) => p.id === prev.planetId);
         if (planet) setPlanetUnlockToast(planet);
+        if (prev.planetId === 9 && !characterFlowShownRef.current) {
+          characterFlowShownRef.current = true;
+          setCharacterFlowStep('select');
+        }
+        if (prev.planetId === 11 && state.chosenCharacterId && !metalDealDoneRef.current) {
+          metalDealDoneRef.current = true;
+          setCharacterFlowStep('metalDeal_intro');
+        }
       } else {
         const ship = SHIPS.find((s) => s.id === prev.shipId);
         if (ship) setDefeatInfo({ shipName: ship.name });
@@ -979,6 +1016,45 @@ export function useGame(initial?: GameStateInit) {
     });
   }, []);
 
+  const chooseCharacter = useCallback((id: CharacterId) => {
+    setState((prev) => ({ ...prev, chosenCharacterId: id }));
+    setCharacterFlowStep('garbled');
+  }, []);
+
+  const advanceCharacterFlow = useCallback(() => {
+    setCharacterFlowStep((prev) => {
+      if (prev === 'garbled') return 'explain';
+      if (prev === 'metalDeal_intro') return 'metalDeal_offer';
+      return null;
+    });
+  }, []);
+
+  const closeCharacterFlow = useCallback(() => {
+    setCharacterFlowStep(null);
+  }, []);
+
+  const METAL_DEAL_ENERGY_COST = 500;
+  const METAL_DEAL_REWARD = { voidCrystal: 15, echoShard: 15 } as const;
+
+  const acceptMetalDeal = useCallback(() => {
+    setState((prev) => {
+      if (prev.energy < METAL_DEAL_ENERGY_COST) return prev;
+      return {
+        ...prev,
+        energy: prev.energy - METAL_DEAL_ENERGY_COST,
+        metals: addMetals(prev.metals, { ...createDefaultMetalsState(), ...METAL_DEAL_REWARD }),
+        discoveredMetals: mergeDiscovered(prev.discoveredMetals, METAL_DEAL_REWARD),
+        metalDealDone: true,
+      };
+    });
+    setCharacterFlowStep(null);
+  }, []);
+
+  const declineMetalDeal = useCallback(() => {
+    setState((prev) => ({ ...prev, metalDealDone: true }));
+    setCharacterFlowStep(null);
+  }, []);
+
   const addBattleTime = useCallback((ms: number) => {
     setState((prev) => {
       if (!prev.battle) return prev;
@@ -1035,6 +1111,9 @@ export function useGame(initial?: GameStateInit) {
       (p) => p.id === state.selectedPlanetId,
     ) as PlanetDefinition,
     clerkMessage,
+    characterMessage,
+    closeCharacterMessage,
+    chosenCharacter: state.chosenCharacterId ? getCharacterById(state.chosenCharacterId) : null,
     achievementToast,
     battleVictory,
     planetUnlockToast,
@@ -1086,6 +1165,14 @@ export function useGame(initial?: GameStateInit) {
     craftModule,
     equipModule,
     addBattleTime,
+    characterFlowStep,
+    chooseCharacter,
+    advanceCharacterFlow,
+    closeCharacterFlow,
+    acceptMetalDeal,
+    declineMetalDeal,
+    canAffordMetalDeal: state.energy >= METAL_DEAL_ENERGY_COST,
+    metalDealEnergyCost: METAL_DEAL_ENERGY_COST,
     debugSetValues: useCallback(
       (patch: {
         energy?: number;
