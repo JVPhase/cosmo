@@ -12,7 +12,9 @@ import {
   type GestureResponderEvent
 } from 'react-native';
 import { ALIENS } from '../game/ALIENS';
+import type { ModuleDefinition } from '../game/MODULES';
 import { PLANETS } from '../game/PLANETS';
+import { formatNum } from '../game/formatNum';
 import type { BattleState } from '../game/types';
 import { AnimatedHitEffects } from '../ui/AnimatedHitEffects';
 import { SkillCheckRing } from '../ui/SkillCheckRing';
@@ -22,12 +24,14 @@ export type BattleScreenProps = {
   timeRemaining: number;
   totalDamage: number;
   defeatInfo: { shipName: string } | null;
+  equippedModule: ModuleDefinition | null;
   onAttack: (multiplier?: number) => void;
   onReflect: (penaltyMs?: number) => void;
   onHeal: (fraction: number) => void;
   onForfeit: () => void;
   onGoToShipyard: () => void;
   onClearDefeat: () => void;
+  onAddBattleTime: (ms: number) => void;
 };
 
 export function BattleScreen({
@@ -35,12 +39,14 @@ export function BattleScreen({
   timeRemaining,
   totalDamage,
   defeatInfo,
+  equippedModule,
   onAttack,
   onReflect,
   onHeal,
   onForfeit,
   onGoToShipyard,
-  onClearDefeat
+  onClearDefeat,
+  onAddBattleTime,
 }: BattleScreenProps) {
   const [hitTrigger, setHitTrigger] = useState(0);
   const [hitOrigin, setHitOrigin] = useState<
@@ -64,6 +70,26 @@ export function BattleScreen({
   const warnAnim = useRef(new Animated.Value(1)).current;
   const warnAnimRef = useRef<Animated.CompositeAnimation | null>(null);
   const lastHitDamageRef = useRef(0);
+
+  // Ultimate state
+  const [ultCharge, setUltCharge] = useState(0);
+  const [ultActive, setUltActive] = useState(false);
+  const [ultSurgeMultiplier, setUltSurgeMultiplier] = useState(1);
+  const [dispelImmune, setDispelImmune] = useState(false);
+  const dispelImmuneRef = useRef(false);
+  const ultTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Reset ult state when battle starts/ends
+  const battleId = battle ? `${battle.planetId}-${battle.expiresAt}` : null;
+  useEffect(() => {
+    if (ultTimeoutRef.current) clearTimeout(ultTimeoutRef.current);
+    setUltCharge(0);
+    setUltActive(false);
+    setUltSurgeMultiplier(1);
+    setDispelImmune(false);
+    dispelImmuneRef.current = false;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [battleId]);
 
   const alien = useMemo(
     () => (battle ? ALIENS.find((a) => a.planetId === battle.planetId) ?? null : null),
@@ -102,6 +128,11 @@ export function BattleScreen({
         warnTimeoutRef.current = setTimeout(() => setShieldWarning(true), delay - WARN_MS);
       }
       abilityTimeoutRef.current = setTimeout(() => {
+        // Dispel immune: skip this illusion activation
+        if (!active && dispelImmuneRef.current && ability.type === 'illusion') {
+          schedule();
+          return;
+        }
         active = !active;
         setShieldWarning(false);
         setAbilityActive(active);
@@ -184,8 +215,42 @@ export function BattleScreen({
     }
   };
 
-  const attackMultiplier = opportunityActive ? 2 : 1;
+  const surgeBonus = equippedModule?.id === 'surge' && ultActive ? ultSurgeMultiplier : 1;
+  const attackMultiplier = (opportunityActive ? 2 : 1) * surgeBonus;
   const effectiveDamage = abilityActive ? 0 : Math.floor(totalDamage * attackMultiplier);
+
+  const hitsToCharge = equippedModule?.hitsToCharge ?? 0;
+  const ultReady = equippedModule !== null && ultCharge >= hitsToCharge && !ultActive;
+
+  const handleActivateUlt = () => {
+    if (!ultReady || !equippedModule) return;
+    setUltCharge(0);
+    setUltActive(true);
+    if (equippedModule.id === 'surge') {
+      setUltSurgeMultiplier(5);
+      if (ultTimeoutRef.current) clearTimeout(ultTimeoutRef.current);
+      ultTimeoutRef.current = setTimeout(() => {
+        setUltActive(false);
+        setUltSurgeMultiplier(1);
+      }, equippedModule.ultDurationMs);
+    } else if (equippedModule.id === 'warp') {
+      onAddBattleTime(20_000);
+      setUltActive(false);
+    } else if (equippedModule.id === 'dispel') {
+      // Break active illusion if running
+      if (abilityActive && isIllusion) {
+        breakShieldEarlyRef.current?.();
+      }
+      dispelImmuneRef.current = true;
+      setDispelImmune(true);
+      if (ultTimeoutRef.current) clearTimeout(ultTimeoutRef.current);
+      ultTimeoutRef.current = setTimeout(() => {
+        dispelImmuneRef.current = false;
+        setDispelImmune(false);
+        setUltActive(false);
+      }, equippedModule.ultDurationMs);
+    }
+  };
 
   const handleAttack = (e: GestureResponderEvent) => {
     const native = e.nativeEvent as unknown as {
@@ -241,6 +306,9 @@ export function BattleScreen({
       setHitOrigin({ x, y });
       onAttack(attackMultiplier);
       setHitTrigger((t) => t + 1);
+      if (equippedModule && !ultActive) {
+        setUltCharge((prev) => Math.min(equippedModule.hitsToCharge, prev + 1));
+      }
     };
 
     if (Platform.OS === 'web' && battleHitAreaRef.current) {
@@ -399,8 +467,8 @@ export function BattleScreen({
         <View style={styles.hpLabelRow}>
           <Text style={styles.hpLabel}>HP ПРОТИВНИКА</Text>
           <Text style={styles.hpNumbers}>
-            {battle!.currentHP.toLocaleString()} /{' '}
-            {battle!.maxHP.toLocaleString()}
+            {formatNum(battle!.currentHP)} /{' '}
+            {formatNum(battle!.maxHP)}
           </Text>
         </View>
         <View style={styles.hpBarBg}>
@@ -416,7 +484,7 @@ export function BattleScreen({
         </View>
 
         <View style={styles.statsRow}>
-          <Text style={styles.statChip}>⚔️ {effectiveDamage}/клик</Text>
+          <Text style={styles.statChip}>⚔️ {formatNum(effectiveDamage)}/клик</Text>
           {abilityActive && !qteAttempted && (
             <Text style={[styles.statChip, { color: '#00dc64' }]}>
               🎯 QTE — {isIllusion ? 'рассейте иллюзию!' : 'снимите щит!'}
@@ -437,14 +505,50 @@ export function BattleScreen({
               ⚡ ×2 АТАКА!
             </Text>
           )}
+          {equippedModule?.id === 'surge' && ultActive && (
+            <Text style={[styles.statChip, { color: '#ffe066' }]}>
+              ⚡ ×5 ВСПЛЕСК!
+            </Text>
+          )}
+          {equippedModule?.id === 'dispel' && dispelImmune && (
+            <Text style={[styles.statChip, { color: '#b388ff' }]}>
+              👁️ ИММУНИТЕТ К ИЛЛЮЗИИ
+            </Text>
+          )}
         </View>
       </View>
 
-      {/* Forfeit button */}
+      {/* Forfeit button + Ult button row */}
       <View style={styles.forfeitRow}>
         <Pressable onPress={onForfeit} style={styles.forfeitBtn}>
           <Text style={styles.forfeitText}>✕ ОТСТУПИТЬ</Text>
         </Pressable>
+        {equippedModule && (
+          <Pressable
+            onPress={handleActivateUlt}
+            disabled={!ultReady}
+            style={[styles.ultBtn, ultReady && styles.ultBtnReady, ultActive && styles.ultBtnActive]}
+          >
+            <View style={styles.ultBtnInner}>
+              <Text style={styles.ultBtnIcon}>{equippedModule.icon}</Text>
+              <View style={styles.ultBtnText}>
+                <Text style={[styles.ultBtnName, ultReady && { color: '#ffe066' }]}>
+                  {ultActive ? '◈ АКТИВНО' : ultReady ? `◈ ${equippedModule.ultName}` : equippedModule.ultName}
+                </Text>
+                <View style={styles.ultChargeBarBg}>
+                  <View
+                    style={[
+                      styles.ultChargeBarFill,
+                      { width: `${Math.min(100, (ultCharge / hitsToCharge) * 100)}%` },
+                      ultReady && { backgroundColor: '#ffe066' },
+                      ultActive && { backgroundColor: '#ff9900', width: '100%' },
+                    ]}
+                  />
+                </View>
+              </View>
+            </View>
+          </Pressable>
+        )}
       </View>
 
       {/* Main — clickable rocket */}
@@ -747,6 +851,49 @@ const styles = StyleSheet.create({
     color: '#44ff88',
     fontWeight: '900',
     letterSpacing: 1,
+  },
+  ultBtn: {
+    flex: 1,
+    marginLeft: 8,
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+  },
+  ultBtnReady: {
+    borderColor: 'rgba(255,224,102,0.6)',
+    backgroundColor: 'rgba(255,224,102,0.1)',
+  },
+  ultBtnActive: {
+    borderColor: 'rgba(255,153,0,0.7)',
+    backgroundColor: 'rgba(255,153,0,0.15)',
+  },
+  ultBtnInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  ultBtnIcon: { fontSize: 16 },
+  ultBtnText: { flex: 1 },
+  ultBtnName: {
+    fontSize: 9,
+    color: 'rgba(255,255,255,0.45)',
+    fontWeight: '800',
+    letterSpacing: 1,
+    marginBottom: 4,
+  },
+  ultChargeBarBg: {
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    overflow: 'hidden',
+  },
+  ultChargeBarFill: {
+    height: '100%',
+    borderRadius: 2,
+    backgroundColor: '#00d4ff',
   },
 });
 
