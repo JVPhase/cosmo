@@ -1,6 +1,6 @@
 import type { PlanetId } from "./PLANETS";
 
-export type MetalId = "iron" | "titan" | "iridium";
+export type MetalId = "iron" | "titan" | "iridium" | "voidCrystal" | "echoShard";
 
 export type MetalDefinition = {
   id: MetalId;
@@ -13,6 +13,8 @@ export const METALS: readonly MetalDefinition[] = [
   { id: "iron", name: "Железо", icon: "🔩", image: require("../../assets/iron.png") },
   { id: "titan", name: "Титан", icon: "🔷", image: require("../../assets/titan.png") },
   { id: "iridium", name: "Иридий", icon: "💜", image: require("../../assets/iridium.png") },
+  { id: "voidCrystal", name: "Кристалл Пустоты", icon: "✨", image: require("../../assets/iridium.png") },
+  { id: "echoShard", name: "Осколок Эха", icon: "🔊", image: require("../../assets/titan.png") },
 ] as const;
 
 // Drop table: which metals drop from each planet and at what chance per click
@@ -64,12 +66,48 @@ export const PLANET_DROP_TABLE: Record<PlanetId, { metalId: MetalId; chance: num
     { metalId: "titan", chance: 0.25 },
     { metalId: "iridium", chance: 0.22 },
   ],
+  // Sector 3 — Void Crystals and Echo Shards, plus old metals at lower rate
+  11: [
+    { metalId: "voidCrystal", chance: 0.15 },
+    { metalId: "echoShard", chance: 0.12 },
+    { metalId: "iron", chance: 0.10 },
+    { metalId: "titan", chance: 0.10 },
+    { metalId: "iridium", chance: 0.10 },
+  ],
+  12: [
+    { metalId: "voidCrystal", chance: 0.15 },
+    { metalId: "echoShard", chance: 0.14 },
+    { metalId: "iron", chance: 0.10 },
+    { metalId: "titan", chance: 0.10 },
+    { metalId: "iridium", chance: 0.10 },
+  ],
+  13: [
+    { metalId: "voidCrystal", chance: 0.17 },
+    { metalId: "echoShard", chance: 0.15 },
+    { metalId: "iron", chance: 0.10 },
+    { metalId: "titan", chance: 0.10 },
+    { metalId: "iridium", chance: 0.10 },
+  ],
+  14: [
+    { metalId: "voidCrystal", chance: 0.18 },
+    { metalId: "echoShard", chance: 0.16 },
+    { metalId: "iron", chance: 0.10 },
+    { metalId: "titan", chance: 0.10 },
+    { metalId: "iridium", chance: 0.10 },
+  ],
+  15: [
+    { metalId: "voidCrystal", chance: 0.20 },
+    { metalId: "echoShard", chance: 0.18 },
+    { metalId: "iron", chance: 0.10 },
+    { metalId: "titan", chance: 0.10 },
+    { metalId: "iridium", chance: 0.10 },
+  ],
 };
 
 export type MetalsState = Record<MetalId, number>;
 
 export function createDefaultMetalsState(): MetalsState {
-  return { iron: 0, titan: 0, iridium: 0 };
+  return { iron: 0, titan: 0, iridium: 0, voidCrystal: 0, echoShard: 0 };
 }
 
 export function rollMetalDrops(planetId: PlanetId, dropBonus = 0, planetBonus = 1): MetalsState {
@@ -89,6 +127,8 @@ export function addMetals(a: MetalsState, b: MetalsState): MetalsState {
     iron: a.iron + b.iron,
     titan: a.titan + b.titan,
     iridium: a.iridium + b.iridium,
+    voidCrystal: a.voidCrystal + b.voidCrystal,
+    echoShard: a.echoShard + b.echoShard,
   };
 }
 

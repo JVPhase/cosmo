@@ -1,50 +1,172 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Animated, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
+import { Canvas, Circle } from "@shopify/react-native-skia";
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useDerivedValue,
+  useSharedValue,
+  withDelay,
+  withSequence,
+  withTiming,
+} from "react-native-reanimated";
 import type { AnimatedHitEffectsProps } from "./animatedHitEffectsShared";
 import { SPARK_COLORS } from "./animatedHitEffectsShared";
 
 export type { AnimatedHitEffectsProps } from "./animatedHitEffectsShared";
 
-type Particle = {
+type Spark = {
   id: number;
   born: number;
-  originX: number;
-  originY: number;
-  x: Animated.Value;
-  y: Animated.Value;
-  opacity: Animated.Value;
-  scale: Animated.Value;
+  ox: number;
+  oy: number;
+  angleRad: number;
+  dist: number;
+  r: number;
   color: string;
-  size: number;
+  duration: number;
 };
 
 type Ripple = {
   id: number;
   born: number;
-  originX: number;
-  originY: number;
-  scale: Animated.Value;
-  opacity: Animated.Value;
+  ox: number;
+  oy: number;
+  scaleTo: number;
+  delay: number;
   color: string;
 };
 
-type FloatingDmg = {
+type FloatDmg = {
   id: number;
   born: number;
   value: number;
-  originX: number;
-  originY: number;
-  translateY: Animated.Value;
-  translateX: Animated.Value;
-  opacity: Animated.Value;
-  scale: Animated.Value;
+  ox: number;
+  oy: number;
+  driftX: number;
 };
 
-type HitEffectLayers = {
-  particles: Particle[];
+type HitLayers = {
+  sparks: Spark[];
   ripples: Ripple[];
-  floats: FloatingDmg[];
+  floats: FloatDmg[];
 };
+
+const MAX_SPARKS = 42;
+const MAX_RIPPLES = 9;
+const MAX_FLOATS = 3;
+const RIPPLE_COLORS = ["#ff4400", "#ff8800", "#ffcc00"];
+
+function SkiaSpark({
+  ox,
+  oy,
+  angleRad,
+  dist,
+  r,
+  color,
+  duration,
+}: Pick<Spark, "ox" | "oy" | "angleRad" | "dist" | "r" | "color" | "duration">) {
+  const progress = useSharedValue(0);
+  useEffect(() => {
+    progress.value = 0;
+    progress.value = withTiming(1, { duration, easing: Easing.out(Easing.quad) });
+  }, [progress, duration]);
+
+  const cx = useDerivedValue(() => ox + Math.cos(angleRad) * dist * progress.value);
+  const cy = useDerivedValue(() => oy + Math.sin(angleRad) * dist * progress.value);
+  const opacity = useDerivedValue(() =>
+    progress.value < 0.1 ? progress.value * 10 : 1 - (progress.value - 0.1) / 0.9,
+  );
+
+  return <Circle cx={cx} cy={cy} r={r} color={color} opacity={opacity} />;
+}
+
+function SkiaRipple({
+  ox,
+  oy,
+  scaleTo,
+  delay,
+  color,
+}: Pick<Ripple, "ox" | "oy" | "scaleTo" | "delay" | "color">) {
+  const progress = useSharedValue(0);
+  useEffect(() => {
+    progress.value = 0;
+    progress.value = withDelay(delay, withTiming(1, { duration: 550, easing: Easing.out(Easing.quad) }));
+  }, [progress, delay]);
+
+  const r = useDerivedValue(() => 26 * scaleTo * progress.value);
+  const opacity = useDerivedValue(() => 0.9 * (1 - progress.value));
+
+  return (
+    <Circle
+      cx={ox}
+      cy={oy}
+      r={r}
+      color={color}
+      opacity={opacity}
+      style="stroke"
+      strokeWidth={2}
+    />
+  );
+}
+
+function FloatDmgLabel({
+  floatId,
+  ox,
+  oy,
+  value,
+  driftX,
+}: {
+  floatId: number;
+  ox: number;
+  oy: number;
+  value: number;
+  driftX: number;
+}) {
+  const translateY = useSharedValue(0);
+  const translateX = useSharedValue(0);
+  const opacity = useSharedValue(0);
+  const scale = useSharedValue(0.5);
+
+  useEffect(() => {
+    translateY.value = 0;
+    translateX.value = 0;
+    opacity.value = 0;
+    scale.value = 0.5;
+
+    translateY.value = withSequence(
+      withTiming(-20, { duration: 120, easing: Easing.out(Easing.quad) }),
+      withTiming(-80, { duration: 700, easing: Easing.out(Easing.quad) }),
+    );
+    translateX.value = withDelay(120, withTiming(driftX, { duration: 700 }));
+    opacity.value = withSequence(
+      withTiming(1, { duration: 100 }),
+      withTiming(0, { duration: 700 }),
+    );
+    scale.value = withSequence(
+      withTiming(1.3, { duration: 120 }),
+      withTiming(0.9, { duration: 700 }),
+    );
+  }, [floatId, translateY, translateX, opacity, scale, driftX]);
+
+  const anim = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [
+      { translateY: translateY.value },
+      { translateX: translateX.value },
+      { scale: scale.value },
+    ],
+  }));
+
+  return (
+    <Animated.View
+      style={[styles.floatNum, { left: ox - 30, top: oy - 16 }, anim]}
+      pointerEvents="none"
+    >
+      <Text style={styles.dmgText}>⚔️ {value}</Text>
+    </Animated.View>
+  );
+}
 
 export function AnimatedHitEffects({
   trigger,
@@ -53,17 +175,13 @@ export function AnimatedHitEffects({
   style,
   children,
 }: AnimatedHitEffectsProps) {
-  const pulseScale = useRef(new Animated.Value(1)).current;
-  const particleIdRef = useRef(0);
+  const pulseScale = useSharedValue(1);
+  const sparkIdRef = useRef(0);
   const rippleIdRef = useRef(0);
   const floatIdRef = useRef(0);
 
-  const [layers, setLayers] = useState<HitEffectLayers>({
-    particles: [],
-    ripples: [],
-    floats: [],
-  });
-  const { particles, ripples, floats } = layers;
+  const [layers, setLayers] = useState<HitLayers>({ sparks: [], ripples: [], floats: [] });
+  const { sparks, ripples, floats } = layers;
 
   const originMemo = useMemo(
     () => (origin ? { x: origin.x, y: origin.y } : undefined),
@@ -71,127 +189,74 @@ export function AnimatedHitEffects({
   );
 
   useEffect(() => {
-    if (trigger === 0) return;
+    pulseScale.value = 1;
+    pulseScale.value = withSequence(
+      withTiming(1.06, { duration: 80 }),
+      withTiming(0.97, { duration: 80 }),
+      withTiming(1, { duration: 140 }),
+    );
+  }, [trigger, pulseScale]);
 
-    pulseScale.setValue(1);
-    Animated.sequence([
-      Animated.timing(pulseScale, { toValue: 1.06, duration: 80, useNativeDriver: true }),
-      Animated.timing(pulseScale, { toValue: 0.97, duration: 80, useNativeDriver: true }),
-      Animated.timing(pulseScale, { toValue: 1, duration: 140, useNativeDriver: true }),
-    ]).start();
+  const pulseStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pulseScale.value }],
+  }));
 
-    if (!originMemo) return;
+  useEffect(() => {
+    if (trigger === 0 || !originMemo) return;
 
     const now = Date.now();
     const x0 = originMemo.x;
     const y0 = originMemo.y;
 
     const sparkCount = 14;
-    const newParticles: Particle[] = [];
+    const newSparks: Spark[] = [];
     for (let i = 0; i < sparkCount; i++) {
       const angle = (360 / sparkCount) * i + (Math.random() * 30 - 15);
-      const rad = (angle * Math.PI) / 180;
+      const angleRad = (angle * Math.PI) / 180;
       const dist = Math.random() * 90 + 30;
       const color = SPARK_COLORS[Math.floor(Math.random() * SPARK_COLORS.length)]!;
-      const size = Math.random() * 4 + 3;
+      const r = Math.random() * 2 + 1.5;
       const duration = Math.random() * 200 + 500;
-
-      const x = new Animated.Value(0);
-      const y = new Animated.Value(0);
-      const opacity = new Animated.Value(1);
-      const scale = new Animated.Value(1);
-
-      newParticles.push({
-        id: ++particleIdRef.current,
+      newSparks.push({
+        id: ++sparkIdRef.current,
         born: now,
-        originX: x0,
-        originY: y0,
-        x,
-        y,
-        opacity,
-        scale,
+        ox: x0,
+        oy: y0,
+        angleRad,
+        dist,
+        r,
         color,
-        size,
+        duration,
       });
-
-      Animated.parallel([
-        Animated.timing(x, { toValue: Math.cos(rad) * dist, duration, useNativeDriver: true }),
-        Animated.timing(y, { toValue: Math.sin(rad) * dist, duration, useNativeDriver: true }),
-        Animated.timing(scale, { toValue: 0, duration, useNativeDriver: true }),
-        Animated.sequence([
-          Animated.timing(opacity, { toValue: 1, duration: 80, useNativeDriver: true }),
-          Animated.timing(opacity, { toValue: 0, duration: duration - 80, useNativeDriver: true }),
-        ]),
-      ]).start();
     }
 
-    const rippleColors = ["#ff4400", "#ff8800", "#ffcc00"];
-    const newRipples: Ripple[] = [];
-    for (let k = 0; k < 3; k++) {
-      const scale = new Animated.Value(0.2);
-      const opacity = new Animated.Value(0.9);
-      const color = rippleColors[k]!;
-      const delay = k * 60;
+    const newRipples: Ripple[] = [
+      { id: ++rippleIdRef.current, born: now, ox: x0, oy: y0, scaleTo: 3.5, delay: 0, color: RIPPLE_COLORS[0]! },
+      { id: ++rippleIdRef.current, born: now, ox: x0, oy: y0, scaleTo: 3.9, delay: 60, color: RIPPLE_COLORS[1]! },
+      { id: ++rippleIdRef.current, born: now, ox: x0, oy: y0, scaleTo: 4.3, delay: 120, color: RIPPLE_COLORS[2]! },
+    ];
 
-      newRipples.push({
-        id: ++rippleIdRef.current,
-        born: now,
-        originX: x0,
-        originY: y0,
-        scale,
-        opacity,
-        color,
-      });
-
-      setTimeout(() => {
-        Animated.parallel([
-          Animated.timing(scale, { toValue: 3.5 + k * 0.4, duration: 550, useNativeDriver: true }),
-          Animated.timing(opacity, { toValue: 0, duration: 550, useNativeDriver: true }),
-        ]).start();
-      }, delay);
-    }
-
-    const translateY = new Animated.Value(0);
-    const translateX = new Animated.Value(0);
-    const opacity = new Animated.Value(0);
-    const scale = new Animated.Value(0.5);
-    const float: FloatingDmg = {
+    const driftX = (Math.random() - 0.5) * 30;
+    const newFloat: FloatDmg = {
       id: ++floatIdRef.current,
       born: now,
       value: damage,
-      originX: x0,
-      originY: y0,
-      translateY,
-      translateX,
-      opacity,
-      scale,
+      ox: x0,
+      oy: y0,
+      driftX,
     };
 
-    Animated.sequence([
-      Animated.parallel([
-        Animated.timing(scale, { toValue: 1.3, duration: 120, useNativeDriver: true }),
-        Animated.timing(opacity, { toValue: 1, duration: 100, useNativeDriver: true }),
-        Animated.timing(translateY, { toValue: -20, duration: 120, useNativeDriver: true }),
-      ]),
-      Animated.parallel([
-        Animated.timing(scale, { toValue: 0.9, duration: 700, useNativeDriver: true }),
-        Animated.timing(opacity, { toValue: 0, duration: 700, useNativeDriver: true }),
-        Animated.timing(translateY, { toValue: -80, duration: 700, useNativeDriver: true }),
-        Animated.timing(translateX, { toValue: (Math.random() - 0.5) * 30, duration: 700, useNativeDriver: true }),
-      ]),
-    ]).start();
-
     setLayers((prev) => ({
-      particles: [...prev.particles, ...newParticles],
-      ripples: [...prev.ripples, ...newRipples],
-      floats: [...prev.floats, float],
+      sparks: [...prev.sparks, ...newSparks].slice(-MAX_SPARKS),
+      ripples: [...prev.ripples, ...newRipples].slice(-MAX_RIPPLES),
+      floats: [...prev.floats, newFloat].slice(-MAX_FLOATS),
     }));
 
     const ttl = 900;
     const t = setTimeout(() => {
       const cutoff = Date.now();
       setLayers((prev) => ({
-        particles: prev.particles.filter((p) => cutoff - p.born < ttl),
+        sparks: prev.sparks.filter((p) => cutoff - p.born < ttl),
         ripples: prev.ripples.filter((r) => cutoff - r.born < ttl),
         floats: prev.floats.filter((f) => cutoff - f.born < ttl),
       }));
@@ -200,70 +265,44 @@ export function AnimatedHitEffects({
   }, [trigger, originMemo, damage]);
 
   return (
-    <Animated.View style={[style, { transform: [{ scale: pulseScale }] }]}>
+    <Animated.View style={[style, pulseStyle]}>
       {children}
 
-      <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-        {particles.map((p) => (
-          <Animated.View
-            key={p.id}
-            style={{
-              position: "absolute",
-              left: p.originX - p.size / 2,
-              top: p.originY - p.size / 2,
-              width: p.size,
-              height: p.size,
-              borderRadius: p.size / 2,
-              backgroundColor: p.color,
-              opacity: p.opacity,
-              transform: [{ translateX: p.x }, { translateY: p.y }, { scale: p.scale }],
-              shadowColor: p.color,
-              shadowOpacity: 0.8,
-              shadowRadius: 6,
-            }}
-          />
-        ))}
-
+      <Canvas style={StyleSheet.absoluteFill} pointerEvents="none">
         {ripples.map((r) => (
-          <Animated.View
+          <SkiaRipple
             key={r.id}
-            style={{
-              position: "absolute",
-              width: 52,
-              height: 52,
-              borderRadius: 26,
-              borderWidth: 2,
-              borderColor: r.color,
-              opacity: r.opacity,
-              left: r.originX - 26,
-              top: r.originY - 26,
-              transform: [{ scale: r.scale }],
-              shadowColor: r.color,
-              shadowOpacity: 0.6,
-              shadowRadius: 8,
-            }}
+            ox={r.ox}
+            oy={r.oy}
+            scaleTo={r.scaleTo}
+            delay={r.delay}
+            color={r.color}
           />
         ))}
+        {sparks.map((s) => (
+          <SkiaSpark
+            key={s.id}
+            ox={s.ox}
+            oy={s.oy}
+            angleRad={s.angleRad}
+            dist={s.dist}
+            r={s.r}
+            color={s.color}
+            duration={s.duration}
+          />
+        ))}
+      </Canvas>
 
+      <View pointerEvents="none" style={StyleSheet.absoluteFill}>
         {floats.map((f) => (
-          <Animated.View
+          <FloatDmgLabel
             key={f.id}
-            style={{
-              position: "absolute",
-              left: f.originX - 30,
-              top: f.originY - 16,
-              width: 60,
-              alignItems: "center",
-              opacity: f.opacity,
-              transform: [
-                { translateY: f.translateY },
-                { translateX: f.translateX },
-                { scale: f.scale },
-              ],
-            }}
-          >
-            <Text style={styles.dmgText}>⚔️ {f.value}</Text>
-          </Animated.View>
+            floatId={f.id}
+            ox={f.ox}
+            oy={f.oy}
+            value={f.value}
+            driftX={f.driftX}
+          />
         ))}
       </View>
     </Animated.View>
@@ -271,6 +310,12 @@ export function AnimatedHitEffects({
 }
 
 const styles = StyleSheet.create({
+  floatNum: {
+    position: "absolute",
+    width: 60,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   dmgText: {
     fontSize: 17,
     fontWeight: "900",
