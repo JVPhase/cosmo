@@ -21,6 +21,7 @@ import { ModalSheet } from './src/ui/ModalSheet';
 import { Popup } from './src/ui/Popup';
 import { formatNum } from './src/game/formatNum';
 import { METALS } from './src/game/METALS';
+import { getModuleById } from './src/game/MODULES';
 import { PasswordScreen } from './src/ui/PasswordScreen';
 import { useGame } from './src/game/useGame';
 import {
@@ -300,6 +301,7 @@ function GameApp({
           expeditions={game.expeditions}
           expeditionRemainingMap={game.expeditionRemainingMap}
           unlockedPlanetIds={game.unlockedPlanetIds}
+          playerLevel={game.playerLevel}
           onBuildShip={game.buildShip}
           onRepairShip={game.repairShip}
           onSelectShip={game.selectShip}
@@ -308,6 +310,9 @@ function GameApp({
           }
           onStartExpedition={game.startExpedition}
           onClaimExpedition={game.claimExpedition}
+          craftedModules={game.craftedModules}
+          onCraftModule={game.craftModule}
+          onEquipModule={game.equipModule}
         />
       );
       break;
@@ -318,11 +323,19 @@ function GameApp({
           timeRemaining={game.timeRemaining}
           totalDamage={game.totalDamage}
           defeatInfo={game.defeatInfo}
+          equippedModule={(() => {
+            const shipId = game.battle?.shipId ?? game.fleet.selectedShipId;
+            const owned = game.fleet.ownedShips.find((s) => s.shipId === shipId);
+            const modId = owned?.equippedModuleId ?? null;
+            return modId ? getModuleById(modId) : null;
+          })()}
           onAttack={game.attackBattle}
           onReflect={game.reflectBattle}
+          onHeal={game.healBattle}
           onForfeit={game.forfeitBattle}
           onGoToShipyard={() => onSetTab('shipyard')}
           onClearDefeat={game.clearDefeatInfo}
+          onAddBattleTime={game.addBattleTime}
         />
       );
       break;
@@ -553,17 +566,19 @@ function GameApp({
                 ) ||
                   (game.fleet.ownedShips.length > 0 &&
                     CANNONS.some((cannon) =>
-                      game.fleet.ownedShips.some((ship) => {
-                        const cost = computeCannonCost(
-                          cannon,
-                          ship.cannons[cannon.id] ?? 0
-                        );
-                        return Object.entries(cost).every(
-                          ([m, qty]) =>
-                            (game.metals[m as keyof typeof game.metals] ?? 0) >=
-                            (qty ?? 0)
-                        );
-                      })
+                      game.fleet.ownedShips
+                        .filter((ship) => !game.expeditions.some((e) => e.shipId === ship.shipId))
+                        .some((ship) => {
+                          const cost = computeCannonCost(
+                            cannon,
+                            ship.cannons[cannon.id] ?? 0
+                          );
+                          return Object.entries(cost).every(
+                            ([m, qty]) =>
+                              (game.metals[m as keyof typeof game.metals] ?? 0) >=
+                              (qty ?? 0)
+                          );
+                        })
                     )));
 
               return (

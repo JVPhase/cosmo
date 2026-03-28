@@ -19,6 +19,7 @@ import {
 } from './METALS';
 import { PLANETS, type PlanetId, type PlanetDefinition } from './PLANETS';
 import { computePlayerLevel } from './PLAYER';
+import { getModuleById, type ModuleId } from './MODULES';
 import { RESEARCH, type ResearchId, type ResearchState } from './RESEARCH';
 import {
   SHIPS,
@@ -118,6 +119,7 @@ export function useGame(initial?: GameStateInit) {
       research: {},
       expeditions: [],
       tabsUnlocked: { shipyard: false, upgrades: false, planets: false },
+      craftedModules: [],
     }),
     [],
   );
@@ -154,6 +156,7 @@ export function useGame(initial?: GameStateInit) {
         shipId: s.shipId,
         broken: s.broken ?? false,
         cannons: { ...createDefaultCannons(), ...(s.cannons ?? {}) },
+        equippedModuleId: s.equippedModuleId ?? null,
       })),
       selectedShipId: (() => {
         const saved = initial?.fleet?.selectedShipId ?? null;
@@ -199,6 +202,7 @@ export function useGame(initial?: GameStateInit) {
           ((initial?.unlockedPlanetIds?.length ?? 0) > 1 ||
             (initial?.energy ?? 0) >= Math.min(...ALIENS.map((a) => a.attackEnergyCost))),
       },
+      craftedModules: initial?.craftedModules ?? [],
     };
   });
 
@@ -524,7 +528,16 @@ export function useGame(initial?: GameStateInit) {
         image: CANNONS.find((c) => c.id === 'alloy')!.image,
       });
     }
-  }, [state.metals.iron, state.metals.titan, state.metals.iridium]);
+    const { voidCrystal, echoShard } = state.metals;
+
+    if (voidCrystal > 0 || echoShard > 0) {
+      enqueue('sector3_metals', {
+        title: '◈ МАТЕРИАЛЫ СЕКТОРА 3 · КЛЕРК-7 ◈',
+        text: 'Зафиксированы Кристалл Пустоты и Осколок Эха!\n\nМинистерство ещё не придумало, как их классифицировать. Зато инженеры уже знают, что с ними делать — загляните в Верфь, раздел «Модули».',
+        image: METALS.find((m) => m.id === 'iridium')!.image,
+      });
+    }
+  }, [state.metals.iron, state.metals.titan, state.metals.iridium, state.metals.voidCrystal, state.metals.echoShard]);
 
   const upgCount = useMemo(() => {
     return UPGRADES.filter((u) => (state.upgrades[u.id] ?? 0) > 0).length;
@@ -745,7 +758,7 @@ export function useGame(initial?: GameStateInit) {
       if (!hasEnoughMetals(prev.metals, ship.baseCost)) return prev;
       const newOwnedShips = [
         ...prev.fleet.ownedShips,
-        { shipId, broken: false, cannons: createDefaultCannons() },
+        { shipId, broken: false, cannons: createDefaultCannons(), equippedModuleId: null },
       ];
       return {
         ...prev,
@@ -938,6 +951,41 @@ export function useGame(initial?: GameStateInit) {
     });
   }, []);
 
+  const craftModule = useCallback((moduleId: ModuleId) => {
+    setState((prev) => {
+      if (prev.craftedModules.includes(moduleId)) return prev;
+      const mod = getModuleById(moduleId);
+      if (!hasEnoughMetals(prev.metals, mod.cost)) return prev;
+      return {
+        ...prev,
+        metals: subtractMetals(prev.metals, mod.cost),
+        craftedModules: [...prev.craftedModules, moduleId],
+      };
+    });
+  }, []);
+
+  const equipModule = useCallback((shipId: ShipId, moduleId: ModuleId | null) => {
+    setState((prev) => {
+      if (moduleId !== null && !prev.craftedModules.includes(moduleId)) return prev;
+      return {
+        ...prev,
+        fleet: {
+          ...prev.fleet,
+          ownedShips: prev.fleet.ownedShips.map((s) =>
+            s.shipId === shipId ? { ...s, equippedModuleId: moduleId } : s,
+          ),
+        },
+      };
+    });
+  }, []);
+
+  const addBattleTime = useCallback((ms: number) => {
+    setState((prev) => {
+      if (!prev.battle) return prev;
+      return { ...prev, battle: { ...prev.battle, expiresAt: prev.battle.expiresAt + ms } };
+    });
+  }, []);
+
   const claimExpedition = useCallback((shipId: ShipId) => {
     setState((prev) => {
       const exp = prev.expeditions.find((e) => e.shipId === shipId);
@@ -956,14 +1004,13 @@ export function useGame(initial?: GameStateInit) {
         ...createDefaultMetalsState(),
         ...def.metalRewards,
       };
+      const scale = (n: number) => Math.floor(n * metalMultiplier * timelyMultiplier * shipExpMultiplier);
       const scaledRewards: typeof baseRewards = {
-        iron: Math.floor(baseRewards.iron * metalMultiplier * timelyMultiplier * shipExpMultiplier),
-        titan: Math.floor(
-          baseRewards.titan * metalMultiplier * timelyMultiplier * shipExpMultiplier,
-        ),
-        iridium: Math.floor(
-          baseRewards.iridium * metalMultiplier * timelyMultiplier * shipExpMultiplier,
-        ),
+        iron: scale(baseRewards.iron),
+        titan: scale(baseRewards.titan),
+        iridium: scale(baseRewards.iridium),
+        voidCrystal: scale(baseRewards.voidCrystal),
+        echoShard: scale(baseRewards.echoShard),
       };
       const newMetals = addMetals(prev.metals, scaledRewards);
       return {
@@ -1036,6 +1083,9 @@ export function useGame(initial?: GameStateInit) {
     selectPlanet,
     startExpedition,
     claimExpedition,
+    craftModule,
+    equipModule,
+    addBattleTime,
     debugSetValues: useCallback(
       (patch: {
         energy?: number;

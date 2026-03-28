@@ -43,7 +43,8 @@ function isValidState(s: unknown): s is GameStateInit {
   if (typeof state.metals !== "object" || state.metals === null) return false;
   const metals = state.metals as Record<string, unknown>;
   for (const metal of METALS) {
-    if (typeof metals[metal.id] !== "number") return false;
+    // Allow missing keys — new metals default to 0 in useGame.ts
+    if (metals[metal.id] !== undefined && typeof metals[metal.id] !== "number") return false;
   }
 
   if (typeof state.fleet !== "object" || state.fleet === null) return false;
@@ -99,6 +100,7 @@ export async function saveGame(state: GameState): Promise<void> {
       research: state.research,
       expeditions: state.expeditions,
       tabsUnlocked: state.tabsUnlocked,
+      craftedModules: state.craftedModules,
     },
   };
   await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(payload));

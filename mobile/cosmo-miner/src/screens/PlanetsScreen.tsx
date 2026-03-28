@@ -8,6 +8,8 @@ import {
   View
 } from 'react-native';
 import { ALIENS } from '../game/ALIENS';
+import { formatNum } from '../game/formatNum';
+import { METALS, PLANET_DROP_TABLE } from '../game/METALS';
 import { PLANETS, type PlanetDefinition, type PlanetId } from '../game/PLANETS';
 import { SECTORS, isSectorUnlocked } from '../game/SECTORS';
 import type { BattleState } from '../game/types';
@@ -72,6 +74,26 @@ export function PlanetsScreen({
             style={[styles.dossier, { borderColor: 'rgba(255,255,255,0.08)' }]}
           >
             <Text style={styles.dossierTitle}>📋 ДОСЬЕ ПЛАНЕТЫ · МММРДР</Text>
+            <Text style={styles.dossierText}>⛏ Добываемый ресурс: {selPlanet.resource}</Text>
+            {(() => {
+              const drops = PLANET_DROP_TABLE[selPlanet.id as keyof typeof PLANET_DROP_TABLE];
+              if (!drops || drops.length === 0) return null;
+              return (
+                <View style={styles.metalsRow}>
+                  <Text style={styles.dossierText}>Металлы:</Text>
+                  {drops.map((d) => {
+                    const metal = METALS.find((m) => m.id === d.metalId);
+                    if (!metal) return null;
+                    return (
+                      <View key={d.metalId} style={styles.metalChip}>
+                        <Image source={metal.image} style={styles.metalChipIcon} resizeMode="contain" />
+                        <Text style={styles.metalChipText}>{metal.name}</Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              );
+            })()}
             <Text style={styles.dossierText}>{selPlanet.lore}</Text>
           </View>
 
@@ -89,7 +111,7 @@ export function PlanetsScreen({
               </Text>
               <Text style={styles.dossierText}>{alien.lore}</Text>
               <Text style={styles.alienHP}>
-                HP противника: {alien.maxHP.toLocaleString()}
+                HP противника: {formatNum(alien.maxHP)}
               </Text>
               <Text
                 style={[
@@ -102,7 +124,7 @@ export function PlanetsScreen({
                   }
                 ]}
               >
-                ⚡ Стоимость атаки: {alien.attackEnergyCost.toLocaleString()}{' '}
+                ⚡ Стоимость атаки: {formatNum(alien.attackEnergyCost)}{' '}
                 энергии
               </Text>
             </View>
@@ -193,7 +215,7 @@ export function PlanetsScreen({
                 НЕ ХВАТАЕТ ЭНЕРГИИ
               </Text>
               <Text style={styles.attackingHint}>
-                Нужно {alien!.attackEnergyCost.toLocaleString()} энергии для
+                Нужно {formatNum(alien!.attackEnergyCost)} энергии для
                 атаки
               </Text>
             </View>
@@ -314,7 +336,7 @@ export function PlanetsScreen({
                             : !sectorUnlocked
                               ? '🔒 Сектор заблокирован'
                               : alien
-                                ? `👾 Оккупирована: ${alien.name}`
+                                ? `👾 Оккупирована: ${alien.name} · ${p.resource}`
                                 : 'Недоступна'}
                       </Text>
                     </View>
@@ -389,6 +411,10 @@ const styles = StyleSheet.create({
     marginBottom: 6
   },
   dossierText: { fontSize: 12, color: 'rgba(200,220,255,0.7)', lineHeight: 18 },
+  metalsRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 4 },
+  metalChip: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  metalChipIcon: { width: 16, height: 16 },
+  metalChipText: { fontSize: 12, color: 'rgba(200,220,255,0.7)' },
   alienHP: {
     marginTop: 6,
     fontSize: 10,

@@ -3,6 +3,7 @@ import type { BattleState } from "./ALIENS";
 import type { CannonId } from "./CANNONS";
 import type { ActiveExpedition, ExpeditionId } from "./EXPEDITIONS";
 import type { MetalId, MetalsState } from "./METALS";
+import type { ModuleId } from "./MODULES";
 import type { PlanetId } from "./PLANETS";
 import type { ResearchId, ResearchState } from "./RESEARCH";
 import type { FleetState, OwnedShip, ShipId } from "./SHIPS";
@@ -37,6 +38,7 @@ export type GameState = {
   research: ResearchState;
   expeditions: ActiveExpedition[];
   tabsUnlocked: TabsUnlockedState;
+  craftedModules: ModuleId[];
 };
 
 export type GameStateInit = {
@@ -54,6 +56,7 @@ export type GameStateInit = {
       shipId: ShipId;
       broken?: boolean;
       cannons?: Partial<Record<CannonId, number>>;
+      equippedModuleId?: ModuleId | null;
     }>;
     selectedShipId?: ShipId | null;
   };
@@ -62,6 +65,7 @@ export type GameStateInit = {
   research?: ResearchState;
   expeditions?: ActiveExpedition[];
   tabsUnlocked?: Partial<TabsUnlockedState>;
+  craftedModules?: ModuleId[];
 };
 
-export type { ActiveExpedition, BattleState, FleetState, MetalsState, OwnedShip, ResearchId, ResearchState };
+export type { ActiveExpedition, BattleState, FleetState, MetalsState, ModuleId, OwnedShip, ResearchId, ResearchState };
