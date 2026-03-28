@@ -14,7 +14,6 @@ type Props = {
   metalDealDone: boolean;
 };
 
-const LOCKED_TEXT = 'ЗАСЕКРЕЧЕНО\n\nФорма ДНВ-7 «Запрос на раскрытие данных» находится на рассмотрении. Срок: не определён.';
 
 export function StoryLogScreen({ unlockedPlanetIds, chosenCharacterId, metalDealDone }: Props) {
   const ctx: StoryContext = { unlockedPlanetIds, chosenCharacterId, metalDealDone };
@@ -23,51 +22,38 @@ export function StoryLogScreen({ unlockedPlanetIds, chosenCharacterId, metalDeal
     ? CHARACTERS.find((c) => c.id === chosenCharacterId) ?? null
     : null;
 
-  const unlockedCount = STORY_LOG.filter((e) => e.isUnlocked(ctx)).length;
+  const unlockedEntries = STORY_LOG.filter((e) => e.isUnlocked(ctx)).reverse();
 
   return (
     <View style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.subtitle}>
-          {unlockedCount}/{STORY_LOG.length} записей получено
+          {unlockedEntries.length}/{STORY_LOG.length} записей получено
         </Text>
 
-        {STORY_LOG.map((entry) => {
-          const unlocked = entry.isUnlocked(ctx);
-
+        {unlockedEntries.map((entry) => {
           let bodyText = entry.text;
-          if (entry.id === 'entry_10' && unlocked && chosenChar) {
+          if (entry.id === 'entry_11' && chosenChar) {
             bodyText = getCharacterContactEntry(
               chosenChar.name,
               chosenChar.role,
               chosenChar.greeting,
             );
           }
-          if (entry.id === 'entry_11b' && unlocked && chosenChar) {
+          if (entry.id === 'entry_11b' && chosenChar) {
             bodyText = getMetalDealEntry(chosenChar.name, chosenChar.role);
           }
 
           return (
-            <View
-              key={entry.id}
-              style={[styles.card, unlocked ? styles.cardUnlocked : styles.cardLocked]}
-            >
+            <View key={entry.id} style={[styles.card, styles.cardUnlocked]}>
               <View style={styles.cardHeader}>
-                <Text style={[styles.icon, !unlocked && styles.iconLocked]}>
-                  {unlocked ? entry.icon : '🔒'}
-                </Text>
+                <Text style={styles.icon}>{entry.icon}</Text>
                 <View style={styles.cardMeta}>
-                  <Text style={[styles.title, !unlocked && styles.titleLocked]}>
-                    {unlocked ? entry.title : '???'}
-                  </Text>
-                  {unlocked && (
-                    <Text style={styles.stardate}>{entry.stardate}</Text>
-                  )}
+                  <Text style={styles.title}>{entry.title}</Text>
+                  <Text style={styles.stardate}>{entry.stardate}</Text>
                 </View>
               </View>
-              <Text style={[styles.body, !unlocked && styles.bodyLocked]}>
-                {unlocked ? bodyText : LOCKED_TEXT}
-              </Text>
+              <Text style={styles.body}>{bodyText}</Text>
             </View>
           );
         })}
@@ -105,11 +91,6 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(0,212,255,0.2)',
     backgroundColor: 'rgba(0,212,255,0.03)',
   },
-  cardLocked: {
-    borderColor: 'rgba(255,255,255,0.04)',
-    backgroundColor: 'rgba(255,255,255,0.01)',
-    opacity: 0.55,
-  },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -120,9 +101,6 @@ const styles = StyleSheet.create({
     fontSize: 24,
     flexShrink: 0,
   },
-  iconLocked: {
-    opacity: 0.4,
-  },
   cardMeta: {
     flex: 1,
     justifyContent: 'center',
@@ -132,9 +110,6 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     color: '#00d4ff',
     letterSpacing: 0.5,
-  },
-  titleLocked: {
-    color: 'rgba(255,255,255,0.3)',
   },
   stardate: {
     marginTop: 2,
@@ -148,10 +123,5 @@ const styles = StyleSheet.create({
     lineHeight: 19,
     color: 'rgba(200,230,255,0.8)',
     fontWeight: '400',
-  },
-  bodyLocked: {
-    color: 'rgba(255,255,255,0.25)',
-    fontStyle: 'italic',
-    fontSize: 11,
   },
 });

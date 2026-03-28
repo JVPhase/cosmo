@@ -386,7 +386,7 @@ export function GameScreen({
                 style={styles.metalIcon}
                 resizeMode="contain"
               />
-              <Text style={styles.metalCount}>{metals[m.id] ?? 0}</Text>
+              <Text style={styles.metalCount}>{formatNum(metals[m.id] ?? 0)}</Text>
             </Pressable>
           ))}
         </View>
