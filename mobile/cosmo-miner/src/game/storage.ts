@@ -56,6 +56,10 @@ function isValidState(s: unknown): s is GameStateInit {
   if (!validPlanetIds.has(state.selectedPlanetId as PlanetId)) return false;
   if (!(state.unlockedPlanetIds as unknown[]).every((id) => validPlanetIds.has(id as PlanetId))) return false;
 
+  // chosenCharacterId must be a valid id or null
+  const validCharIds = new Set(['lien', 'riva', 'graves', 'alex']);
+  if (state.chosenCharacterId !== undefined && state.chosenCharacterId !== null && !validCharIds.has(state.chosenCharacterId as string)) return false;
+
   // New fields are optional — defaults applied in useGame.ts if absent
   return true;
 }
@@ -101,6 +105,8 @@ export async function saveGame(state: GameState): Promise<void> {
       expeditions: state.expeditions,
       tabsUnlocked: state.tabsUnlocked,
       craftedModules: state.craftedModules,
+      chosenCharacterId: state.chosenCharacterId,
+      metalDealDone: state.metalDealDone,
     },
   };
   await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(payload));

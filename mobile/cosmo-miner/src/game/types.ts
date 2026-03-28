@@ -1,4 +1,5 @@
 import type { AchievementId } from "./ACHIEVEMENTS";
+import type { CharacterId } from "./CHARACTERS";
 import type { BattleState } from "./ALIENS";
 import type { CannonId } from "./CANNONS";
 import type { ActiveExpedition, ExpeditionId } from "./EXPEDITIONS";
@@ -39,6 +40,8 @@ export type GameState = {
   expeditions: ActiveExpedition[];
   tabsUnlocked: TabsUnlockedState;
   craftedModules: ModuleId[];
+  chosenCharacterId: CharacterId | null;
+  metalDealDone: boolean;
 };
 
 export type GameStateInit = {
@@ -66,6 +69,8 @@ export type GameStateInit = {
   expeditions?: ActiveExpedition[];
   tabsUnlocked?: Partial<TabsUnlockedState>;
   craftedModules?: ModuleId[];
+  chosenCharacterId?: CharacterId | null;
+  metalDealDone?: boolean;
 };
 
-export type { ActiveExpedition, BattleState, FleetState, MetalsState, ModuleId, OwnedShip, ResearchId, ResearchState };
+export type { ActiveExpedition, BattleState, CharacterId, FleetState, MetalsState, ModuleId, OwnedShip, ResearchId, ResearchState };

@@ -1,5 +1,5 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   Image,
@@ -18,6 +18,20 @@ import { METALS, type MetalId } from '../game/METALS';
 import type { PlanetDefinition } from '../game/PLANETS';
 import { getPlayerTitle, xpAtLevelStart, xpForNextLevel } from '../game/PLAYER';
 import type { MetalsState } from '../game/types';
+
+const CHARACTER_TEXT_COLORS: Record<string, string> = {
+  lien:   '#f5c842', // тёплый золотой
+  riva:   '#42e8c4', // мятный бирюзовый
+  graves: '#a0b4e0', // холодный серо-голубой
+  alex:   '#80d9a0', // мягкий зелёный
+};
+
+const CHARACTER_BORDER_COLORS: Record<string, string> = {
+  lien:   'rgba(245,200,66,0.35)',
+  riva:   'rgba(66,232,196,0.35)',
+  graves: 'rgba(160,180,224,0.35)',
+  alex:   'rgba(128,217,160,0.35)',
+};
 
 type Point = { x: number; y: number };
 
@@ -62,6 +76,11 @@ export type GameScreenProps = {
   onOpenPassiveRateInfo: () => void;
   onOpenPlanetBonusInfo: () => void;
   onOpenIronInfo: () => void;
+  onOpenStoryLog: () => void;
+  hasNewStoryEntry: boolean;
+  characterMessage: string | null;
+  onCloseCharacterMessage: () => void;
+  chosenCharacter: { id: string; name: string; icon: string } | null;
 };
 
 export function GameScreen({
@@ -89,7 +108,12 @@ export function GameScreen({
   onOpenClickPowerInfo,
   onOpenPassiveRateInfo,
   onOpenPlanetBonusInfo,
-  onOpenIronInfo
+  onOpenIronInfo,
+  onOpenStoryLog,
+  hasNewStoryEntry,
+  characterMessage,
+  onCloseCharacterMessage,
+  chosenCharacter,
 }: GameScreenProps) {
   const xpStart = xpAtLevelStart(playerLevel);
   const xpNext = xpForNextLevel(playerLevel);
@@ -97,8 +121,7 @@ export function GameScreen({
     xpNext !== null
       ? Math.min(1, (playerXP - xpStart) / (xpNext - xpStart))
       : 1;
-  const [trigger, setTrigger] = useState(0);
-  const [origin, setOrigin] = useState<Point | undefined>(undefined);
+  const [tapState, setTapState] = useState<{ count: number; origin?: Point }>({ count: 0 });
   const [headerHeight, setHeaderHeight] = useState(0);
   const onHeaderLayout = (e: LayoutChangeEvent) =>
     setHeaderHeight(e.nativeEvent.layout.height);
@@ -144,7 +167,7 @@ export function GameScreen({
     };
   }, [glowScale]);
 
-  const handlePressIn = (e: GestureResponderEvent) => {
+  const handlePressIn = useCallback((e: GestureResponderEvent) => {
     const nativeEvent = e.nativeEvent as unknown as {
       locationX?: number;
       locationY?: number;
@@ -153,8 +176,7 @@ export function GameScreen({
     };
 
     const commitTap = (x: number, y: number) => {
-      setOrigin({ x, y });
-      setTrigger((t) => t + 1);
+      setTapState((prev) => ({ count: prev.count + 1, origin: { x, y } }));
       onMine();
     };
 
@@ -172,7 +194,7 @@ export function GameScreen({
     hintTimerRef.current = setTimeout(() => {
       setShowClickHint(true);
     }, 30000);
-  };
+  }, [onMine]);
 
   useEffect(() => {
     return () => {
@@ -224,7 +246,7 @@ export function GameScreen({
       };
     });
 
-    setMetalFloats((prev) => [...prev, ...newFloats]);
+    setMetalFloats((prev) => [...prev, ...newFloats].slice(-6));
 
     setTimeout(() => {
       const t = Date.now();
@@ -408,6 +430,16 @@ export function GameScreen({
               )}
             </Pressable>
           )}
+          <Pressable
+            onPress={onOpenStoryLog}
+            style={({ pressed }) => [
+              styles.floatingBtn,
+              pressed ? { opacity: 0.7 } : null
+            ]}
+          >
+            <Text style={styles.floatingBtnIcon}>📖</Text>
+            {hasNewStoryEntry && <View style={styles.floatingBtnBadge} />}
+          </Pressable>
         </View>
       )}
 
@@ -448,8 +480,8 @@ export function GameScreen({
           collapsable={false}
         >
           <AnimatedMineEffects
-            trigger={trigger}
-            origin={origin}
+            trigger={tapState.count}
+            origin={tapState.origin}
             clickPower={clickPower}
             mineColor={planet.color}
             style={styles.asteroidWrap}
@@ -525,6 +557,27 @@ export function GameScreen({
           </View>
           <Pressable
             onPress={onCloseClerk}
+            style={({ pressed }) => (pressed ? { opacity: 0.9 } : null)}
+          >
+            <Text style={styles.clerkClose}>✕</Text>
+          </Pressable>
+        </View>
+      ) : null}
+
+      {/* Character message bubble */}
+      {characterMessage && chosenCharacter && !clerkMessage ? (
+        <View style={[styles.characterBubble, { borderColor: CHARACTER_BORDER_COLORS[chosenCharacter.id] ?? 'rgba(255,200,80,0.35)' }]}>
+          <Text style={styles.characterIcon}>{chosenCharacter.icon}</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.characterHeader, { color: CHARACTER_TEXT_COLORS[chosenCharacter.id] ?? 'rgba(255,200,80,0.7)' }]}>
+              {chosenCharacter.name.toUpperCase()} · ВХОДЯЩЕЕ СООБЩЕНИЕ
+            </Text>
+            <Text style={[styles.characterText, { color: CHARACTER_TEXT_COLORS[chosenCharacter.id] ?? 'rgba(200,230,255,0.9)' }]}>
+              {characterMessage}
+            </Text>
+          </View>
+          <Pressable
+            onPress={onCloseCharacterMessage}
             style={({ pressed }) => (pressed ? { opacity: 0.9 } : null)}
           >
             <Text style={styles.clerkClose}>✕</Text>
@@ -780,6 +833,29 @@ const styles = StyleSheet.create({
   },
   clerkText: { fontSize: 11, color: 'rgba(200,230,255,0.9)', lineHeight: 18 },
   clerkClose: { fontSize: 14, color: 'rgba(0,212,255,0.35)' },
+  characterBubble: {
+    position: 'absolute',
+    bottom: 76,
+    left: 10,
+    right: 10,
+    zIndex: 20,
+    backgroundColor: 'rgba(4,16,45,0.97)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,200,80,0.35)',
+    borderRadius: 14,
+    padding: 12,
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'flex-start',
+  },
+  characterIcon: { fontSize: 24, flexShrink: 0 },
+  characterHeader: {
+    fontSize: 8,
+    letterSpacing: 2,
+    marginBottom: 4,
+    fontWeight: '800',
+  },
+  characterText: { fontSize: 11, lineHeight: 18 },
 
   achievementToast: {
     position: 'absolute',

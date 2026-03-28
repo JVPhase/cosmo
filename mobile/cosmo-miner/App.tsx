@@ -10,12 +10,14 @@ import {
   View
 } from 'react-native';
 import { AchievementsScreen } from './src/screens/AchievementsScreen';
+import { StoryLogScreen } from './src/screens/StoryLogScreen';
 import { BattleScreen } from './src/screens/BattleScreen';
 import { GameScreen } from './src/screens/GameScreen';
 import { PlanetsScreen } from './src/screens/PlanetsScreen';
 import { ResearchScreen } from './src/screens/ResearchScreen';
 import { ShipyardScreen } from './src/screens/ShipyardScreen';
 import { UpgradesScreen } from './src/screens/UpgradesScreen';
+import { CharacterSelectFlow } from './src/ui/CharacterSelectFlow';
 import { IntroOverlay } from './src/ui/IntroOverlay';
 import { ModalSheet } from './src/ui/ModalSheet';
 import { Popup } from './src/ui/Popup';
@@ -32,6 +34,7 @@ import {
   saveIntroSeen
 } from './src/game/storage';
 import { ALIENS } from './src/game/ALIENS';
+import { STORY_LOG } from './src/game/STORY_LOG';
 import { isSectorUnlocked } from './src/game/SECTORS';
 import { PLANETS } from './src/game/PLANETS';
 import { SHIPS } from './src/game/SHIPS';
@@ -68,6 +71,8 @@ function GameApp({
   const screenGreetedRef = useRef<Set<string>>(new Set());
   const [researchOpen, setResearchOpen] = useState(false);
   const [achievementsOpen, setAchievementsOpen] = useState(false);
+  const [storyLogOpen, setStoryLogOpen] = useState(false);
+  const [seenStoryCount, setSeenStoryCount] = useState(0);
   const [clickPowerInfoOpen, setClickPowerInfoOpen] = useState(false);
   const [passiveRateInfoOpen, setPassiveRateInfoOpen] = useState(false);
   const [planetBonusInfoOpen, setPlanetBonusInfoOpen] = useState(false);
@@ -259,6 +264,19 @@ function GameApp({
           onOpenPassiveRateInfo={() => setPassiveRateInfoOpen(true)}
           onOpenPlanetBonusInfo={() => setPlanetBonusInfoOpen(true)}
           onOpenIronInfo={() => setIronInfoOpen(true)}
+          onOpenStoryLog={() => {
+            const ctx = { unlockedPlanetIds: game.unlockedPlanetIds, chosenCharacterId: game.chosenCharacterId, metalDealDone: game.metalDealDone };
+            setSeenStoryCount(STORY_LOG.filter((e) => e.isUnlocked(ctx)).length);
+            setStoryLogOpen(true);
+          }}
+          hasNewStoryEntry={
+            STORY_LOG.filter((e) =>
+              e.isUnlocked({ unlockedPlanetIds: game.unlockedPlanetIds, chosenCharacterId: game.chosenCharacterId, metalDealDone: game.metalDealDone })
+            ).length > seenStoryCount
+          }
+          characterMessage={game.characterMessage}
+          onCloseCharacterMessage={game.closeCharacterMessage}
+          chosenCharacter={game.chosenCharacter}
         />
       );
       break;
@@ -320,7 +338,6 @@ function GameApp({
       tabContent = (
         <BattleScreen
           battle={game.battle}
-          timeRemaining={game.timeRemaining}
           totalDamage={game.totalDamage}
           defeatInfo={game.defeatInfo}
           equippedModule={(() => {
@@ -358,6 +375,18 @@ function GameApp({
           research={game.research}
           onBuyResearch={game.buyResearch}
           battleUnlocked={battleUnlocked}
+        />
+      </ModalSheet>
+
+      <ModalSheet
+        visible={storyLogOpen}
+        title="◈ БОРТОВОЙ ЖУРНАЛ ◈"
+        onClose={() => setStoryLogOpen(false)}
+      >
+        <StoryLogScreen
+          unlockedPlanetIds={game.unlockedPlanetIds}
+          chosenCharacterId={game.chosenCharacterId}
+          metalDealDone={game.metalDealDone}
         />
       </ModalSheet>
 
@@ -470,6 +499,18 @@ function GameApp({
         clerk
         actionLabel="НАЧАТЬ ДОБЫЧУ"
         onAction={() => goToTab('game')}
+      />
+
+      <CharacterSelectFlow
+        step={game.characterFlowStep}
+        chosenCharacterId={game.chosenCharacterId}
+        onChoose={game.chooseCharacter}
+        onAdvance={game.advanceCharacterFlow}
+        onClose={game.closeCharacterFlow}
+        onAcceptMetalDeal={game.acceptMetalDeal}
+        onDeclineMetalDeal={game.declineMetalDeal}
+        canAffordMetalDeal={game.canAffordMetalDeal}
+        metalDealEnergyCost={game.metalDealEnergyCost}
       />
 
       <Popup

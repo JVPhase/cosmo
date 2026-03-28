@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { Canvas, Circle } from "@shopify/react-native-skia";
 import Animated, {
@@ -39,6 +39,16 @@ type FloatRow = {
   ox: number;
   oy: number;
 };
+
+type MineLayers = {
+  particles: BurstParticle[];
+  ripples: BurstRipple[];
+  floats: FloatRow[];
+};
+
+const MAX_MINE_PARTICLES = 30; // ~3 clicks
+const MAX_MINE_RIPPLES = 6;
+const MAX_MINE_FLOATS = 3;
 
 function SkiaBurstParticle({
   ox,
@@ -133,9 +143,8 @@ export function AnimatedMineEffects({
   const rippleIdRef = useRef(0);
   const floatIdRef = useRef(0);
 
-  const [particles, setParticles] = useState<BurstParticle[]>([]);
-  const [ripples, setRipples] = useState<BurstRipple[]>([]);
-  const [floats, setFloats] = useState<FloatRow[]>([]);
+  const [layers, setLayers] = useState<MineLayers>({ particles: [], ripples: [], floats: [] });
+  const { particles, ripples, floats } = layers;
 
   const originMemo = useMemo(
     () => (origin ? { x: origin.x, y: origin.y } : undefined),
@@ -196,25 +205,28 @@ export function AnimatedMineEffects({
       },
     ];
 
-    setParticles((prev) => [...prev, ...newParticles]);
-    setRipples((prev) => [...prev, ...newRipples]);
-    setFloats((prev) => [
-      ...prev,
-      {
-        id: ++floatIdRef.current,
-        born: now,
-        value: clickPower,
-        ox: x0,
-        oy: y0,
-      },
-    ]);
+    const newFloat: FloatRow = {
+      id: ++floatIdRef.current,
+      born: now,
+      value: clickPower,
+      ox: x0,
+      oy: y0,
+    };
+
+    setLayers((prev) => ({
+      particles: [...prev.particles, ...newParticles].slice(-MAX_MINE_PARTICLES),
+      ripples: [...prev.ripples, ...newRipples].slice(-MAX_MINE_RIPPLES),
+      floats: [...prev.floats, newFloat].slice(-MAX_MINE_FLOATS),
+    }));
 
     const cleanupAt = 950;
     const t = setTimeout(() => {
       const cutoff = Date.now();
-      setParticles((prev) => prev.filter((p) => cutoff - p.born < cleanupAt));
-      setRipples((prev) => prev.filter((r) => cutoff - r.born < cleanupAt));
-      setFloats((prev) => prev.filter((f) => cutoff - f.born < cleanupAt));
+      setLayers((prev) => ({
+        particles: prev.particles.filter((p) => cutoff - p.born < cleanupAt),
+        ripples: prev.ripples.filter((r) => cutoff - r.born < cleanupAt),
+        floats: prev.floats.filter((f) => cutoff - f.born < cleanupAt),
+      }));
     }, cleanupAt);
     return () => clearTimeout(t);
   }, [trigger, originMemo, clickPower]);
