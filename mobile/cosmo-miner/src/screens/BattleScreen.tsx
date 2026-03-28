@@ -24,6 +24,7 @@ export type BattleScreenProps = {
   defeatInfo: { shipName: string } | null;
   onAttack: (multiplier?: number) => void;
   onReflect: (penaltyMs?: number) => void;
+  onHeal: (fraction: number) => void;
   onForfeit: () => void;
   onGoToShipyard: () => void;
   onClearDefeat: () => void;
@@ -36,6 +37,7 @@ export function BattleScreen({
   defeatInfo,
   onAttack,
   onReflect,
+  onHeal,
   onForfeit,
   onGoToShipyard,
   onClearDefeat
@@ -50,6 +52,9 @@ export function BattleScreen({
   const [abilityActive, setAbilityActive] = useState(false);
   const [shieldWarning, setShieldWarning] = useState(false);
   const [qteAttempted, setQteAttempted] = useState(false);
+  const [qteFailed, setQteFailed] = useState(false);
+  const [healTrigger, setHealTrigger] = useState(0);
+  const [healOrigin, setHealOrigin] = useState<{ x: number; y: number } | undefined>(undefined);
   const [successZoneStart, setSuccessZoneStart] = useState(0);
   const [opportunityActive, setOpportunityActive] = useState(false);
   const abilityTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -148,18 +153,21 @@ export function BattleScreen({
     }
   }, [shieldWarning, warnAnim]);
 
-  // Randomise success zone position and reset QTE on each shield activation
+  const isIllusion = alien?.ability?.type === 'illusion';
+
+  // Randomise success zone position and reset QTE flags on each ability activation
   useEffect(() => {
     if (abilityActive) {
       setSuccessZoneStart(Math.floor(Math.random() * 360));
       setQteAttempted(false);
+      setQteFailed(false);
     }
   }, [abilityActive]);
 
   const handleQteSuccess = () => {
     setQteAttempted(true);
     breakShieldEarlyRef.current?.();
-    // Open opportunity window for the duration the shield would have lasted
+    // Open opportunity window for the duration the ability would have lasted
     const durationMs = alien?.ability?.durationMs ?? 3000;
     setOpportunityActive(true);
     if (opportunityTimeoutRef.current) clearTimeout(opportunityTimeoutRef.current);
@@ -168,7 +176,12 @@ export function BattleScreen({
 
   const handleQteFail = () => {
     setQteAttempted(true);
-    onReflect(2000); // -2s за провал QTE
+    if (isIllusion) {
+      setQteFailed(true);
+      onHeal(0.10); // противник восстанавливает 10% maxHP
+    } else {
+      onReflect(2000); // -2s за провал QTE (щит)
+    }
   };
 
   const attackMultiplier = opportunityActive ? 2 : 1;
@@ -182,8 +195,25 @@ export function BattleScreen({
       pageY?: number;
     };
 
-    // After failed QTE — clicks still penalise timer and deal half damage
-    if (abilityActive && qteAttempted) {
+    // Illusion failed — clicks heal the enemy instead of dealing damage
+    if (abilityActive && qteAttempted && qteFailed && isIllusion) {
+      const commitHealHit = (x: number, y: number) => {
+        setHealOrigin({ x, y });
+        setHealTrigger((t) => t + 1);
+        onHeal(0.05); // +5% maxHP за клик
+      };
+      if (Platform.OS === 'web' && battleHitAreaRef.current) {
+        battleHitAreaRef.current.measureInWindow((mx, my) => {
+          commitHealHit((native.pageX ?? 0) - mx, (native.pageY ?? 0) - my);
+        });
+      } else {
+        commitHealHit(native.locationX ?? 80, native.locationY ?? 80);
+      }
+      return;
+    }
+
+    // Shield failed — clicks penalise timer and deal half damage
+    if (abilityActive && qteAttempted && !isIllusion) {
       onReflect(1000); // -1s
       const commitReflectHit = (x: number, y: number) => {
         lastHitDamageRef.current = Math.floor(totalDamage * 0.5);
@@ -389,12 +419,17 @@ export function BattleScreen({
           <Text style={styles.statChip}>⚔️ {effectiveDamage}/клик</Text>
           {abilityActive && !qteAttempted && (
             <Text style={[styles.statChip, { color: '#00dc64' }]}>
-              🎯 QTE — снимите щит!
+              🎯 QTE — {isIllusion ? 'рассейте иллюзию!' : 'снимите щит!'}
             </Text>
           )}
-          {abilityActive && qteAttempted && (
+          {abilityActive && qteAttempted && !isIllusion && (
             <Text style={[styles.statChip, { color: '#ff8844' }]}>
               🛡 ×0.5 урон / −1с за клик
+            </Text>
+          )}
+          {abilityActive && qteAttempted && isIllusion && (
+            <Text style={[styles.statChip, { color: '#44ff88' }]}>
+              👻 клики лечат врага +5%
             </Text>
           )}
           {opportunityActive && (
@@ -423,7 +458,12 @@ export function BattleScreen({
             trigger={hitTrigger}
             origin={hitOrigin}
             damage={lastHitDamageRef.current || effectiveDamage}
-            style={[styles.rocketBtn, abilityActive && styles.rocketBtnShield, opportunityActive && styles.rocketBtnOpportunity]}
+            style={[
+              styles.rocketBtn,
+              abilityActive && !isIllusion && styles.rocketBtnShield,
+              abilityActive && isIllusion && styles.rocketBtnIllusion,
+              opportunityActive && styles.rocketBtnOpportunity,
+            ]}
           >
             <Pressable
               onPressIn={abilityActive && !qteAttempted ? undefined : handleAttack}
@@ -433,7 +473,12 @@ export function BattleScreen({
                 pressed && !abilityActive ? { opacity: 0.9 } : null
               ]}
             >
-              <Animated.View style={{ transform: [{ translateX: shakeAnim }], opacity: shieldWarning ? warnAnim : 1 }}>
+              <Animated.View style={{
+                transform: [{ translateX: shakeAnim }],
+                opacity: (isIllusion && abilityActive && !qteAttempted)
+                  ? 0.4
+                  : (shieldWarning ? warnAnim : 1)
+              }}>
                 {alien?.image ? (
                   <Image
                     source={alien.image}
@@ -449,8 +494,28 @@ export function BattleScreen({
                   {opportunityActive ? '⚡ АТАКОВАТЬ' : 'АТАКОВАТЬ'}
                 </Text>
               )}
+              {abilityActive && qteAttempted && isIllusion && (
+                <Text style={styles.illusionClickHint}>+5% HP</Text>
+              )}
             </Pressable>
           </AnimatedHitEffects>
+
+          {/* Heal effect overlay — green +5% HP floater */}
+          {healTrigger > 0 && healOrigin && (
+            <View
+              style={[StyleSheet.absoluteFill, styles.healOverlay]}
+              pointerEvents="none"
+            >
+              <Text
+                style={[
+                  styles.healFloatText,
+                  { left: healOrigin.x - 28, top: healOrigin.y - 20 },
+                ]}
+              >
+                +5% HP
+              </Text>
+            </View>
+          )}
 
           {/* QTE ring overlay — поверх корабля, скрывается после попытки */}
           {abilityActive && !qteAttempted && (
@@ -473,7 +538,9 @@ export function BattleScreen({
           {opportunityActive
             ? '⚡ ОКНО ВОЗМОЖНОСТЕЙ — АТАКУЙТЕ! ⚡'
             : abilityActive
-              ? (qteAttempted ? '⌛ ЩИТ ДЕРЖИТСЯ...' : '🎯 НАЖМИТЕ В КРАСНУЮ ЗОНУ!')
+              ? isIllusion
+                ? (qteAttempted ? '👻 ИЛЛЮЗИЯ! КЛИКИ ЛЕЧАТ ВРАГА...' : '🎯 НАЖМИТЕ В КРАСНУЮ ЗОНУ!')
+                : (qteAttempted ? '⌛ ЩИТ ДЕРЖИТСЯ...' : '🎯 НАЖМИТЕ В КРАСНУЮ ЗОНУ!')
               : '◈ ЖМИТЕ ДЛЯ АТАКИ ◈'}
         </Text>
       </View>
@@ -652,6 +719,13 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 3
   },
+  illusionClickHint: {
+    marginTop: 8,
+    fontSize: 11,
+    color: '#44ff88',
+    fontWeight: '900',
+    letterSpacing: 2,
+  },
   hint: {
     position: 'absolute',
     bottom: 24,
@@ -659,6 +733,20 @@ const styles = StyleSheet.create({
     color: 'rgba(255,80,80,0.25)',
     letterSpacing: 3,
     fontWeight: '700'
+  },
+  rocketBtnIllusion: {
+    backgroundColor: 'rgba(150,50,255,0.08)',
+    borderColor: 'rgba(180,80,255,0.4)',
+  },
+  healOverlay: {
+    zIndex: 10,
+  },
+  healFloatText: {
+    position: 'absolute',
+    fontSize: 14,
+    color: '#44ff88',
+    fontWeight: '900',
+    letterSpacing: 1,
   },
 });
 
