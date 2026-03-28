@@ -1,4 +1,4 @@
-export type SectorId = 1 | 2;
+export type SectorId = 1 | 2 | 3;
 
 export type SectorDefinition = {
   id: SectorId;
@@ -20,12 +20,23 @@ export const SECTORS: readonly SectorDefinition[] = [
     icon: "🌌",
     lore: "Зона повышенной опасности. Лицензия на добычу выдана задним числом. Министерство не в курсе.",
   },
+  {
+    id: 3,
+    name: "Зона Иллюзий",
+    icon: "🌀",
+    lore: "Сектор, где реальность — понятие договорное. Министерство выдало лицензию на «добычу предполагаемых ресурсов». Что предполагается — не уточнили.",
+  },
 ] as const;
 
 // Sector 2 unlocks when all 5 planets of sector 1 are captured.
+// Sector 3 unlocks when all 5 planets of sector 2 are captured.
 // Using number[] to avoid circular dependency with PLANETS.ts
 export function isSectorUnlocked(sectorId: SectorId, unlockedPlanetIds: number[]): boolean {
   if (sectorId === 1) return true;
-  const SECTOR_1_PLANET_IDS = [1, 2, 3, 4, 5];
-  return SECTOR_1_PLANET_IDS.every((id) => unlockedPlanetIds.includes(id));
+  if (sectorId === 2) {
+    const SECTOR_1_PLANET_IDS = [1, 2, 3, 4, 5];
+    return SECTOR_1_PLANET_IDS.every((id) => unlockedPlanetIds.includes(id));
+  }
+  const SECTOR_2_PLANET_IDS = [6, 7, 8, 9, 10];
+  return SECTOR_2_PLANET_IDS.every((id) => unlockedPlanetIds.includes(id));
 }

@@ -11,6 +11,7 @@ import { CANNONS, computeCannonCost, type CannonId } from '../game/CANNONS';
 import { TIMELY_CLAIM_WINDOW_MS } from '../game/useGame';
 import { EXPEDITIONS, type ExpeditionId } from '../game/EXPEDITIONS';
 import { METALS, type MetalId } from '../game/METALS';
+import { MODULES, type ModuleId } from '../game/MODULES';
 import { SHIPS, type ShipId } from '../game/SHIPS';
 import type {
   ActiveExpedition,
@@ -28,12 +29,16 @@ export type ShipyardScreenProps = {
   expeditions: ActiveExpedition[];
   expeditionRemainingMap: Record<string, number>;
   unlockedPlanetIds: number[];
+  playerLevel: number;
+  craftedModules: ModuleId[];
   onBuildShip: (id: ShipId) => void;
   onRepairShip: (id: ShipId) => void;
   onSelectShip: (id: ShipId) => void;
   onCraftCannon: (shipId: ShipId, cannonId: CannonId) => void;
   onStartExpedition: (expeditionId: ExpeditionId, shipId: ShipId) => void;
   onClaimExpedition: (shipId: ShipId) => void;
+  onCraftModule: (moduleId: ModuleId) => void;
+  onEquipModule: (shipId: ShipId, moduleId: ModuleId | null) => void;
 };
 
 type SubTab = 'fleet' | 'expeditions';
@@ -101,12 +106,16 @@ export function ShipyardScreen({
   expeditions,
   expeditionRemainingMap,
   unlockedPlanetIds,
+  playerLevel,
+  craftedModules,
   onBuildShip,
   onRepairShip,
   onSelectShip,
   onCraftCannon,
   onStartExpedition,
-  onClaimExpedition
+  onClaimExpedition,
+  onCraftModule,
+  onEquipModule,
 }: ShipyardScreenProps) {
   const [activeTab, setActiveTab] = useState<SubTab>('fleet');
   const [expandedShipId, setExpandedShipId] = useState<ShipId | null>(null);
@@ -123,8 +132,7 @@ export function ShipyardScreen({
   const selectedShipDef = expeditionShipId ? SHIPS.find((s) => s.id === expeditionShipId) : null;
   const shipExpMultiplier = selectedShipDef?.expeditionMultiplier ?? 1;
   const visibleShips = SHIPS.filter(
-    (s) =>
-      ownedMap.has(s.id) || costMetalsDiscovered(discoveredMetals, s.baseCost)
+    (s) => ownedMap.has(s.id) || playerLevel >= s.unlockLevel
   );
 
   return (
@@ -413,6 +421,19 @@ export function ShipyardScreen({
                   )}
                 </View>
 
+                {isOwned && isExpanded && !isOnExpedition && owned?.equippedModuleId && (
+                  <View style={styles.equippedModuleBadge}>
+                    {(() => {
+                      const mod = MODULES.find((m) => m.id === owned.equippedModuleId);
+                      return mod ? (
+                        <Text style={styles.equippedModuleText}>
+                          {mod.icon} {mod.name} · {mod.ultDescription}
+                        </Text>
+                      ) : null;
+                    })()}
+                  </View>
+                )}
+
                 {isOwned && isExpanded && !isOnExpedition && (
                   <View style={styles.cannonsSection}>
                     <Text style={styles.cannonsSectionTitle}>
@@ -481,6 +502,74 @@ export function ShipyardScreen({
               </View>
             );
           })}
+
+          {/* Modules section — shown when Sector 3 metals discovered */}
+          {(discoveredMetals.includes('voidCrystal') || discoveredMetals.includes('echoShard') || craftedModules.length > 0) && (
+            <>
+              <Text style={styles.sectionTitle}>⚡ МОДУЛИ</Text>
+              {MODULES.map((mod) => {
+                const isCrafted = craftedModules.includes(mod.id);
+                const canAfford = canAffordCost(metals, mod.cost) && !isBattleActive;
+                const equippedOnShip = fleet.ownedShips.find((s) => s.equippedModuleId === mod.id);
+                return (
+                  <View key={mod.id} style={[styles.moduleCard, isCrafted && styles.moduleCardCrafted]}>
+                    <View style={styles.moduleHeader}>
+                      <Text style={styles.moduleIcon}>{mod.icon}</Text>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.moduleName, isCrafted && { color: '#ffe066' }]}>{mod.name}</Text>
+                        <Text style={styles.moduleLore}>{mod.lore}</Text>
+                        <Text style={styles.moduleUlt}>⚡ {mod.ultName} — {mod.ultDescription}</Text>
+                        {equippedOnShip && (
+                          <Text style={styles.moduleEquippedOn}>
+                            Экипирован: {SHIPS.find((s) => s.id === equippedOnShip.shipId)?.name ?? equippedOnShip.shipId}
+                          </Text>
+                        )}
+                      </View>
+                    </View>
+                    <View style={styles.moduleActions}>
+                      {!isCrafted ? (
+                        <>
+                          <MetalCost cost={mod.cost} color={canAfford ? '#ffe066' : 'rgba(255,224,102,0.3)'} />
+                          <Pressable
+                            onPress={() => onCraftModule(mod.id)}
+                            disabled={!canAfford}
+                            style={({ pressed }) => [
+                              styles.actionBtn,
+                              canAfford ? styles.btnGold : styles.btnDisabled,
+                              pressed && canAfford ? { opacity: 0.85 } : null,
+                            ]}
+                          >
+                            <Text style={[styles.actionBtnText, { color: canAfford ? '#ffe066' : 'rgba(255,255,255,0.2)' }]}>
+                              СОЗДАТЬ
+                            </Text>
+                          </Pressable>
+                        </>
+                      ) : (
+                        <View style={styles.moduleEquipRow}>
+                          {fleet.ownedShips.filter((s) => !s.broken).map((s) => {
+                            const isEquipped = s.equippedModuleId === mod.id;
+                            const shipDef = SHIPS.find((sh) => sh.id === s.shipId);
+                            return (
+                              <Pressable
+                                key={s.shipId}
+                                onPress={() => isEquipped ? onEquipModule(s.shipId, null) : onEquipModule(s.shipId, mod.id)}
+                                disabled={isBattleActive}
+                                style={[styles.equipShipBtn, isEquipped && styles.equipShipBtnActive]}
+                              >
+                                <Text style={[styles.equipShipBtnText, isEquipped && { color: '#ffe066' }]}>
+                                  {shipDef?.icon ?? '🚀'} {isEquipped ? '✓' : '+'}
+                                </Text>
+                              </Pressable>
+                            );
+                          })}
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                );
+              })}
+            </>
+          )}
 
           <View style={styles.hint}>
             <Text style={styles.hintText}>
@@ -687,11 +776,12 @@ export function ShipyardScreen({
                   )}
                 </View>
                 <Pressable
-                  onPress={() =>
-                    canSend && expeditionShipId
-                      ? onStartExpedition(def.id, expeditionShipId)
-                      : undefined
-                  }
+                  onPress={() => {
+                    if (canSend && expeditionShipId) {
+                      onStartExpedition(def.id, expeditionShipId);
+                      setExpeditionShipId(null);
+                    }
+                  }}
                   disabled={!canSend}
                   style={({ pressed }) => [
                     styles.sendBtn,
@@ -1190,5 +1280,107 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.07)',
     backgroundColor: 'transparent'
   },
-  sendBtnText: { fontSize: 10, fontWeight: '900', letterSpacing: 1 }
+  sendBtnText: { fontSize: 10, fontWeight: '900', letterSpacing: 1 },
+  levelLockLabel: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.3)',
+    fontWeight: '700',
+    letterSpacing: 1,
+    marginBottom: 6,
+  },
+  equippedModuleBadge: {
+    marginHorizontal: 12,
+    marginBottom: 4,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    backgroundColor: 'rgba(255,224,102,0.07)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,224,102,0.25)',
+  },
+  equippedModuleText: {
+    fontSize: 9,
+    color: '#ffe066',
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  moduleCard: {
+    marginBottom: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    overflow: 'hidden',
+  },
+  moduleCardCrafted: {
+    borderColor: 'rgba(255,224,102,0.3)',
+    backgroundColor: 'rgba(255,224,102,0.04)',
+  },
+  moduleHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    padding: 12,
+    paddingBottom: 6,
+  },
+  moduleIcon: { fontSize: 24, lineHeight: 28 },
+  moduleName: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: 'rgba(255,255,255,0.5)',
+    letterSpacing: 1,
+    marginBottom: 2,
+  },
+  moduleLore: {
+    fontSize: 9,
+    color: 'rgba(255,255,255,0.25)',
+    lineHeight: 13,
+    marginBottom: 4,
+  },
+  moduleUlt: {
+    fontSize: 9,
+    color: 'rgba(255,224,102,0.6)',
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  moduleEquippedOn: {
+    fontSize: 9,
+    color: '#00ff88',
+    fontWeight: '700',
+    marginTop: 3,
+  },
+  moduleActions: {
+    paddingHorizontal: 12,
+    paddingBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  moduleEquipRow: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: 6,
+    flexWrap: 'wrap',
+  },
+  equipShipBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 7,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+  },
+  equipShipBtnActive: {
+    borderColor: 'rgba(255,224,102,0.6)',
+    backgroundColor: 'rgba(255,224,102,0.1)',
+  },
+  equipShipBtnText: {
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.5)',
+    fontWeight: '800',
+  },
+  btnGold: {
+    borderColor: 'rgba(255,224,102,0.5)',
+    backgroundColor: 'rgba(255,224,102,0.08)',
+  },
 });

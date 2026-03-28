@@ -10,17 +10,20 @@ import {
   View
 } from 'react-native';
 import { AchievementsScreen } from './src/screens/AchievementsScreen';
+import { StoryLogScreen } from './src/screens/StoryLogScreen';
 import { BattleScreen } from './src/screens/BattleScreen';
 import { GameScreen } from './src/screens/GameScreen';
 import { PlanetsScreen } from './src/screens/PlanetsScreen';
 import { ResearchScreen } from './src/screens/ResearchScreen';
 import { ShipyardScreen } from './src/screens/ShipyardScreen';
 import { UpgradesScreen } from './src/screens/UpgradesScreen';
+import { CharacterSelectFlow } from './src/ui/CharacterSelectFlow';
 import { IntroOverlay } from './src/ui/IntroOverlay';
 import { ModalSheet } from './src/ui/ModalSheet';
 import { Popup } from './src/ui/Popup';
 import { formatNum } from './src/game/formatNum';
 import { METALS } from './src/game/METALS';
+import { getModuleById } from './src/game/MODULES';
 import { PasswordScreen } from './src/ui/PasswordScreen';
 import { useGame } from './src/game/useGame';
 import {
@@ -31,6 +34,7 @@ import {
   saveIntroSeen
 } from './src/game/storage';
 import { ALIENS } from './src/game/ALIENS';
+import { STORY_LOG } from './src/game/STORY_LOG';
 import { isSectorUnlocked } from './src/game/SECTORS';
 import { PLANETS } from './src/game/PLANETS';
 import { SHIPS } from './src/game/SHIPS';
@@ -67,6 +71,8 @@ function GameApp({
   const screenGreetedRef = useRef<Set<string>>(new Set());
   const [researchOpen, setResearchOpen] = useState(false);
   const [achievementsOpen, setAchievementsOpen] = useState(false);
+  const [storyLogOpen, setStoryLogOpen] = useState(false);
+  const [seenStoryCount, setSeenStoryCount] = useState(0);
   const [clickPowerInfoOpen, setClickPowerInfoOpen] = useState(false);
   const [passiveRateInfoOpen, setPassiveRateInfoOpen] = useState(false);
   const [planetBonusInfoOpen, setPlanetBonusInfoOpen] = useState(false);
@@ -258,6 +264,19 @@ function GameApp({
           onOpenPassiveRateInfo={() => setPassiveRateInfoOpen(true)}
           onOpenPlanetBonusInfo={() => setPlanetBonusInfoOpen(true)}
           onOpenIronInfo={() => setIronInfoOpen(true)}
+          onOpenStoryLog={() => {
+            const ctx = { unlockedPlanetIds: game.unlockedPlanetIds, chosenCharacterId: game.chosenCharacterId, metalDealDone: game.metalDealDone };
+            setSeenStoryCount(STORY_LOG.filter((e) => e.isUnlocked(ctx)).length);
+            setStoryLogOpen(true);
+          }}
+          hasNewStoryEntry={
+            STORY_LOG.filter((e) =>
+              e.isUnlocked({ unlockedPlanetIds: game.unlockedPlanetIds, chosenCharacterId: game.chosenCharacterId, metalDealDone: game.metalDealDone })
+            ).length > seenStoryCount
+          }
+          characterMessage={game.characterMessage}
+          onCloseCharacterMessage={game.closeCharacterMessage}
+          chosenCharacter={game.chosenCharacter}
         />
       );
       break;
@@ -300,6 +319,7 @@ function GameApp({
           expeditions={game.expeditions}
           expeditionRemainingMap={game.expeditionRemainingMap}
           unlockedPlanetIds={game.unlockedPlanetIds}
+          playerLevel={game.playerLevel}
           onBuildShip={game.buildShip}
           onRepairShip={game.repairShip}
           onSelectShip={game.selectShip}
@@ -308,6 +328,9 @@ function GameApp({
           }
           onStartExpedition={game.startExpedition}
           onClaimExpedition={game.claimExpedition}
+          craftedModules={game.craftedModules}
+          onCraftModule={game.craftModule}
+          onEquipModule={game.equipModule}
         />
       );
       break;
@@ -315,14 +338,21 @@ function GameApp({
       tabContent = (
         <BattleScreen
           battle={game.battle}
-          timeRemaining={game.timeRemaining}
           totalDamage={game.totalDamage}
           defeatInfo={game.defeatInfo}
+          equippedModule={(() => {
+            const shipId = game.battle?.shipId ?? game.fleet.selectedShipId;
+            const owned = game.fleet.ownedShips.find((s) => s.shipId === shipId);
+            const modId = owned?.equippedModuleId ?? null;
+            return modId ? getModuleById(modId) : null;
+          })()}
           onAttack={game.attackBattle}
           onReflect={game.reflectBattle}
+          onHeal={game.healBattle}
           onForfeit={game.forfeitBattle}
           onGoToShipyard={() => onSetTab('shipyard')}
           onClearDefeat={game.clearDefeatInfo}
+          onAddBattleTime={game.addBattleTime}
         />
       );
       break;
@@ -345,6 +375,18 @@ function GameApp({
           research={game.research}
           onBuyResearch={game.buyResearch}
           battleUnlocked={battleUnlocked}
+        />
+      </ModalSheet>
+
+      <ModalSheet
+        visible={storyLogOpen}
+        title="◈ БОРТОВОЙ ЖУРНАЛ ◈"
+        onClose={() => setStoryLogOpen(false)}
+      >
+        <StoryLogScreen
+          unlockedPlanetIds={game.unlockedPlanetIds}
+          chosenCharacterId={game.chosenCharacterId}
+          metalDealDone={game.metalDealDone}
         />
       </ModalSheet>
 
@@ -459,6 +501,17 @@ function GameApp({
         onAction={() => goToTab('game')}
       />
 
+      <CharacterSelectFlow
+        step={game.characterFlowStep}
+        chosenCharacterId={game.chosenCharacterId}
+        onChoose={game.chooseCharacter}
+        onAdvance={game.advanceCharacterFlow}
+        onClose={game.closeCharacterFlow}
+        onAcceptMetalDeal={game.acceptMetalDeal}
+        canAffordMetalDeal={game.canAffordMetalDeal}
+        metalDealEnergyCost={game.metalDealEnergyCost}
+      />
+
       <Popup
         visible={clickPowerInfoOpen}
         title="◈ МОЩНОСТЬ КЛИКА · КЛЕРК-7 ◈"
@@ -553,17 +606,19 @@ function GameApp({
                 ) ||
                   (game.fleet.ownedShips.length > 0 &&
                     CANNONS.some((cannon) =>
-                      game.fleet.ownedShips.some((ship) => {
-                        const cost = computeCannonCost(
-                          cannon,
-                          ship.cannons[cannon.id] ?? 0
-                        );
-                        return Object.entries(cost).every(
-                          ([m, qty]) =>
-                            (game.metals[m as keyof typeof game.metals] ?? 0) >=
-                            (qty ?? 0)
-                        );
-                      })
+                      game.fleet.ownedShips
+                        .filter((ship) => !game.expeditions.some((e) => e.shipId === ship.shipId))
+                        .some((ship) => {
+                          const cost = computeCannonCost(
+                            cannon,
+                            ship.cannons[cannon.id] ?? 0
+                          );
+                          return Object.entries(cost).every(
+                            ([m, qty]) =>
+                              (game.metals[m as keyof typeof game.metals] ?? 0) >=
+                              (qty ?? 0)
+                          );
+                        })
                     )));
 
               return (
@@ -623,6 +678,14 @@ function GameApp({
         <Pressable onPress={openEditor} style={styles.editorBtn}>
           <Text style={styles.editorIcon}>✎</Text>
           <Text style={styles.editorLabel}>ПРОГ.</Text>
+        </Pressable>
+        <Pressable onPress={game.openCharacterSelectFlow} style={styles.editorBtn}>
+          <Text style={styles.editorIcon}>👤</Text>
+          <Text style={styles.editorLabel}>ПЕРС.</Text>
+        </Pressable>
+        <Pressable onPress={game.openMetalDealFlow} style={styles.editorBtn}>
+          <Text style={styles.editorIcon}>🤝</Text>
+          <Text style={styles.editorLabel}>СДЕЛКА</Text>
         </Pressable>
       </View>
 
