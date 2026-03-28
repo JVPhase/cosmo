@@ -257,8 +257,14 @@ export function GameScreen({
       {/* Achievement toast */}
       {achievementToast ? (
         <Pressable
-          style={({ pressed }) => [styles.achievementToast, pressed && { opacity: 0.85 }]}
-          onPress={() => { onCloseAchievementToast(); onOpenAchievements(); }}
+          style={({ pressed }) => [
+            styles.achievementToast,
+            pressed && { opacity: 0.85 }
+          ]}
+          onPress={() => {
+            onCloseAchievementToast();
+            onOpenAchievements();
+          }}
         >
           <Text style={styles.achievementIcon}>{achievementToast.icon}</Text>
           <View style={{ flex: 1 }}>
@@ -269,7 +275,10 @@ export function GameScreen({
             <Text style={styles.achievementLore}>{achievementToast.lore}</Text>
           </View>
           <Pressable
-            onPress={(e) => { e.stopPropagation?.(); onCloseAchievementToast(); }}
+            onPress={(e) => {
+              e.stopPropagation?.();
+              onCloseAchievementToast();
+            }}
             style={({ pressed }) => (pressed ? { opacity: 0.9 } : null)}
           >
             <Text style={styles.achievementClose}>✕</Text>
@@ -348,9 +357,7 @@ export function GameScreen({
             <Pressable
               key={m.id}
               style={styles.metalItem}
-              onPress={
-                m.id === 'iron' ? onOpenIronInfo : undefined
-              }
+              onPress={m.id === 'iron' ? onOpenIronInfo : undefined}
             >
               <Image
                 source={m.image}
@@ -655,9 +662,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,212,255,0.7)'
   },
   asteroidPulseGlow: {
-    width: 100,
-    height: 100,
-    borderRadius: 100,
+    width: 80,
+    height: 80,
+    borderRadius: 80,
     position: 'absolute',
     backgroundColor: 'rgba(0,212,255,0.08)',
     shadowColor: 'rgba(0,212,255,0.5)',

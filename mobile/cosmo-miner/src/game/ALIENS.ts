@@ -1,11 +1,9 @@
 import type { ShipId } from "./SHIPS";
 import type { PlanetId } from "./PLANETS";
 
-export type AlienAbility = {
-  type: 'shield';
-  intervalMs: number;
-  durationMs: number;
-};
+export type AlienAbility =
+  | { type: 'shield'; intervalMs: number; durationMs: number }
+  | { type: 'illusion'; intervalMs: number; durationMs: number };
 
 export type AlienRace = {
   planetId: PlanetId;
@@ -118,6 +116,62 @@ export const ALIENS: readonly AlienRace[] = [
     xpReward: 300_000,
     lore: "Финальные защитники. Старше Вселенной. Уже 3 раза подавали на нас в суд. Дело рассматривается.",
     ability: { type: 'shield', intervalMs: 5_000, durationMs: 5_000 },
+  },
+  // ── SECTOR 3 ──
+  {
+    planetId: 11,
+    name: "Мираги",
+    icon: "🌀",
+    image: require("../../assets/underconstractionship.png"),
+    maxHP: 500_000,
+    attackEnergyCost: 25_000_000_000,
+    xpReward: 750_000,
+    lore: "Существуют в двух экземплярах одновременно. Министерство подало запрос на третий. Ответа не было — или был, но невидимый.",
+    ability: { type: 'illusion', intervalMs: 20_000, durationMs: 4_000 },
+  },
+  {
+    planetId: 12,
+    name: "Фантомиты",
+    icon: "👻",
+    image: require("../../assets/underconstractionship.png"),
+    maxHP: 2_000_000,
+    attackEnergyCost: 125_000_000_000,
+    xpReward: 2_000_000,
+    lore: "При взгляде в упор — исчезают. При взгляде вбок — атакуют. Уклоняться можно только по форме ФНТ-7.",
+    ability: { type: 'illusion', intervalMs: 15_000, durationMs: 5_000 },
+  },
+  {
+    planetId: 13,
+    name: "Эхо-стражи",
+    icon: "🔊",
+    image: require("../../assets/underconstractionship.png"),
+    maxHP: 10_000_000,
+    attackEnergyCost: 625_000_000_000,
+    xpReward: 5_000_000,
+    lore: "Повторяют каждую вашу атаку с задержкой в 3 секунды. И каждый ваш приказ. И каждую жалобу. В увеличенном объёме.",
+    ability: { type: 'illusion', intervalMs: 12_000, durationMs: 5_500 },
+  },
+  {
+    planetId: 14,
+    name: "Мираж-призраки",
+    icon: "🌫️",
+    image: require("../../assets/underconstractionship.png"),
+    maxHP: 50_000_000,
+    attackEnergyCost: 3_125_000_000_000,
+    xpReward: 12_000_000,
+    lore: "Невидимы на 60% рабочего времени. Оставшиеся 40% уходят на административные процедуры.",
+    ability: { type: 'illusion', intervalMs: 10_000, durationMs: 6_000 },
+  },
+  {
+    planetId: 15,
+    name: "Пустотники",
+    icon: "🌑",
+    image: require("../../assets/underconstractionship.png"),
+    maxHP: 200_000_000,
+    attackEnergyCost: 15_625_000_000_000,
+    xpReward: 30_000_000,
+    lore: "Последние стражи сектора. Не спят, не едят, не заполняют формы. Министерство им завидует.",
+    ability: { type: 'illusion', intervalMs: 8_000, durationMs: 7_000 },
   },
 ] as const;
 

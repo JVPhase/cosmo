@@ -912,6 +912,15 @@ export function useGame(initial?: GameStateInit) {
     });
   }, []);
 
+  const healBattle = useCallback((fractionOfMax: number) => {
+    setState((prev) => {
+      if (!prev.battle) return prev;
+      const heal = Math.floor(prev.battle.maxHP * fractionOfMax);
+      const newHP = Math.min(prev.battle.currentHP + heal, prev.battle.maxHP);
+      return { ...prev, battle: { ...prev.battle, currentHP: newHP } };
+    });
+  }, []);
+
   const forfeitBattle = useCallback(() => {
     setState((prev) => {
       if (!prev.battle) return prev;
@@ -1022,6 +1031,7 @@ export function useGame(initial?: GameStateInit) {
     startBattle,
     attackBattle,
     reflectBattle,
+    healBattle,
     forfeitBattle,
     selectPlanet,
     startExpedition,
