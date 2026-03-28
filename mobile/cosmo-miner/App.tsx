@@ -508,7 +508,6 @@ function GameApp({
         onAdvance={game.advanceCharacterFlow}
         onClose={game.closeCharacterFlow}
         onAcceptMetalDeal={game.acceptMetalDeal}
-        onDeclineMetalDeal={game.declineMetalDeal}
         canAffordMetalDeal={game.canAffordMetalDeal}
         metalDealEnergyCost={game.metalDealEnergyCost}
       />
@@ -679,6 +678,14 @@ function GameApp({
         <Pressable onPress={openEditor} style={styles.editorBtn}>
           <Text style={styles.editorIcon}>✎</Text>
           <Text style={styles.editorLabel}>ПРОГ.</Text>
+        </Pressable>
+        <Pressable onPress={game.openCharacterSelectFlow} style={styles.editorBtn}>
+          <Text style={styles.editorIcon}>👤</Text>
+          <Text style={styles.editorLabel}>ПЕРС.</Text>
+        </Pressable>
+        <Pressable onPress={game.openMetalDealFlow} style={styles.editorBtn}>
+          <Text style={styles.editorIcon}>🤝</Text>
+          <Text style={styles.editorLabel}>СДЕЛКА</Text>
         </Pressable>
       </View>
 
