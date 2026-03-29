@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { logEvent } from './analytics';
 import {
   getCharacterById,
   getRandomMessage,
@@ -7,7 +8,7 @@ import {
 import { CLERK_MESSAGES, type ClerkTrigger } from './CLERK_MESSAGES';
 import { ACHIEVEMENTS, type AchievementDefinition } from './ACHIEVEMENTS';
 import { ALIENS, type BattleState } from './ALIENS';
-import { CANNONS, computeCannonCost, type CannonId } from './CANNONS';
+import { CANNONS, computeCannonCost, MAX_CANNON_LEVEL, type CannonId } from './CANNONS';
 import {
   EXPEDITIONS,
   getExpeditionById,
@@ -24,7 +25,13 @@ import {
 } from './METALS';
 import { PLANETS, type PlanetId, type PlanetDefinition } from './PLANETS';
 import { computePlayerLevel } from './PLAYER';
-import { getModuleById, MODULES, type ModuleId } from './MODULES';
+import {
+  computeModuleUpgradeCost,
+  getModuleById,
+  MAX_MODULE_LEVEL,
+  MODULES,
+  type ModuleId
+} from './MODULES';
 import { RESEARCH, type ResearchId, type ResearchState } from './RESEARCH';
 import {
   SHIPS,
@@ -157,7 +164,7 @@ export function useGame(initial?: GameStateInit) {
       research: {},
       expeditions: [],
       tabsUnlocked: { shipyard: false, upgrades: false, planets: false },
-      craftedModules: [],
+      moduleLevels: {},
       chosenCharacterId: null,
       metalDealDone: false
     }),
@@ -245,7 +252,7 @@ export function useGame(initial?: GameStateInit) {
             (initial?.energy ?? 0) >=
               Math.min(...ALIENS.map((a) => a.attackEnergyCost)))
       },
-      craftedModules: initial?.craftedModules ?? [],
+      moduleLevels: initial?.moduleLevels ?? {},
       chosenCharacterId: initial?.chosenCharacterId ?? null,
       metalDealDone: initial?.metalDealDone ?? false
     };
@@ -697,10 +704,11 @@ export function useGame(initial?: GameStateInit) {
   const prevLevelRef = useRef(playerLevel);
   useEffect(() => {
     if (playerLevel > prevLevelRef.current) {
+      logEvent('player_level_up', { level: playerLevel, xp: state.playerXP });
       setLevelUpToast(playerLevel);
       prevLevelRef.current = playerLevel;
     }
-  }, [playerLevel]);
+  }, [playerLevel, state.playerXP]);
 
   // Ship and research unlock by player level
   useEffect(() => {
@@ -807,6 +815,7 @@ export function useGame(initial?: GameStateInit) {
     if (prev !== null && state.battle === null) {
       const planetNowUnlocked = state.unlockedPlanetIds.includes(prev.planetId);
       if (planetNowUnlocked) {
+        logEvent('battle_result', { result: 'victory', planetId: prev.planetId, shipId: prev.shipId });
         setBattleVictory(prev.planetId);
         showClerk('planet');
         const planet = PLANETS.find((p) => p.id === prev.planetId);
@@ -819,6 +828,7 @@ export function useGame(initial?: GameStateInit) {
           setCharacterFlowStep('greeting');
         }
       } else {
+        logEvent('battle_result', { result: 'defeat', planetId: prev.planetId, shipId: prev.shipId });
         const ship = SHIPS.find((s) => s.id === prev.shipId);
         if (ship) setDefeatInfo({ shipName: ship.name });
       }
@@ -829,6 +839,7 @@ export function useGame(initial?: GameStateInit) {
   // ── ACTIONS ──
 
   const mineClick = useCallback(() => {
+    logEvent('mine_click', { clickPower: derived.clickPower, boosted: reactorBoostActive });
     const add = derived.clickPower * (reactorBoostActive ? 5 : 1);
     setState((prev) => {
       const newTotalEarned = prev.totalEarned + add;
@@ -860,6 +871,7 @@ export function useGame(initial?: GameStateInit) {
   ]);
 
   const claimAchievement = useCallback((id: AchievementDefinition['id']) => {
+    logEvent('claim_achievement', { id });
     setState((prev) => {
       if (!prev.achievements.unlockedIds.includes(id)) return prev;
       if (prev.achievements.claimedIds.includes(id)) return prev;
@@ -879,6 +891,7 @@ export function useGame(initial?: GameStateInit) {
 
   const buyUpgrade = useCallback(
     (id: UpgradeId) => {
+      logEvent('buy_upgrade', { id });
       setState((prev) => {
         const upg = getUpgradeById(id);
         const level = prev.upgrades[id] ?? 0;
@@ -896,6 +909,7 @@ export function useGame(initial?: GameStateInit) {
   );
 
   const buyResearch = useCallback((id: ResearchId) => {
+    logEvent('buy_research', { id });
     setState((prev) => {
       const node = RESEARCH.find((r) => r.id === id);
       if (!node) return prev;
@@ -915,6 +929,7 @@ export function useGame(initial?: GameStateInit) {
   }, []);
 
   const craftCannon = useCallback((shipId: ShipId, cannonId: CannonId) => {
+    logEvent('craft_cannon', { shipId, cannonId });
     setState((prev) => {
       if (prev.battle) return prev;
       const cannon = CANNONS.find((c) => c.id === cannonId);
@@ -922,6 +937,7 @@ export function useGame(initial?: GameStateInit) {
       const ownedShip = prev.fleet.ownedShips.find((s) => s.shipId === shipId);
       if (!ownedShip) return prev;
       const level = ownedShip.cannons[cannonId] ?? 0;
+      if (level >= MAX_CANNON_LEVEL) return prev;
       const cost = computeCannonCost(cannon, level);
       if (!hasEnoughMetals(prev.metals, cost)) return prev;
       return {
@@ -940,6 +956,7 @@ export function useGame(initial?: GameStateInit) {
   }, []);
 
   const buildShip = useCallback((shipId: ShipId) => {
+    logEvent('build_ship', { shipId });
     setState((prev) => {
       if (prev.battle) return prev;
       const ship = SHIPS.find((s) => s.id === shipId);
@@ -969,6 +986,7 @@ export function useGame(initial?: GameStateInit) {
   }, []);
 
   const repairShip = useCallback((shipId: ShipId) => {
+    logEvent('repair_ship', { shipId });
     setState((prev) => {
       if (prev.battle) return prev;
       const ship = SHIPS.find((s) => s.id === shipId);
@@ -990,6 +1008,7 @@ export function useGame(initial?: GameStateInit) {
   }, []);
 
   const selectShip = useCallback((shipId: ShipId) => {
+    logEvent('select_ship', { shipId });
     setState((prev) => {
       if (prev.battle) return prev;
       if (prev.expeditions.some((e) => e.shipId === shipId)) return prev;
@@ -1001,6 +1020,7 @@ export function useGame(initial?: GameStateInit) {
 
   const startBattle = useCallback(
     (planetId: PlanetId) => {
+      logEvent('start_battle', { planetId });
       setState((prev) => {
         if (prev.battle) return prev;
         if (prev.unlockedPlanetIds.includes(planetId)) return prev;
@@ -1033,6 +1053,7 @@ export function useGame(initial?: GameStateInit) {
 
   const attackBattle = useCallback(
     (multiplier: number = 1) => {
+      logEvent('attack_battle', { multiplier });
       setState((prev) => {
         if (!prev.battle) return prev;
         const damage = Math.floor(
@@ -1064,6 +1085,7 @@ export function useGame(initial?: GameStateInit) {
   );
 
   const selectPlanet = useCallback((planetId: PlanetId) => {
+    logEvent('select_planet', { planetId });
     setState((prev) => {
       if (!prev.unlockedPlanetIds.includes(planetId)) return prev;
       return { ...prev, selectedPlanetId: planetId };
@@ -1072,6 +1094,7 @@ export function useGame(initial?: GameStateInit) {
 
   const startExpedition = useCallback(
     (expeditionId: ExpeditionId, shipId: ShipId) => {
+      logEvent('start_expedition', { expeditionId, shipId });
       setState((prev) => {
         if (prev.battle) return prev;
         if (prev.expeditions.some((e) => e.shipId === shipId)) return prev;
@@ -1100,6 +1123,7 @@ export function useGame(initial?: GameStateInit) {
   );
 
   const reflectBattle = useCallback((penaltyMs: number = 1000) => {
+    logEvent('reflect_battle', { penaltyMs });
     setState((prev) => {
       if (!prev.battle) return prev;
       const newExpires = prev.battle.expiresAt - penaltyMs;
@@ -1120,16 +1144,24 @@ export function useGame(initial?: GameStateInit) {
     });
   }, []);
 
-  const healBattle = useCallback((fractionOfMax: number) => {
-    setState((prev) => {
-      if (!prev.battle) return prev;
-      const heal = Math.floor(prev.battle.maxHP * fractionOfMax);
-      const newHP = Math.min(prev.battle.currentHP + heal, prev.battle.maxHP);
-      return { ...prev, battle: { ...prev.battle, currentHP: newHP } };
-    });
-  }, []);
+  const healBattle = useCallback(
+    (amount: number, mode: 'fractionOfMax' | 'flatHp' = 'fractionOfMax') => {
+      logEvent('heal_battle', { amount, mode });
+      setState((prev) => {
+        if (!prev.battle) return prev;
+        const heal =
+          mode === 'flatHp'
+            ? Math.max(0, Math.floor(amount))
+            : Math.floor(prev.battle.maxHP * amount);
+        const newHP = Math.min(prev.battle.currentHP + heal, prev.battle.maxHP);
+        return { ...prev, battle: { ...prev.battle, currentHP: newHP } };
+      });
+    },
+    []
+  );
 
   const forfeitBattle = useCallback(() => {
+    logEvent('forfeit_battle', {});
     setState((prev) => {
       if (!prev.battle) return prev;
       const { shipId } = prev.battle;
@@ -1147,22 +1179,39 @@ export function useGame(initial?: GameStateInit) {
   }, []);
 
   const craftModule = useCallback((moduleId: ModuleId) => {
+    logEvent('craft_module', { moduleId });
     setState((prev) => {
-      if (prev.craftedModules.includes(moduleId)) return prev;
+      if (prev.moduleLevels[moduleId]) return prev;
       const mod = getModuleById(moduleId);
       if (!hasEnoughMetals(prev.metals, mod.cost)) return prev;
       return {
         ...prev,
         metals: subtractMetals(prev.metals, mod.cost),
-        craftedModules: [...prev.craftedModules, moduleId]
+        moduleLevels: { ...prev.moduleLevels, [moduleId]: 1 }
+      };
+    });
+  }, []);
+
+  const upgradeModule = useCallback((moduleId: ModuleId) => {
+    logEvent('upgrade_module', { moduleId });
+    setState((prev) => {
+      const currentLevel = prev.moduleLevels[moduleId] ?? 0;
+      if (currentLevel <= 0 || currentLevel >= MAX_MODULE_LEVEL) return prev;
+      const cost = computeModuleUpgradeCost(currentLevel);
+      if (!hasEnoughMetals(prev.metals, cost)) return prev;
+      return {
+        ...prev,
+        metals: subtractMetals(prev.metals, cost),
+        moduleLevels: { ...prev.moduleLevels, [moduleId]: currentLevel + 1 }
       };
     });
   }, []);
 
   const equipModule = useCallback(
     (shipId: ShipId, moduleId: ModuleId | null) => {
+      logEvent('equip_module', { shipId, moduleId });
       setState((prev) => {
-        if (moduleId !== null && !prev.craftedModules.includes(moduleId))
+        if (moduleId !== null && !prev.moduleLevels[moduleId])
           return prev;
         return {
           ...prev,
@@ -1179,6 +1228,7 @@ export function useGame(initial?: GameStateInit) {
   );
 
   const chooseCharacter = useCallback((id: CharacterId) => {
+    logEvent('choose_character', { characterId: id });
     setState((prev) => ({ ...prev, chosenCharacterId: id }));
     setCharacterFlowStep('garbled');
   }, []);
@@ -1203,6 +1253,7 @@ export function useGame(initial?: GameStateInit) {
   } as const;
 
   const acceptMetalDeal = useCallback(() => {
+    logEvent('accept_metal_deal', {});
     setState((prev) => {
       if (prev.energy < METAL_DEAL_ENERGY_COST) return prev;
       return {
@@ -1223,6 +1274,7 @@ export function useGame(initial?: GameStateInit) {
   }, []);
 
   const declineMetalDeal = useCallback(() => {
+    logEvent('decline_metal_deal', {});
     setState((prev) => ({ ...prev, metalDealDone: true }));
     setCharacterFlowStep(null);
   }, []);
@@ -1238,6 +1290,7 @@ export function useGame(initial?: GameStateInit) {
   }, []);
 
   const claimExpedition = useCallback((shipId: ShipId) => {
+    logEvent('claim_expedition', { shipId });
     setState((prev) => {
       const exp = prev.expeditions.find((e) => e.shipId === shipId);
       if (!exp || Date.now() < exp.completesAt) return prev;
@@ -1341,6 +1394,7 @@ export function useGame(initial?: GameStateInit) {
     startExpedition,
     claimExpedition,
     craftModule,
+    upgradeModule,
     equipModule,
     addBattleTime,
     characterFlowStep,

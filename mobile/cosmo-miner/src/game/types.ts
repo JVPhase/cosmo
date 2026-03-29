@@ -39,7 +39,7 @@ export type GameState = {
   research: ResearchState;
   expeditions: ActiveExpedition[];
   tabsUnlocked: TabsUnlockedState;
-  craftedModules: ModuleId[];
+  moduleLevels: Partial<Record<ModuleId, number>>;
   chosenCharacterId: CharacterId | null;
   metalDealDone: boolean;
 };
@@ -68,7 +68,7 @@ export type GameStateInit = {
   research?: ResearchState;
   expeditions?: ActiveExpedition[];
   tabsUnlocked?: Partial<TabsUnlockedState>;
-  craftedModules?: ModuleId[];
+  moduleLevels?: Partial<Record<ModuleId, number>>;
   chosenCharacterId?: CharacterId | null;
   metalDealDone?: boolean;
 };

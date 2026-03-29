@@ -77,7 +77,17 @@ export async function loadGame(): Promise<{ state: GameStateInit; savedAt: numbe
       await AsyncStorage.removeItem(STORAGE_KEY);
       return null;
     }
-    return { state: parsed.state, savedAt: parsed.savedAt ?? 0 };
+    const state = parsed.state as Record<string, unknown>;
+    // Migrate: craftedModules[] → moduleLevels
+    if (Array.isArray(state.craftedModules) && !state.moduleLevels) {
+      const levels: Record<string, number> = {};
+      for (const id of state.craftedModules as string[]) {
+        levels[id] = 1;
+      }
+      state.moduleLevels = levels;
+      delete state.craftedModules;
+    }
+    return { state: state as GameStateInit, savedAt: parsed.savedAt ?? 0 };
   } catch {
     await AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
     return null;
@@ -104,7 +114,7 @@ export async function saveGame(state: GameState): Promise<void> {
       research: state.research,
       expeditions: state.expeditions,
       tabsUnlocked: state.tabsUnlocked,
-      craftedModules: state.craftedModules,
+      moduleLevels: state.moduleLevels,
       chosenCharacterId: state.chosenCharacterId,
       metalDealDone: state.metalDealDone,
     },
