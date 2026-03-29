@@ -1,6 +1,7 @@
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  Alert,
   Modal,
   Pressable,
   ScrollView,
@@ -9,6 +10,14 @@ import {
   TextInput,
   View
 } from 'react-native';
+import {
+  clearAnalytics,
+  exportAnalytics,
+  flushAnalytics,
+  getAnalyticsSizeKb,
+  initAnalytics,
+  logEvent
+} from './src/game/analytics';
 import { AchievementsScreen } from './src/screens/AchievementsScreen';
 import { StoryLogScreen } from './src/screens/StoryLogScreen';
 import { BattleScreen } from './src/screens/BattleScreen';
@@ -22,7 +31,7 @@ import { IntroOverlay } from './src/ui/IntroOverlay';
 import { ModalSheet } from './src/ui/ModalSheet';
 import { Popup } from './src/ui/Popup';
 import { formatNum } from './src/game/formatNum';
-import { METALS } from './src/game/METALS';
+import { METALS, type MetalId } from './src/game/METALS';
 import { getModuleById } from './src/game/MODULES';
 import { PasswordScreen } from './src/ui/PasswordScreen';
 import { useGame } from './src/game/useGame';
@@ -76,10 +85,42 @@ function GameApp({
   const [clickPowerInfoOpen, setClickPowerInfoOpen] = useState(false);
   const [passiveRateInfoOpen, setPassiveRateInfoOpen] = useState(false);
   const [planetBonusInfoOpen, setPlanetBonusInfoOpen] = useState(false);
-  const [ironInfoOpen, setIronInfoOpen] = useState(false);
+  const [metalInfoOpenId, setMetalInfoOpenId] = useState<MetalId | null>(null);
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const [resetShowIntro, setResetShowIntro] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
+  const [analyticsSizeKb, setAnalyticsSizeKb] = useState(0);
+
+  useEffect(() => {
+    getAnalyticsSizeKb().then(setAnalyticsSizeKb).catch(() => {});
+    const interval = setInterval(() => {
+      getAnalyticsSizeKb().then(setAnalyticsSizeKb).catch(() => {});
+    }, 15_000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleExportAnalytics = useCallback(async () => {
+    try {
+      await exportAnalytics();
+      getAnalyticsSizeKb().then(setAnalyticsSizeKb).catch(() => {});
+    } catch (e: any) {
+      Alert.alert('Ошибка', e?.message ?? 'Не удалось экспортировать лог');
+    }
+  }, []);
+
+  const handleClearAnalytics = useCallback(() => {
+    Alert.alert('Очистить лог?', 'Все записи аналитики будут удалены.', [
+      { text: 'Отмена', style: 'cancel' },
+      {
+        text: 'Удалить',
+        style: 'destructive',
+        onPress: async () => {
+          await clearAnalytics();
+          setAnalyticsSizeKb(0);
+        }
+      }
+    ]);
+  }, []);
   const [editorFields, setEditorFields] = useState({
     energy: '0',
     iron: '0',
@@ -109,6 +150,7 @@ function GameApp({
   }, [tab]);
 
   const goToTab = (t: TabId) => {
+    logEvent('tab_switch', { tab: t, via: 'action' });
     setResearchOpen(false);
     setAchievementsOpen(false);
     onSetTab(t);
@@ -176,6 +218,7 @@ function GameApp({
         research: g.research,
         expeditions: g.expeditions
       } as any).catch(() => {});
+      flushAnalytics().catch(() => {});
     }, 3000);
     return () => clearInterval(interval);
   }, []);
@@ -226,7 +269,7 @@ function GameApp({
           onMine={game.mineClick}
           planet={game.planet}
           clerkMessage={game.clerkMessage}
-          onCloseClerk={game.closeClerk}
+          onCloseClerk={() => { logEvent('toast_close', { toast: 'clerk' }); game.closeClerk(); }}
           achievementToast={
             game.achievementToast
               ? {
@@ -237,11 +280,11 @@ function GameApp({
                 }
               : null
           }
-          onCloseAchievementToast={game.closeAchievementToast}
+          onCloseAchievementToast={() => { logEvent('toast_close', { toast: 'achievement' }); game.closeAchievementToast(); }}
           playerLevel={game.playerLevel}
           playerXP={game.playerXP}
           levelUpToast={game.levelUpToast}
-          onCloseLevelUpToast={game.closeLevelUpToast}
+          onCloseLevelUpToast={() => { logEvent('toast_close', { toast: 'level_up' }); game.closeLevelUpToast(); }}
           hasAffordableResearch={RESEARCH.some(
             (n) =>
               !game.research[n.id] &&
@@ -255,18 +298,20 @@ function GameApp({
               screenGreetedRef.current.add('research');
               game.showClerk('screen_research');
             }
+            logEvent('modal_open', { modal: 'research' });
             setResearchOpen(true);
           }}
-          onOpenAchievements={() => setAchievementsOpen(true)}
+          onOpenAchievements={() => { logEvent('modal_open', { modal: 'achievements' }); setAchievementsOpen(true); }}
           achievementsUnlocked={game.achievementsUnlocked}
           hasUnclaimedAchievements={game.hasUnclaimedAchievements}
-          onOpenClickPowerInfo={() => setClickPowerInfoOpen(true)}
-          onOpenPassiveRateInfo={() => setPassiveRateInfoOpen(true)}
-          onOpenPlanetBonusInfo={() => setPlanetBonusInfoOpen(true)}
-          onOpenIronInfo={() => setIronInfoOpen(true)}
+          onOpenClickPowerInfo={() => { logEvent('modal_open', { modal: 'click_power_info' }); setClickPowerInfoOpen(true); }}
+          onOpenPassiveRateInfo={() => { logEvent('modal_open', { modal: 'passive_rate_info' }); setPassiveRateInfoOpen(true); }}
+          onOpenPlanetBonusInfo={() => { logEvent('modal_open', { modal: 'planet_bonus_info' }); setPlanetBonusInfoOpen(true); }}
+          onOpenMetalInfo={(metalId) => { logEvent('modal_open', { modal: 'metal_info', metalId }); setMetalInfoOpenId(metalId); }}
           onOpenStoryLog={() => {
             const ctx = { unlockedPlanetIds: game.unlockedPlanetIds, chosenCharacterId: game.chosenCharacterId, metalDealDone: game.metalDealDone };
             setSeenStoryCount(STORY_LOG.filter((e) => e.isUnlocked(ctx)).length);
+            logEvent('modal_open', { modal: 'story_log' });
             setStoryLogOpen(true);
           }}
           hasNewStoryEntry={
@@ -275,7 +320,7 @@ function GameApp({
             ).length > seenStoryCount
           }
           characterMessage={game.characterMessage}
-          onCloseCharacterMessage={game.closeCharacterMessage}
+          onCloseCharacterMessage={() => { logEvent('toast_close', { toast: 'character_message' }); game.closeCharacterMessage(); }}
           chosenCharacter={game.chosenCharacter}
         />
       );
@@ -328,8 +373,9 @@ function GameApp({
           }
           onStartExpedition={game.startExpedition}
           onClaimExpedition={game.claimExpedition}
-          craftedModules={game.craftedModules}
+          moduleLevels={game.moduleLevels}
           onCraftModule={game.craftModule}
+          onUpgradeModule={game.upgradeModule}
           onEquipModule={game.equipModule}
         />
       );
@@ -346,11 +392,17 @@ function GameApp({
             const modId = owned?.equippedModuleId ?? null;
             return modId ? getModuleById(modId) : null;
           })()}
+          equippedModuleLevel={(() => {
+            const shipId = game.battle?.shipId ?? game.fleet.selectedShipId;
+            const owned = game.fleet.ownedShips.find((s) => s.shipId === shipId);
+            const modId = owned?.equippedModuleId ?? null;
+            return modId ? (game.moduleLevels[modId] ?? 0) : 0;
+          })()}
           onAttack={game.attackBattle}
           onReflect={game.reflectBattle}
           onHeal={game.healBattle}
           onForfeit={game.forfeitBattle}
-          onGoToShipyard={() => onSetTab('shipyard')}
+          onGoToShipyard={() => { logEvent('defeat_go_shipyard', {}); onSetTab('shipyard'); }}
           onClearDefeat={game.clearDefeatInfo}
           onAddBattleTime={game.addBattleTime}
         />
@@ -366,7 +418,7 @@ function GameApp({
       <ModalSheet
         visible={researchOpen}
         title="◈ ИССЛЕДОВАНИЯ · МММРДР ◈"
-        onClose={() => setResearchOpen(false)}
+        onClose={() => { logEvent('modal_close', { modal: 'research' }); setResearchOpen(false); }}
       >
         <ResearchScreen
           playerLevel={game.playerLevel}
@@ -381,7 +433,7 @@ function GameApp({
       <ModalSheet
         visible={storyLogOpen}
         title="◈ БОРТОВОЙ ЖУРНАЛ ◈"
-        onClose={() => setStoryLogOpen(false)}
+        onClose={() => { logEvent('modal_close', { modal: 'story_log' }); setStoryLogOpen(false); }}
       >
         <StoryLogScreen
           unlockedPlanetIds={game.unlockedPlanetIds}
@@ -393,7 +445,7 @@ function GameApp({
       <ModalSheet
         visible={achievementsOpen}
         title="◈ ЛИЧНОЕ ДЕЛО ◈"
-        onClose={() => setAchievementsOpen(false)}
+        onClose={() => { logEvent('modal_close', { modal: 'achievements' }); setAchievementsOpen(false); }}
       >
         <AchievementsScreen
           achievements={game.achievements}
@@ -404,7 +456,7 @@ function GameApp({
       <Popup
         visible={game.firstIronToast}
         title="◈ ПЕРВАЯ НАХОДКА · КЛЕРК-7 ◈"
-        onClose={game.closeFirstIronToast}
+        onClose={() => { logEvent('toast_close', { toast: 'first_iron' }); game.closeFirstIronToast(); }}
         image={ironMetal.image}
         text={
           'Зафиксирован первый образец Железа™! За эту выдающуюся находку вам полагается премия — после заполнения форм ЖЛ-1 по ЖЛ-83, нотариально заверенного снимка астероида и справки с предыдущего места работы. P.S. Этот металл может пригодиться. Возможно.'
@@ -415,33 +467,33 @@ function GameApp({
       <Popup
         visible={game.achievementsUnlockToast}
         title="◈ СИСТЕМА ДОСТИЖЕНИЙ · КЛЕРК-7 ◈"
-        onClose={game.closeAchievementsUnlockToast}
+        onClose={() => { logEvent('toast_close', { toast: 'achievements_unlock' }); game.closeAchievementsUnlockToast(); }}
         text={
           'Хочу вас подбодрить. Серьёзно. Поэтому внедряю систему достижений — специально для вас.\n\nКаждое достижение будет официально зафиксировано в личном деле. Форма ДСТ-1 уже направлена в архив в трёх экземплярах.\n\nТак держать, сотрудник №4,829,441. Вы справляетесь. Почти.'
         }
         clerk
         headerEmoji="🏆"
         actionLabel="ОТКРЫТЬ ДОСТИЖЕНИЯ"
-        onAction={() => setAchievementsOpen(true)}
+        onAction={() => { logEvent('toast_action', { toast: 'achievements_unlock', action: 'open_achievements' }); setAchievementsOpen(true); }}
       />
 
       <Popup
         visible={game.upgradesUnlockToast}
         title="◈ АПГРЕЙДЫ ДОСТУПНЫ · КЛЕРК-7 ◈"
-        onClose={game.closeUpgradesUnlockToast}
+        onClose={() => { logEvent('toast_close', { toast: 'upgrades_unlock' }); game.closeUpgradesUnlockToast(); }}
         text={
           'Поздравляю — у вас достаточно энергии для первого улучшения оборудования!\n\nАпгрейды повышают мощность добычи и пассивный доход. Настоятельно рекомендую вкладывать всё, что есть.\n\nФорма АПГ-1 «Заявка на улучшение» заполнена автоматически. Можете не благодарить.'
         }
         clerk
         headerEmoji="⚡"
         actionLabel="ОТКРЫТЬ АПГРЕЙДЫ"
-        onAction={() => goToTab('upgrades')}
+        onAction={() => { logEvent('toast_action', { toast: 'upgrades_unlock', action: 'open_upgrades' }); goToTab('upgrades'); }}
       />
 
       <Popup
         visible={!!game.currentUnlockToast}
         title={game.currentUnlockToast?.title ?? ''}
-        onClose={game.dismissUnlockToast}
+        onClose={() => { logEvent('toast_close', { toast: 'unlock', id: game.currentUnlockToast?.id }); game.dismissUnlockToast(); }}
         image={game.currentUnlockToast?.image}
         text={game.currentUnlockToast?.text ?? ''}
         headerEmoji={game.currentUnlockToast?.headerEmoji}
@@ -451,45 +503,45 @@ function GameApp({
       <Popup
         visible={game.firstShipToast}
         title="◈ ПЕРВЫЙ КОРАБЛЬ · КЛЕРК-7 ◈"
-        onClose={game.closeFirstShipToast}
+        onClose={() => { logEvent('toast_close', { toast: 'first_ship' }); game.closeFirstShipToast(); }}
         image={SHIPS[0].image}
         text={`Поздравляю с постройкой первого корабля!\n\nОднако для навигации необходимы данные из реестра МММРДР. Министерство готово их предоставить — как только вы выйдете на связь. Для этого потребуется ${MIN_ATTACK_ENERGY} единиц энергии. Форма НВГ-1 «Запрос навигационных данных» будет заполнена автоматически.`}
         clerk
         headerEmoji="🚀"
         actionLabel={planetsUnlocked ? 'ПЕРЕЙТИ К ПЛАНЕТАМ' : `ДОБЫТЬ ${MIN_ATTACK_ENERGY} ЭНЕРГИИ`}
-        onAction={() => { game.closeFirstShipToast(); goToTab(planetsUnlocked ? 'planets' : 'game'); }}
+        onAction={() => { logEvent('toast_action', { toast: 'first_ship', action: planetsUnlocked ? 'go_planets' : 'go_game' }); game.closeFirstShipToast(); goToTab(planetsUnlocked ? 'planets' : 'game'); }}
       />
 
       <Popup
         visible={game.planetsUnlockToast}
         title="◈ ПЛАНЕТЫ ДОСТУПНЫ · КЛЕРК-7 ◈"
-        onClose={game.closePlanetsUnlockToast}
+        onClose={() => { logEvent('toast_close', { toast: 'planets_unlock' }); game.closePlanetsUnlockToast(); }}
         headerEmoji="🌍"
         text={
           'У вас достаточно энергии для атаки! Вкладка «ПЛАН.» разблокирована.\n\nЗдесь вы можете выбирать планеты и вступать в бой с инопланетными захватчиками. Победа откроет новые планеты с бонусами к добыче.\n\nМинистерство межпланетных отношений категорически не рекомендует вступать в контакт с пришельцами. Так что, возможно, сначала постройте корабль.'
         }
         clerk
         actionLabel="ОТКРЫТЬ ПЛАНЕТЫ"
-        onAction={() => goToTab('planets')}
+        onAction={() => { logEvent('toast_action', { toast: 'planets_unlock', action: 'open_planets' }); goToTab('planets'); }}
       />
 
       <Popup
         visible={game.shipyardUnlockToast}
         title="◈ ВЕРФЬ РАЗБЛОКИРОВАНА · КЛЕРК-7 ◈"
-        onClose={game.closeShipyardUnlockToast}
+        onClose={() => { logEvent('toast_close', { toast: 'shipyard_unlock' }); game.closeShipyardUnlockToast(); }}
         headerEmoji="🛠️"
         text={
           'У вас достаточно железа для постройки первого корабля!\n\nПерейдите во вкладку «ВЕРФЬ» — там можно строить корабли, устанавливать пушки и отправлять флот в экспедиции за металлами.\n\nМинистерство судостроения уведомлено. Форма СТР-1 «Разрешение на строительство» находится на рассмотрении с 2374 года. Стройте пока никто не заметил.'
         }
         clerk
         actionLabel="ОТКРЫТЬ ВЕРФЬ"
-        onAction={() => goToTab('shipyard')}
+        onAction={() => { logEvent('toast_action', { toast: 'shipyard_unlock', action: 'open_shipyard' }); goToTab('shipyard'); }}
       />
 
       <Popup
         visible={!!game.planetUnlockToast}
         title="◈ НОВАЯ ПЛАНЕТА · КЛЕРК-7 ◈"
-        onClose={game.closePlanetUnlockToast}
+        onClose={() => { logEvent('toast_close', { toast: 'planet_unlock', planetId: game.planetUnlockToast?.id }); game.closePlanetUnlockToast(); }}
         image={game.planetUnlockToast?.image}
         text={
           game.planetUnlockToast
@@ -498,7 +550,7 @@ function GameApp({
         }
         clerk
         actionLabel="НАЧАТЬ ДОБЫЧУ"
-        onAction={() => goToTab('game')}
+        onAction={() => { logEvent('toast_action', { toast: 'planet_unlock', action: 'start_mining', planetId: game.planetUnlockToast?.id }); goToTab('game'); }}
       />
 
       <CharacterSelectFlow
@@ -515,7 +567,7 @@ function GameApp({
       <Popup
         visible={clickPowerInfoOpen}
         title="◈ МОЩНОСТЬ КЛИКА · КЛЕРК-7 ◈"
-        onClose={() => setClickPowerInfoOpen(false)}
+        onClose={() => { logEvent('toast_close', { toast: 'click_power_info' }); setClickPowerInfoOpen(false); }}
         headerEmoji="⛏️"
         text={`Мощность клика — количество энергии, добываемой за одно нажатие на планету.\n\nСейчас: +${game.clickPower < 1000 ? game.clickPower.toFixed(2) : formatNum(game.clickPower)} за клик.\n\nУвеличивается через улучшения во вкладке «АПГР.». Чем выше мощность — тем больше энергии и металлов вы получаете с каждого удара.`}
         clerk
@@ -524,7 +576,7 @@ function GameApp({
       <Popup
         visible={passiveRateInfoOpen}
         title="◈ ПАССИВНЫЙ ДОХОД · КЛЕРК-7 ◈"
-        onClose={() => setPassiveRateInfoOpen(false)}
+        onClose={() => { logEvent('toast_close', { toast: 'passive_rate_info' }); setPassiveRateInfoOpen(false); }}
         headerEmoji="⚡"
         text={`Пассивный доход — энергия, накапливаемая автоматически каждую секунду без кликов.\n\nСейчас: ${formatNum(game.passiveRate)}/сек.\n\nУвеличивается через улучшения с дроном во вкладке «АПГР.». Пока вы спите — дроны работают. По регламенту МММРДР, дроны не устают. Их чувства по этому поводу не изучались.`}
         clerk
@@ -533,23 +585,49 @@ function GameApp({
       <Popup
         visible={planetBonusInfoOpen}
         title="◈ БОНУС ПЛАНЕТЫ · КЛЕРК-7 ◈"
-        onClose={() => setPlanetBonusInfoOpen(false)}
+        onClose={() => { logEvent('toast_close', { toast: 'planet_bonus_info' }); setPlanetBonusInfoOpen(false); }}
         headerEmoji={`×${game.planet.bonus}`}
         headerEmojiStyle={{ color: game.planet.color }}
-        text={`Бонус планеты — множитель добычи металлов на текущей локации.\n\nСейчас: ×${game.planet.bonus} на планете ${game.planet.name}.\n\nКаждая планета имеет свой бонус к выпадению металлов. Более далёкие планеты дают более высокий множитель. Чтобы разблокировать их — победите охраняющего пришельца во вкладке «БОЙ».`}
+        text={`Бонус планеты — множитель добычи энергиума на текущей локации.\n\nСейчас: ×${game.planet.bonus} на планете ${game.planet.name}.\n\nКаждая планета имеет свой бонус к добыче энергиума (клики и пассивный доход). Более далёкие планеты дают более высокий множитель. Чтобы разблокировать их — победите охраняющего пришельца во вкладке «БОЙ».`}
         clerk
       />
 
-      <Popup
-        visible={ironInfoOpen}
-        title="◈ ЖЕЛЕЗО™ · КЛЕРК-7 ◈"
-        onClose={() => setIronInfoOpen(false)}
-        image={ironMetal.image}
-        text={
-          'Железо — базовый промышленный металл. Добывайте его как можно больше.\n\nПо регламенту МММРДР, минимальная норма сбора не установлена. Это не значит, что её нет — просто форма МН-2 «Установление нормы» находится на согласовании с 2341 года.\n\nВывод: добывайте. Много. Пока не спросили.'
-        }
-        clerk
-      />
+      {(() => {
+        const METAL_INFO: Record<MetalId, { title: string; text: string }> = {
+          iron: {
+            title: '◈ ЖЕЛЕЗО™ · КЛЕРК-7 ◈',
+            text: 'Железо — базовый промышленный металл. Добывайте его как можно больше.\n\nПо регламенту МММРДР, минимальная норма сбора не установлена. Это не значит, что её нет — просто форма МН-2 «Установление нормы» находится на согласовании с 2341 года.\n\nВывод: добывайте. Много. Пока не спросили.',
+          },
+          titan: {
+            title: '◈ ТИТАН · КЛЕРК-7 ◈',
+            text: 'Титан — металл с исключительно высокой прочностью. Применяется в обшивке боевых кораблей и производстве пушечных компонентов.\n\nСогласно директиве МММРДР № 7.4.2, каждый образец подлежит взвешиванию, маркировке и трёхкратной инвентаризации. Форма ТТ-19 «Учёт титана» выдаётся в окошке 3. Окошко 3 закрыто на переучёт.\n\nВывод: полезный металл. Добывайте, пока никто не взвешивает.',
+          },
+          iridium: {
+            title: '◈ ИРИДИЙ · КЛЕРК-7 ◈',
+            text: 'Иридий — редкоземельный металл с повышенной устойчивостью к внешним воздействиям. Применяется в высокотехнологичных компонентах орудий и корпусных усилителей.\n\nВстречается реже, чем железо или титан. По мнению МММРДР, это «не баг, а особенность распределения ресурсов». Форма ИР-7 «Жалоба на редкость иридия» официально не рассматривается.\n\nВывод: ценнее, чем кажется. Копите.',
+          },
+          voidCrystal: {
+            title: '◈ КРИСТАЛЛ ПУСТОТЫ · КЛЕРК-7 ◈',
+            text: 'Кристалл Пустоты — экзотический материал, обнаруженный исключительно в Секторе 3. Природа его образования не изучена. МММРДР не спешит изучать.\n\nОфициальная классификация: «объект неустановленной категории». Форма КП-0 «Идентификация неизвестного вещества» находится в разработке с момента открытия Сектора 3.\n\nВывод: что-то важное. Точно.',
+          },
+          echoShard: {
+            title: '◈ ОСКОЛОК ЭХА · КЛЕРК-7 ◈',
+            text: 'Осколок Эха — фрагментарный материал, излучающий слабый резонансный сигнал. Встречается в глубинах Сектора 3.\n\nПо непроверенным данным, звук, исходящий от осколка — это отголоски сигналов, поглощённых Пустотой. МММРДР официально опровергает эту теорию, не приводя альтернативной.\n\nВывод: берите. Пригодится.',
+          },
+        };
+        const metal = metalInfoOpenId ? METALS.find((m) => m.id === metalInfoOpenId) : null;
+        const info = metalInfoOpenId ? METAL_INFO[metalInfoOpenId] : null;
+        return (
+          <Popup
+            visible={metalInfoOpenId !== null}
+            title={info?.title ?? ''}
+            onClose={() => { logEvent('toast_close', { toast: 'metal_info', metalId: metalInfoOpenId }); setMetalInfoOpenId(null); }}
+            image={metal?.image}
+            text={info?.text ?? ''}
+            clerk
+          />
+        );
+      })()}
 
       {(() => {
         const visibleTabs = TABS.filter((t) => {
@@ -624,7 +702,7 @@ function GameApp({
               return (
                 <Pressable
                   key={t.id}
-                  onPress={() => onSetTab(t.id)}
+                  onPress={() => { logEvent('tab_switch', { tab: t.id, via: 'tab_bar' }); onSetTab(t.id); }}
                   style={styles.tabBtn}
                 >
                   <Text style={styles.tabIcon}>{t.icon}</Text>
@@ -669,7 +747,7 @@ function GameApp({
 
       <View style={styles.sideButtons}>
         <Pressable
-          onPress={() => setResetConfirmOpen(true)}
+          onPress={() => { logEvent('modal_open', { modal: 'reset_confirm' }); setResetConfirmOpen(true); }}
           style={styles.resetBtn}
         >
           <Text style={styles.resetIcon}>✕</Text>
@@ -679,13 +757,23 @@ function GameApp({
           <Text style={styles.editorIcon}>✎</Text>
           <Text style={styles.editorLabel}>ПРОГ.</Text>
         </Pressable>
-        <Pressable onPress={game.openCharacterSelectFlow} style={styles.editorBtn}>
+        <Pressable onPress={() => { logEvent('modal_open', { modal: 'character_select' }); game.openCharacterSelectFlow(); }} style={styles.editorBtn}>
           <Text style={styles.editorIcon}>👤</Text>
           <Text style={styles.editorLabel}>ПЕРС.</Text>
         </Pressable>
-        <Pressable onPress={game.openMetalDealFlow} style={styles.editorBtn}>
+        <Pressable onPress={() => { logEvent('modal_open', { modal: 'metal_deal' }); game.openMetalDealFlow(); }} style={styles.editorBtn}>
           <Text style={styles.editorIcon}>🤝</Text>
           <Text style={styles.editorLabel}>СДЕЛКА</Text>
+        </Pressable>
+        <Pressable onPress={handleExportAnalytics} style={styles.editorBtn}>
+          <Text style={styles.editorIcon}>📊</Text>
+          <Text style={styles.editorLabel}>
+            {analyticsSizeKb > 0 ? `${analyticsSizeKb}КБ` : 'ЛОГ'}
+          </Text>
+        </Pressable>
+        <Pressable onPress={handleClearAnalytics} style={styles.editorBtn}>
+          <Text style={styles.editorIcon}>🗑️</Text>
+          <Text style={styles.editorLabel}>ОЧИСТ.</Text>
         </Pressable>
       </View>
 
@@ -809,6 +897,7 @@ function GameApp({
               <Pressable
                 style={styles.resetCardConfirm}
                 onPress={() => {
+                  logEvent('game_reset', { showIntro: resetShowIntro });
                   setResetConfirmOpen(false);
                   onReset(resetShowIntro);
                   setResetShowIntro(false);
@@ -831,6 +920,11 @@ export default function App() {
   const [introSeen, setIntroSeen] = useState<boolean | undefined>(undefined);
   const [gameKey, setGameKey] = useState(0);
   const [offlineEarnings, setOfflineEarnings] = useState(0);
+
+  const sessionIdRef = useRef(Math.random().toString(36).slice(2) + Date.now().toString(36));
+  useEffect(() => {
+    initAnalytics(sessionIdRef.current);
+  }, []);
 
   useEffect(() => {
     let mounted = true;

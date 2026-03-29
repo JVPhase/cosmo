@@ -1,8 +1,8 @@
-import type { CannonId } from "./CANNONS";
-import type { MetalsState } from "./METALS";
-import type { ModuleId } from "./MODULES";
+import type { CannonId } from './CANNONS';
+import type { MetalsState } from './METALS';
+import type { ModuleId } from './MODULES';
 
-export type ShipId = "scout" | "cruiser" | "dreadnought" | "flagship";
+export type ShipId = 'scout' | 'cruiser' | 'dreadnought' | 'flagship';
 
 export type ShipDefinition = {
   id: ShipId;
@@ -19,53 +19,53 @@ export type ShipDefinition = {
 
 export const SHIPS: readonly ShipDefinition[] = [
   {
-    id: "scout",
-    name: "Разведчик «Нулевой»",
-    icon: "🚀",
-    image: require("../../assets/scoutship.png"),
+    id: 'scout',
+    name: 'Разведчик «Нулевой»',
+    icon: '🚀',
+    image: require('../../assets/scoutship.png'),
     damageMultiplier: 1,
     expeditionMultiplier: 1,
     unlockLevel: 1,
     baseCost: { iron: 30 },
     repairCost: { iron: 10 },
-    lore: "Серийный номер 0000. Выдаётся по умолчанию. По умолчанию же и ломается.",
+    lore: 'Серийный номер 0000. Выдаётся по умолчанию. По умолчанию же и ломается.'
   },
   {
-    id: "cruiser",
-    name: "Крейсер «Гамма»",
-    icon: "🛸",
-    image: require("../../assets/cruisership.png"),
+    id: 'cruiser',
+    name: 'Крейсер «Гамма»',
+    icon: '🛸',
+    image: require('../../assets/cruisership.png'),
     damageMultiplier: 2.5,
     expeditionMultiplier: 1.5,
     unlockLevel: 6,
     baseCost: { titan: 25 },
     repairCost: { titan: 8 },
-    lore: "Усиленный корпус. Министерство обороны одобрило. Министерство финансов — нет. Летит.",
+    lore: 'Усиленный корпус. Министерство обороны одобрило. Министерство финансов — нет. Летит.'
   },
   {
-    id: "dreadnought",
-    name: "Дредноут «Отдел Б»",
-    icon: "🛡️",
-    image: require("../../assets/dreadnoughtship.png"),
+    id: 'dreadnought',
+    name: 'Дредноут «Отдел Б»',
+    icon: '🛡️',
+    image: require('../../assets/dreadnoughtship.png'),
     damageMultiplier: 5,
     expeditionMultiplier: 2.5,
     unlockLevel: 8,
     baseCost: { iridium: 20 },
     repairCost: { iridium: 7 },
-    lore: "Назван в честь отдела, который его разработал. Отдел Б официально не существует.",
+    lore: 'Назван в честь отдела, который его разработал. Отдел Б официально не существует.'
   },
   {
-    id: "flagship",
-    name: "Флагман «Абсолют-77»",
-    icon: "💫",
-    image: require("../../assets/flagship.png"),
+    id: 'flagship',
+    name: 'Флагман «Абсолют-77»',
+    icon: '💫',
+    image: require('../../assets/flagship.png'),
     damageMultiplier: 12,
     expeditionMultiplier: 4,
-    unlockLevel: 12,
+    unlockLevel: 11,
     baseCost: { iron: 28, titan: 28, iridium: 29 },
     repairCost: { iron: 10, titan: 10, iridium: 10 },
-    lore: "Форма допуска — 47 страниц. Форма техобслуживания — ещё 62. Зато летит как мечта.",
-  },
+    lore: 'Форма допуска — 47 страниц. Форма техобслуживания — ещё 62. Зато летит как мечта.'
+  }
 ] as const;
 
 export function getShipById(id: ShipId): ShipDefinition {
@@ -93,6 +93,6 @@ export function createDefaultCannons(): Record<CannonId, number> {
 export function createDefaultFleetState(): FleetState {
   return {
     ownedShips: [],
-    selectedShipId: null,
+    selectedShipId: null
   };
 }

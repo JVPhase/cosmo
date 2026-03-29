@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { INTRO_SLIDES } from "../game/INTRO_SLIDES";
 import { TypewriterText } from "./TypewriterText";
+import { logEvent } from "../game/analytics";
 
 export function IntroOverlay({ visible, onDone }: { visible: boolean; onDone: () => void }) {
   const [slide, setSlide] = useState(0);
@@ -24,6 +25,7 @@ export function IntroOverlay({ visible, onDone }: { visible: boolean; onDone: ()
   const isLast = slide === INTRO_SLIDES.length - 1;
 
   function goNext() {
+    logEvent('intro_next', { slide, total: INTRO_SLIDES.length, isLast });
     if (isLast) {
       onDone();
     } else {
@@ -67,7 +69,7 @@ export function IntroOverlay({ visible, onDone }: { visible: boolean; onDone: ()
 
           {slide > 0 ? (
             <Pressable
-              onPress={onDone}
+              onPress={() => { logEvent('intro_skip', { slide, total: INTRO_SLIDES.length }); onDone(); }}
               style={({ pressed }) => [styles.skipBtn, pressed ? { opacity: 0.92 } : null]}
             >
               <Text style={styles.skipText}>ПРОПУСТИТЬ</Text>

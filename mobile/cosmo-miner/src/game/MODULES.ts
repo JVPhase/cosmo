@@ -1,5 +1,20 @@
 import type { MetalsState } from "./METALS";
 
+export const MAX_MODULE_LEVEL = 50;
+
+export function computeModuleUpgradeCost(currentLevel: number): Partial<MetalsState> {
+  const amount = Math.floor(5 * Math.pow(1.15, currentLevel - 1));
+  return currentLevel % 2 === 1
+    ? { voidCrystal: amount }
+    : { echoShard: amount };
+}
+
+export function getMaxUltsPerBattle(level: number): number {
+  if (level <= 0) return 0;
+  if (level >= MAX_MODULE_LEVEL) return 6;
+  return Math.ceil(level / 10);
+}
+
 export type ModuleId = "surge" | "warp" | "dispel";
 
 export type ModuleDefinition = {

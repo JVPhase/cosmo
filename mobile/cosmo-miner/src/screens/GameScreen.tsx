@@ -1,5 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { logEvent } from '../game/analytics';
 import {
   Animated,
   Image,
@@ -75,7 +76,7 @@ export type GameScreenProps = {
   onOpenClickPowerInfo: () => void;
   onOpenPassiveRateInfo: () => void;
   onOpenPlanetBonusInfo: () => void;
-  onOpenIronInfo: () => void;
+  onOpenMetalInfo: (metalId: MetalId) => void;
   onOpenStoryLog: () => void;
   hasNewStoryEntry: boolean;
   characterMessage: string | null;
@@ -108,7 +109,7 @@ export function GameScreen({
   onOpenClickPowerInfo,
   onOpenPassiveRateInfo,
   onOpenPlanetBonusInfo,
-  onOpenIronInfo,
+  onOpenMetalInfo,
   onOpenStoryLog,
   hasNewStoryEntry,
   characterMessage,
@@ -284,6 +285,7 @@ export function GameScreen({
             pressed && { opacity: 0.85 }
           ]}
           onPress={() => {
+            logEvent('toast_action', { toast: 'achievement', action: 'open_achievements', id: achievementToast?.id });
             onCloseAchievementToast();
             onOpenAchievements();
           }}
@@ -379,7 +381,7 @@ export function GameScreen({
             <Pressable
               key={m.id}
               style={styles.metalItem}
-              onPress={m.id === 'iron' ? onOpenIronInfo : undefined}
+              onPress={() => onOpenMetalInfo(m.id)}
             >
               <Image
                 source={m.image}

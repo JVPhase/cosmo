@@ -1,5 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { logEvent } from '../game/analytics';
 import {
   Animated,
   Easing,
@@ -12,7 +13,7 @@ import {
   type GestureResponderEvent
 } from 'react-native';
 import { ALIENS } from '../game/ALIENS';
-import type { ModuleDefinition } from '../game/MODULES';
+import { getMaxUltsPerBattle, type ModuleDefinition } from '../game/MODULES';
 import { PLANETS } from '../game/PLANETS';
 import { formatNum } from '../game/formatNum';
 import type { BattleState } from '../game/types';
@@ -46,9 +47,10 @@ export type BattleScreenProps = {
   totalDamage: number;
   defeatInfo: { shipName: string } | null;
   equippedModule: ModuleDefinition | null;
+  equippedModuleLevel: number;
   onAttack: (multiplier?: number) => void;
   onReflect: (penaltyMs?: number) => void;
-  onHeal: (fraction: number) => void;
+  onHeal: (amount: number, mode?: 'fractionOfMax' | 'flatHp') => void;
   onForfeit: () => void;
   onGoToShipyard: () => void;
   onClearDefeat: () => void;
@@ -60,6 +62,7 @@ export function BattleScreen({
   totalDamage,
   defeatInfo,
   equippedModule,
+  equippedModuleLevel,
   onAttack,
   onReflect,
   onHeal,
@@ -76,7 +79,11 @@ export function BattleScreen({
   const [shieldWarning, setShieldWarning] = useState(false);
   const [qteAttempted, setQteAttempted] = useState(false);
   const [qteFailed, setQteFailed] = useState(false);
-  const [healState, setHealState] = useState<{ count: number; origin?: { x: number; y: number } }>({ count: 0 });
+  const [healState, setHealState] = useState<{
+    count: number;
+    origin?: { x: number; y: number };
+    label?: string;
+  }>({ count: 0 });
   const [successZoneStart, setSuccessZoneStart] = useState(0);
   const [opportunityActive, setOpportunityActive] = useState(false);
   const abilityTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -94,6 +101,7 @@ export function BattleScreen({
   const [dispelImmune, setDispelImmune] = useState(false);
   const dispelImmuneRef = useRef(false);
   const ultTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [ultsUsedThisBattle, setUltsUsedThisBattle] = useState(0);
 
   // Reset ult state when battle starts/ends
   const battleId = battle ? `${battle.planetId}-${battle.expiresAt}` : null;
@@ -104,6 +112,7 @@ export function BattleScreen({
     setUltSurgeMultiplier(1);
     setDispelImmune(false);
     dispelImmuneRef.current = false;
+    setUltsUsedThisBattle(0);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [battleId]);
 
@@ -200,6 +209,7 @@ export function BattleScreen({
   }, [abilityActive]);
 
   const handleQteSuccess = () => {
+    logEvent('qte_success', { alienAbilityType: alien?.ability?.type ?? null });
     setQteAttempted(true);
     breakShieldEarlyRef.current?.();
     // Open opportunity window for the duration the ability would have lasted
@@ -210,6 +220,7 @@ export function BattleScreen({
   };
 
   const handleQteFail = () => {
+    logEvent('qte_fail', { alienAbilityType: alien?.ability?.type ?? null });
     setQteAttempted(true);
     if (isIllusion) {
       setQteFailed(true);
@@ -224,11 +235,15 @@ export function BattleScreen({
   const effectiveDamage = abilityActive ? 0 : Math.floor(totalDamage * attackMultiplier);
 
   const hitsToCharge = equippedModule?.hitsToCharge ?? 0;
-  const ultReady = equippedModule !== null && ultCharge >= hitsToCharge && !ultActive;
+  const maxUltsPerBattle = getMaxUltsPerBattle(equippedModuleLevel);
+  const ultLimitReached = ultsUsedThisBattle >= maxUltsPerBattle;
+  const ultReady = equippedModule !== null && ultCharge >= hitsToCharge && !ultActive && !ultLimitReached;
 
   const handleActivateUlt = useCallback(() => {
     if (!ultReady || !equippedModule) return;
+    logEvent('activate_ult', { moduleId: equippedModule.id });
     setUltCharge(0);
+    setUltsUsedThisBattle((prev) => prev + 1);
     setUltActive(true);
     if (equippedModule.id === 'surge') {
       setUltSurgeMultiplier(5);
@@ -264,11 +279,16 @@ export function BattleScreen({
       pageY?: number;
     };
 
-    // Illusion failed — clicks heal the enemy instead of dealing damage
+    // Illusion failed — clicks heal the enemy by the same HP as the player's attack would deal
     if (abilityActive && qteAttempted && qteFailed && isIllusion) {
+      const healHp = Math.floor(totalDamage * attackMultiplier);
       const commitHealHit = (x: number, y: number) => {
-        setHealState((prev) => ({ count: prev.count + 1, origin: { x, y } }));
-        onHeal(0.05); // +5% maxHP за клик
+        setHealState((prev) => ({
+          count: prev.count + 1,
+          origin: { x, y },
+          label: `+${formatNum(healHp)}`,
+        }));
+        onHeal(healHp, 'flatHp');
       };
       if (Platform.OS === 'web' && battleHitAreaRef.current) {
         battleHitAreaRef.current.measureInWindow((mx, my) => {
@@ -473,9 +493,14 @@ export function BattleScreen({
             <View style={styles.ultBtnInner}>
               <Text style={styles.ultBtnIcon}>{equippedModule.icon}</Text>
               <View style={styles.ultBtnText}>
-                <Text style={[styles.ultBtnName, ultReady && { color: '#ffe066' }]}>
-                  {ultActive ? '◈ АКТИВНО' : ultReady ? `◈ ${equippedModule.ultName}` : equippedModule.ultName}
-                </Text>
+                <View style={styles.ultBtnTopRow}>
+                  <Text style={[styles.ultBtnName, ultReady && { color: '#ffe066' }]}>
+                    {ultActive ? '◈ АКТИВНО' : ultReady ? `◈ ${equippedModule.ultName}` : equippedModule.ultName}
+                  </Text>
+                  <Text style={[styles.ultBtnCounter, ultLimitReached && { color: '#ff5555' }]}>
+                    {ultsUsedThisBattle}/{maxUltsPerBattle}
+                  </Text>
+                </View>
                 <View style={styles.ultChargeBarBg}>
                   <View
                     style={[
@@ -539,13 +564,15 @@ export function BattleScreen({
                   {opportunityActive ? '⚡ АТАКОВАТЬ' : 'АТАКОВАТЬ'}
                 </Text>
               )}
-              {abilityActive && qteAttempted && isIllusion && (
-                <Text style={styles.illusionClickHint}>+5% HP</Text>
+              {abilityActive && qteAttempted && isIllusion && qteFailed && (
+                <Text style={styles.illusionClickHint}>
+                  +{formatNum(Math.floor(totalDamage * attackMultiplier))} HP
+                </Text>
               )}
             </Pressable>
           </AnimatedHitEffects>
 
-          {/* Heal effect overlay — green +5% HP floater */}
+          {/* Heal effect overlay — green HP floater */}
           {healState.count > 0 && healState.origin && (
             <View
               style={[StyleSheet.absoluteFill, styles.healOverlay]}
@@ -557,7 +584,7 @@ export function BattleScreen({
                   { left: healState.origin.x - 28, top: healState.origin.y - 20 },
                 ]}
               >
-                +5% HP
+                {healState.label ?? '+HP'}
               </Text>
             </View>
           )}
@@ -812,12 +839,22 @@ const styles = StyleSheet.create({
   },
   ultBtnIcon: { fontSize: 16 },
   ultBtnText: { flex: 1 },
+  ultBtnTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
   ultBtnName: {
     fontSize: 9,
     color: 'rgba(255,255,255,0.45)',
     fontWeight: '800',
     letterSpacing: 1,
-    marginBottom: 4,
+  },
+  ultBtnCounter: {
+    fontSize: 9,
+    color: 'rgba(255,255,255,0.35)',
+    fontWeight: '700',
   },
   ultChargeBarBg: {
     height: 4,

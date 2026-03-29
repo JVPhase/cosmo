@@ -3,6 +3,7 @@ import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { CHARACTERS, type CharacterId } from '../game/CHARACTERS';
 import { ALIENS } from '../game/ALIENS';
 import { MODULES } from '../game/MODULES';
+import { logEvent } from '../game/analytics';
 
 type Props = {
   step:
@@ -142,7 +143,7 @@ export function CharacterSelectFlow({
                   styles.actionBtn,
                   pressed && { opacity: 0.85 }
                 ]}
-                onPress={onAdvance}
+                onPress={() => { logEvent('character_flow_advance', { step: 'garbled' }); onAdvance(); }}
               >
                 <Text style={styles.actionBtnText}>ДАЛЕЕ</Text>
               </Pressable>
@@ -162,7 +163,7 @@ export function CharacterSelectFlow({
                   styles.actionBtn,
                   pressed && { opacity: 0.85 }
                 ]}
-                onPress={onClose}
+                onPress={() => { logEvent('character_flow_advance', { step: 'explain' }); onClose(); }}
               >
                 <Text style={styles.actionBtnText}>ПОНЯЛ</Text>
               </Pressable>
@@ -186,7 +187,7 @@ export function CharacterSelectFlow({
                   styles.actionBtn,
                   pressed && { opacity: 0.85 }
                 ]}
-                onPress={onAdvance}
+                onPress={() => { logEvent('character_flow_advance', { step: 'greeting' }); onAdvance(); }}
               >
                 <Text style={styles.actionBtnText}>ПОНЯЛ</Text>
               </Pressable>
@@ -210,7 +211,7 @@ export function CharacterSelectFlow({
                   styles.actionBtn,
                   pressed && { opacity: 0.85 }
                 ]}
-                onPress={onAdvance}
+                onPress={() => { logEvent('character_flow_advance', { step: 'metalDeal_intro' }); onAdvance(); }}
               >
                 <Text style={styles.actionBtnText}>СЛУШАЮ</Text>
               </Pressable>
