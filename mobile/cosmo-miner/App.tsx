@@ -24,7 +24,7 @@ import { BattleScreen } from './src/screens/BattleScreen';
 import { GameScreen } from './src/screens/GameScreen';
 import { PlanetsScreen } from './src/screens/PlanetsScreen';
 import { ResearchScreen } from './src/screens/ResearchScreen';
-import { ShipyardScreen } from './src/screens/ShipyardScreen';
+import { ShipyardScreen } from './src/screens/shipyard';
 import { UpgradesScreen } from './src/screens/UpgradesScreen';
 import { CharacterSelectFlow } from './src/ui/CharacterSelectFlow';
 import { IntroOverlay } from './src/ui/IntroOverlay';
