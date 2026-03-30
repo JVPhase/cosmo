@@ -343,9 +343,7 @@ export function useGame(initial?: GameStateInit) {
 
   const [planetsUnlockToast, setPlanetsUnlockToast] = useState(false);
   const planetsUnlockShownRef = useRef(
-    (initial?.unlockedPlanetIds?.length ?? 0) > 1 ||
-      (initial?.energy ?? 0) >=
-        Math.min(...ALIENS.map((a) => a.attackEnergyCost))
+    initial?.tabsUnlocked?.planets ?? false
   );
 
   // Character select flow — triggered after planet 9 unlocked
@@ -560,14 +558,13 @@ export function useGame(initial?: GameStateInit) {
     }
   }, [state.totalEarned]);
 
-  // Planets unlock toast (when player reaches min attack energy)
+  // Planets unlock toast (only when the tab is actually unlocked)
   useEffect(() => {
-    const minCost = Math.min(...ALIENS.map((a) => a.attackEnergyCost));
-    if (!planetsUnlockShownRef.current && state.energy >= minCost) {
+    if (!planetsUnlockShownRef.current && state.tabsUnlocked.planets) {
       planetsUnlockShownRef.current = true;
       setPlanetsUnlockToast(true);
     }
-  }, [state.energy]);
+  }, [state.tabsUnlocked.planets]);
 
   // Upgrades unlock toast (at 50 energy earned)
   useEffect(() => {
@@ -595,7 +592,7 @@ export function useGame(initial?: GameStateInit) {
         text: 'Зафиксирован образец Титана™! Материал группы IV-B, исключительная прочность.\n\nПо регламенту подлежит немедленной конфискации в пользу МММРДР. Форма КНФ-3 на рассмотрении с 2379 года. Пока — считайте его своим.',
         image: METALS.find((m) => m.id === 'titan')!.image
       });
-      enqueue('ship_cruiser', {
+      if (playerLevel >= SHIPS.find((s) => s.id === 'cruiser')!.unlockLevel) enqueue('ship_cruiser', {
         title: '◈ НОВЫЙ КОРАБЛЬ · КЛЕРК-7 ◈',
         text: 'Доступен Крейсер «Гамма»! Множитель урона ×2.5.\n\nМинистерство обороны одобрило ещё в прошлом году. Министерство финансов — пока думает. Стройте, пока оба не передумали.',
         image: SHIPS.find((s) => s.id === 'cruiser')!.image
@@ -613,7 +610,7 @@ export function useGame(initial?: GameStateInit) {
         text: 'Обнаружен Иридий™ — редчайший металл сектора!\n\nМинистерство финансов уже отправило форму НДС-8 «Налог на удачу». Документ прибудет через 6-8 галактических недель. Пока — не расслабляйтесь.',
         image: METALS.find((m) => m.id === 'iridium')!.image
       });
-      enqueue('ship_dreadnought', {
+      if (playerLevel >= SHIPS.find((s) => s.id === 'dreadnought')!.unlockLevel) enqueue('ship_dreadnought', {
         title: '◈ НОВЫЙ КОРАБЛЬ · КЛЕРК-7 ◈',
         text: 'Чертежи Дредноута «Отдел Б» разблокированы! Множитель ×5.\n\nНазван в честь отдела, которого официально не существует. Это единственный корабль в реестре, который отрицает собственное существование.',
         image: SHIPS.find((s) => s.id === 'dreadnought')!.image
@@ -626,7 +623,7 @@ export function useGame(initial?: GameStateInit) {
     }
 
     if (iron > 0 && titan > 0 && iridium > 0) {
-      enqueue('ship_flagship', {
+      if (playerLevel >= SHIPS.find((s) => s.id === 'flagship')!.unlockLevel) enqueue('ship_flagship', {
         title: '◈ НОВЫЙ КОРАБЛЬ · КЛЕРК-7 ◈',
         text: 'Все компоненты есть — Флагман «Абсолют-77» доступен! Множитель ×12.\n\nФорма допуска — 47 страниц. Я заполнил 46. Страница 47 засекречена. Начните строительство и не задавайте лишних вопросов.',
         image: SHIPS.find((s) => s.id === 'flagship')!.image
@@ -651,7 +648,8 @@ export function useGame(initial?: GameStateInit) {
     state.metals.titan,
     state.metals.iridium,
     state.metals.voidCrystal,
-    state.metals.echoShard
+    state.metals.echoShard,
+    playerLevel
   ]);
 
   const upgCount = useMemo(() => {

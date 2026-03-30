@@ -26,6 +26,42 @@ export function AchievementsScreen({ achievements, onClaim }: AchievementsScreen
     () => new Set(achievements.claimedIds as AchievementId[]),
     [achievements.claimedIds]
   );
+  const unlockedOrderMap = useMemo(
+    () => new Map(achievements.unlockedIds.map((id, i) => [id, i])),
+    [achievements.unlockedIds]
+  );
+
+  const sortedAchievements = useMemo(() => {
+    return [...ACHIEVEMENTS].sort((a, b) => {
+      const aUnlocked = unlockedSet.has(a.id);
+      const bUnlocked = unlockedSet.has(b.id);
+      const aClaimed = claimedSet.has(a.id);
+      const bClaimed = claimedSet.has(b.id);
+      const aClaimable = aUnlocked && !aClaimed;
+      const bClaimable = bUnlocked && !bClaimed;
+
+      // Claimable first
+      if (aClaimable && !bClaimable) return -1;
+      if (!aClaimable && bClaimable) return 1;
+
+      // Among claimable: sort by unlock order (most recent first)
+      if (aClaimable && bClaimable) {
+        return (unlockedOrderMap.get(b.id) ?? 0) - (unlockedOrderMap.get(a.id) ?? 0);
+      }
+
+      // Locked last
+      if (aUnlocked && !bUnlocked) return -1;
+      if (!aUnlocked && bUnlocked) return 1;
+
+      // Among claimed: sort by unlock order (most recent first)
+      if (aUnlocked && bUnlocked) {
+        return (unlockedOrderMap.get(b.id) ?? 0) - (unlockedOrderMap.get(a.id) ?? 0);
+      }
+
+      // Both locked: keep original order
+      return 0;
+    });
+  }, [unlockedSet, claimedSet, unlockedOrderMap]);
 
   return (
     <View style={styles.screen}>
@@ -34,7 +70,7 @@ export function AchievementsScreen({ achievements, onClaim }: AchievementsScreen
           {unlockedSet.size}/{ACHIEVEMENTS.length} страниц получено
         </Text>
 
-        {ACHIEVEMENTS.map((def) => {
+        {sortedAchievements.map((def) => {
           const unlocked = unlockedSet.has(def.id);
           const claimed = claimedSet.has(def.id);
           const claimable = unlocked && !claimed;

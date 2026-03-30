@@ -174,6 +174,8 @@ export function AnimatedHitEffects({
   damage,
   style,
   children,
+  skillRing: _skillRing,
+  healEffect: _healEffect,
 }: AnimatedHitEffectsProps) {
   const pulseScale = useSharedValue(1);
   const sparkIdRef = useRef(0);
