@@ -5,7 +5,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  View
+  View,
 } from 'react-native';
 import { logEvent } from '../game/analytics';
 import { CANNONS, computeCannonCost, type CannonId } from '../game/CANNONS';
@@ -17,7 +17,7 @@ import {
   getMaxUltsPerBattle,
   MAX_MODULE_LEVEL,
   MODULES,
-  type ModuleId
+  type ModuleId,
 } from '../game/MODULES';
 import { MAX_CANNON_LEVEL } from '../game/CANNONS';
 import { SHIPS, type ShipId } from '../game/SHIPS';
@@ -25,7 +25,7 @@ import type {
   ActiveExpedition,
   BattleState,
   FleetState,
-  MetalsState
+  MetalsState,
 } from '../game/types';
 
 export type ShipyardScreenProps = {
@@ -54,7 +54,7 @@ type SubTab = 'fleet' | 'expeditions';
 
 function MetalCost({
   cost,
-  color
+  color,
 }: {
   cost: Partial<MetalsState>;
   color: string;
@@ -81,19 +81,19 @@ function MetalCost({
 
 function canAffordCost(
   metals: MetalsState,
-  cost: Partial<MetalsState>
+  cost: Partial<MetalsState>,
 ): boolean {
   return Object.entries(cost).every(
-    ([k, v]) => (metals[k as keyof MetalsState] ?? 0) >= v
+    ([k, v]) => (metals[k as keyof MetalsState] ?? 0) >= v,
   );
 }
 
 function costMetalsDiscovered(
   discoveredMetals: MetalId[],
-  cost: Partial<MetalsState>
+  cost: Partial<MetalsState>,
 ): boolean {
   return Object.keys(cost).every((k) =>
-    discoveredMetals.includes(k as MetalId)
+    discoveredMetals.includes(k as MetalId),
   );
 }
 
@@ -128,21 +128,31 @@ export function ShipyardScreen({
   onEquipModule,
 }: ShipyardScreenProps) {
   const [activeTab, setActiveTab] = useState<SubTab>('fleet');
-  const [expandedShipId, setExpandedShipId] = useState<ShipId | null>(null);
+  const [expandedShipId, setExpandedShipId] = useState<ShipId | null>(
+    fleet.selectedShipId,
+  );
   const [expeditionShipId, setExpeditionShipId] = useState<ShipId | null>(null);
+
+  React.useEffect(() => {
+    if (fleet.selectedShipId && expandedShipId === null) {
+      setExpandedShipId(fleet.selectedShipId);
+    }
+  }, [fleet.selectedShipId]);
 
   const isBattleActive = !!battle;
   const ownedMap = new Map(fleet.ownedShips.map((s) => [s.shipId, s]));
   const expeditionShipIds = new Set(expeditions.map((e) => e.shipId));
   const expeditionsUnlocked = unlockedPlanetIds.length > 1;
   const sector2Unlocked = [1, 2, 3, 4, 5].every((id) =>
-    unlockedPlanetIds.includes(id)
+    unlockedPlanetIds.includes(id),
   );
   const expMetalMultiplier = sector2Unlocked ? 5 : 1;
-  const selectedShipDef = expeditionShipId ? SHIPS.find((s) => s.id === expeditionShipId) : null;
+  const selectedShipDef = expeditionShipId
+    ? SHIPS.find((s) => s.id === expeditionShipId)
+    : null;
   const shipExpMultiplier = selectedShipDef?.expeditionMultiplier ?? 1;
   const visibleShips = SHIPS.filter(
-    (s) => ownedMap.has(s.id) || playerLevel >= s.unlockLevel
+    (s) => ownedMap.has(s.id) || playerLevel >= s.unlockLevel,
   );
 
   return (
@@ -150,16 +160,19 @@ export function ShipyardScreen({
       {/* Sub-tabs */}
       <View style={styles.subTabBar}>
         <Pressable
-          onPress={() => { logEvent('shipyard_subtab', { tab: 'fleet' }); setActiveTab('fleet'); }}
+          onPress={() => {
+            logEvent('shipyard_subtab', { tab: 'fleet' });
+            setActiveTab('fleet');
+          }}
           style={[
             styles.subTab,
-            activeTab === 'fleet' ? styles.subTabActive : null
+            activeTab === 'fleet' ? styles.subTabActive : null,
           ]}
         >
           <Text
             style={[
               styles.subTabText,
-              activeTab === 'fleet' ? styles.subTabTextActive : null
+              activeTab === 'fleet' ? styles.subTabTextActive : null,
             ]}
           >
             🛠️ ФЛОТ
@@ -167,22 +180,25 @@ export function ShipyardScreen({
         </Pressable>
         {expeditionsUnlocked && (
           <Pressable
-            onPress={() => { logEvent('shipyard_subtab', { tab: 'expeditions' }); setActiveTab('expeditions'); }}
+            onPress={() => {
+              logEvent('shipyard_subtab', { tab: 'expeditions' });
+              setActiveTab('expeditions');
+            }}
             style={[
               styles.subTab,
-              activeTab === 'expeditions' ? styles.subTabActive : null
+              activeTab === 'expeditions' ? styles.subTabActive : null,
             ]}
           >
             <Text
               style={[
                 styles.subTabText,
-                activeTab === 'expeditions' ? styles.subTabTextActive : null
+                activeTab === 'expeditions' ? styles.subTabTextActive : null,
               ]}
             >
               🚀 ЭКСПЕДИЦИИ
             </Text>
             {expeditions.some(
-              (e) => (expeditionRemainingMap[e.shipId] ?? 1) === 0
+              (e) => (expeditionRemainingMap[e.shipId] ?? 1) === 0,
             ) && <View style={styles.subTabBadge} />}
           </Pressable>
         )}
@@ -246,19 +262,19 @@ export function ShipyardScreen({
               CANNONS.some((c) =>
                 canAffordCost(
                   metals,
-                  computeCannonCost(c, owned!.cannons[c.id] ?? 0)
-                )
+                  computeCannonCost(c, owned!.cannons[c.id] ?? 0),
+                ),
               );
 
             const shipCannonDmg = owned
               ? CANNONS.reduce(
                   (sum, c) =>
                     sum + c.damagePerLevel * (owned.cannons[c.id] ?? 0),
-                  0
+                  0,
                 )
               : 0;
             const totalShipDmg = Math.floor(
-              (1 + shipCannonDmg) * ship.damageMultiplier
+              (1 + shipCannonDmg) * ship.damageMultiplier,
             );
 
             return (
@@ -272,15 +288,20 @@ export function ShipyardScreen({
                       ? styles.cardOwned
                       : styles.cardLocked,
                   isBroken ? styles.cardBroken : null,
-                  isOnExpedition ? styles.cardOnExpedition : null
+                  isOnExpedition ? styles.cardOnExpedition : null,
                 ]}
               >
-                {hasAffordableCannon && !isOnExpedition && <View style={styles.shipBadge} />}
+                {hasAffordableCannon && !isOnExpedition && (
+                  <View style={styles.shipBadge} />
+                )}
                 <Pressable
                   onPress={() => {
                     if (!isOwned) return;
                     const next = isExpanded ? null : ship.id;
-                    logEvent('ship_expand', { shipId: ship.id, expanded: !isExpanded });
+                    logEvent('ship_expand', {
+                      shipId: ship.id,
+                      expanded: !isExpanded,
+                    });
                     setExpandedShipId(next);
                   }}
                   style={styles.shipHeader}
@@ -303,8 +324,8 @@ export function ShipyardScreen({
                                 ? '#00ff88'
                                 : isOwned
                                   ? '#00d4ff'
-                                  : 'rgba(255,255,255,0.3)'
-                        }
+                                  : 'rgba(255,255,255,0.3)',
+                        },
                       ]}
                     >
                       {ship.name}
@@ -356,7 +377,7 @@ export function ShipyardScreen({
                         style={({ pressed }) => [
                           styles.actionBtn,
                           canBuild ? styles.btnYellow : styles.btnDisabled,
-                          pressed && canBuild ? { opacity: 0.85 } : null
+                          pressed && canBuild ? { opacity: 0.85 } : null,
                         ]}
                       >
                         <Text
@@ -365,8 +386,8 @@ export function ShipyardScreen({
                             {
                               color: canBuild
                                 ? '#ffd700'
-                                : 'rgba(255,255,255,0.2)'
-                            }
+                                : 'rgba(255,255,255,0.2)',
+                            },
                           ]}
                         >
                           ПОСТРОИТЬ
@@ -385,7 +406,7 @@ export function ShipyardScreen({
                         style={({ pressed }) => [
                           styles.actionBtn,
                           canRepair ? styles.btnOrange : styles.btnDisabled,
-                          pressed && canRepair ? { opacity: 0.85 } : null
+                          pressed && canRepair ? { opacity: 0.85 } : null,
                         ]}
                       >
                         <Text
@@ -394,8 +415,8 @@ export function ShipyardScreen({
                             {
                               color: canRepair
                                 ? '#ff9900'
-                                : 'rgba(255,255,255,0.2)'
-                            }
+                                : 'rgba(255,255,255,0.2)',
+                            },
                           ]}
                         >
                           ПОЧИНИТЬ
@@ -411,7 +432,7 @@ export function ShipyardScreen({
                       style={({ pressed }) => [
                         styles.actionBtn,
                         isBattleActive ? styles.btnDisabled : styles.btnGreen,
-                        pressed && !isBattleActive ? { opacity: 0.85 } : null
+                        pressed && !isBattleActive ? { opacity: 0.85 } : null,
                       ]}
                     >
                       <Text
@@ -420,8 +441,8 @@ export function ShipyardScreen({
                           {
                             color: isBattleActive
                               ? 'rgba(255,255,255,0.2)'
-                              : '#00ff88'
-                          }
+                              : '#00ff88',
+                          },
                         ]}
                       >
                         В БОЙ
@@ -432,18 +453,23 @@ export function ShipyardScreen({
                   )}
                 </View>
 
-                {isOwned && isExpanded && !isOnExpedition && owned?.equippedModuleId && (
-                  <View style={styles.equippedModuleBadge}>
-                    {(() => {
-                      const mod = MODULES.find((m) => m.id === owned.equippedModuleId);
-                      return mod ? (
-                        <Text style={styles.equippedModuleText}>
-                          {mod.icon} {mod.name} · {mod.ultDescription}
-                        </Text>
-                      ) : null;
-                    })()}
-                  </View>
-                )}
+                {isOwned &&
+                  isExpanded &&
+                  !isOnExpedition &&
+                  owned?.equippedModuleId && (
+                    <View style={styles.equippedModuleBadge}>
+                      {(() => {
+                        const mod = MODULES.find(
+                          (m) => m.id === owned.equippedModuleId,
+                        );
+                        return mod ? (
+                          <Text style={styles.equippedModuleText}>
+                            {mod.icon} {mod.name} · {mod.ultDescription}
+                          </Text>
+                        ) : null;
+                      })()}
+                    </View>
+                  )}
 
                 {isOwned && isExpanded && !isOnExpedition && (
                   <View style={styles.cannonsSection}>
@@ -451,13 +477,15 @@ export function ShipyardScreen({
                       🔫 ВООРУЖЕНИЕ
                     </Text>
                     {CANNONS.filter((c) =>
-                      costMetalsDiscovered(discoveredMetals, c.baseCost)
+                      costMetalsDiscovered(discoveredMetals, c.baseCost),
                     ).map((cannon) => {
                       const level = owned.cannons[cannon.id] ?? 0;
                       const isMaxLevel = level >= MAX_CANNON_LEVEL;
                       const cost = computeCannonCost(cannon, level);
                       const canAfford =
-                        !isMaxLevel && canAffordCost(metals, cost) && !isBattleActive;
+                        !isMaxLevel &&
+                        canAffordCost(metals, cost) &&
+                        !isBattleActive;
                       return (
                         <View key={cannon.id} style={styles.cannonRow}>
                           <Image
@@ -482,18 +510,24 @@ export function ShipyardScreen({
                                 <MetalCost
                                   cost={cost}
                                   color={
-                                    canAfford ? '#ffd700' : 'rgba(255,200,0,0.3)'
+                                    canAfford
+                                      ? '#ffd700'
+                                      : 'rgba(255,200,0,0.3)'
                                   }
                                 />
                                 <Pressable
-                                  onPress={() => onCraftCannon(ship.id, cannon.id)}
+                                  onPress={() =>
+                                    onCraftCannon(ship.id, cannon.id)
+                                  }
                                   disabled={!canAfford}
                                   style={({ pressed }) => [
                                     styles.cannonBtn,
                                     canAfford
                                       ? styles.btnYellow
                                       : styles.btnDisabled,
-                                    pressed && canAfford ? { opacity: 0.85 } : null
+                                    pressed && canAfford
+                                      ? { opacity: 0.85 }
+                                      : null,
                                   ]}
                                 >
                                   <Text
@@ -502,8 +536,8 @@ export function ShipyardScreen({
                                       {
                                         color: canAfford
                                           ? '#ffd700'
-                                          : 'rgba(255,255,255,0.2)'
-                                      }
+                                          : 'rgba(255,255,255,0.2)',
+                                      },
                                     ]}
                                   >
                                     {level === 0 ? 'КУПИТЬ' : 'УЛУ.'}
@@ -522,38 +556,76 @@ export function ShipyardScreen({
           })}
 
           {/* Modules section — shown when Sector 3 metals discovered */}
-          {(discoveredMetals.includes('voidCrystal') || discoveredMetals.includes('echoShard') || Object.keys(moduleLevels).length > 0) && (
+          {(discoveredMetals.includes('voidCrystal') ||
+            discoveredMetals.includes('echoShard') ||
+            Object.keys(moduleLevels).length > 0) && (
             <>
               <Text style={styles.sectionTitle}>⚡ МОДУЛИ</Text>
               {MODULES.map((mod) => {
                 const level = moduleLevels[mod.id] ?? 0;
                 const isCrafted = level > 0;
-                const canAfford = canAffordCost(metals, mod.cost) && !isBattleActive;
-                const equippedOnShip = fleet.ownedShips.find((s) => s.equippedModuleId === mod.id);
+                const canAfford =
+                  canAffordCost(metals, mod.cost) && !isBattleActive;
+                const equippedOnShip = fleet.ownedShips.find(
+                  (s) => s.equippedModuleId === mod.id,
+                );
                 const maxUlts = getMaxUltsPerBattle(level);
-                const upgradeCost = isCrafted && level < MAX_MODULE_LEVEL ? computeModuleUpgradeCost(level) : null;
-                const canAffordUpgrade = upgradeCost !== null && canAffordCost(metals, upgradeCost) && !isBattleActive;
+                const upgradeCost =
+                  isCrafted && level < MAX_MODULE_LEVEL
+                    ? computeModuleUpgradeCost(level)
+                    : null;
+                const canAffordUpgrade =
+                  upgradeCost !== null &&
+                  canAffordCost(metals, upgradeCost) &&
+                  !isBattleActive;
                 return (
-                  <View key={mod.id} style={[styles.moduleCard, isCrafted && styles.moduleCardCrafted]}>
+                  <View
+                    key={mod.id}
+                    style={[
+                      styles.moduleCard,
+                      isCrafted && styles.moduleCardCrafted,
+                    ]}
+                  >
                     <View style={styles.moduleHeader}>
                       <Text style={styles.moduleIcon}>{mod.icon}</Text>
                       <View style={{ flex: 1 }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                          <Text style={[styles.moduleName, isCrafted && { color: '#ffe066' }]}>{mod.name}</Text>
+                        <View
+                          style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            gap: 6,
+                          }}
+                        >
+                          <Text
+                            style={[
+                              styles.moduleName,
+                              isCrafted && { color: '#ffe066' },
+                            ]}
+                          >
+                            {mod.name}
+                          </Text>
                           {isCrafted && (
-                            <Text style={styles.moduleLevelBadge}>Lv.{level}/{MAX_MODULE_LEVEL}</Text>
+                            <Text style={styles.moduleLevelBadge}>
+                              Lv.{level}/{MAX_MODULE_LEVEL}
+                            </Text>
                           )}
                         </View>
                         <Text style={styles.moduleLore}>{mod.lore}</Text>
-                        <Text style={styles.moduleUlt}>⚡ {mod.ultName} — {mod.ultDescription}</Text>
+                        <Text style={styles.moduleUlt}>
+                          ⚡ {mod.ultName} — {mod.ultDescription}
+                        </Text>
                         {isCrafted && (
                           <Text style={styles.moduleUltLimit}>
-                            {maxUlts === -1 ? '∞ ульт/бой' : `${maxUlts} ульт${maxUlts === 1 ? 'а' : 'ы'}/бой`}
+                            {maxUlts === -1
+                              ? '∞ ульт/бой'
+                              : `${maxUlts} ульт${maxUlts === 1 ? 'а' : 'ы'}/бой`}
                           </Text>
                         )}
                         {equippedOnShip && (
                           <Text style={styles.moduleEquippedOn}>
-                            Экипирован: {SHIPS.find((s) => s.id === equippedOnShip.shipId)?.name ?? equippedOnShip.shipId}
+                            Экипирован:{' '}
+                            {SHIPS.find((s) => s.id === equippedOnShip.shipId)
+                              ?.name ?? equippedOnShip.shipId}
                           </Text>
                         )}
                       </View>
@@ -561,7 +633,12 @@ export function ShipyardScreen({
                     <View style={styles.moduleActions}>
                       {!isCrafted ? (
                         <>
-                          <MetalCost cost={mod.cost} color={canAfford ? '#ffe066' : 'rgba(255,224,102,0.3)'} />
+                          <MetalCost
+                            cost={mod.cost}
+                            color={
+                              canAfford ? '#ffe066' : 'rgba(255,224,102,0.3)'
+                            }
+                          />
                           <Pressable
                             onPress={() => onCraftModule(mod.id)}
                             disabled={!canAfford}
@@ -571,7 +648,16 @@ export function ShipyardScreen({
                               pressed && canAfford ? { opacity: 0.85 } : null,
                             ]}
                           >
-                            <Text style={[styles.actionBtnText, { color: canAfford ? '#ffe066' : 'rgba(255,255,255,0.2)' }]}>
+                            <Text
+                              style={[
+                                styles.actionBtnText,
+                                {
+                                  color: canAfford
+                                    ? '#ffe066'
+                                    : 'rgba(255,255,255,0.2)',
+                                },
+                              ]}
+                            >
                               СОЗДАТЬ
                             </Text>
                           </Pressable>
@@ -580,17 +666,37 @@ export function ShipyardScreen({
                         <>
                           {upgradeCost !== null && (
                             <View style={styles.moduleUpgradeRow}>
-                              <MetalCost cost={upgradeCost} color={canAffordUpgrade ? '#00d4ff' : 'rgba(0,212,255,0.3)'} />
+                              <MetalCost
+                                cost={upgradeCost}
+                                color={
+                                  canAffordUpgrade
+                                    ? '#00d4ff'
+                                    : 'rgba(0,212,255,0.3)'
+                                }
+                              />
                               <Pressable
                                 onPress={() => onUpgradeModule(mod.id)}
                                 disabled={!canAffordUpgrade}
                                 style={({ pressed }) => [
                                   styles.actionBtn,
-                                  canAffordUpgrade ? styles.btnCyan : styles.btnDisabled,
-                                  pressed && canAffordUpgrade ? { opacity: 0.85 } : null,
+                                  canAffordUpgrade
+                                    ? styles.btnCyan
+                                    : styles.btnDisabled,
+                                  pressed && canAffordUpgrade
+                                    ? { opacity: 0.85 }
+                                    : null,
                                 ]}
                               >
-                                <Text style={[styles.actionBtnText, { color: canAffordUpgrade ? '#00d4ff' : 'rgba(255,255,255,0.2)' }]}>
+                                <Text
+                                  style={[
+                                    styles.actionBtnText,
+                                    {
+                                      color: canAffordUpgrade
+                                        ? '#00d4ff'
+                                        : 'rgba(255,255,255,0.2)',
+                                    },
+                                  ]}
+                                >
                                   УЛУ.
                                 </Text>
                               </Pressable>
@@ -600,22 +706,40 @@ export function ShipyardScreen({
                             <Text style={styles.moduleMaxText}>MAX</Text>
                           )}
                           <View style={styles.moduleEquipRow}>
-                            {fleet.ownedShips.filter((s) => !s.broken).map((s) => {
-                              const isEquipped = s.equippedModuleId === mod.id;
-                              const shipDef = SHIPS.find((sh) => sh.id === s.shipId);
-                              return (
-                                <Pressable
-                                  key={s.shipId}
-                                  onPress={() => isEquipped ? onEquipModule(s.shipId, null) : onEquipModule(s.shipId, mod.id)}
-                                  disabled={isBattleActive}
-                                  style={[styles.equipShipBtn, isEquipped && styles.equipShipBtnActive]}
-                                >
-                                  <Text style={[styles.equipShipBtnText, isEquipped && { color: '#ffe066' }]}>
-                                    {shipDef?.icon ?? '🚀'} {isEquipped ? '✓' : '+'}
-                                  </Text>
-                                </Pressable>
-                              );
-                            })}
+                            {fleet.ownedShips
+                              .filter((s) => !s.broken)
+                              .map((s) => {
+                                const isEquipped =
+                                  s.equippedModuleId === mod.id;
+                                const shipDef = SHIPS.find(
+                                  (sh) => sh.id === s.shipId,
+                                );
+                                return (
+                                  <Pressable
+                                    key={s.shipId}
+                                    onPress={() =>
+                                      isEquipped
+                                        ? onEquipModule(s.shipId, null)
+                                        : onEquipModule(s.shipId, mod.id)
+                                    }
+                                    disabled={isBattleActive}
+                                    style={[
+                                      styles.equipShipBtn,
+                                      isEquipped && styles.equipShipBtnActive,
+                                    ]}
+                                  >
+                                    <Text
+                                      style={[
+                                        styles.equipShipBtnText,
+                                        isEquipped && { color: '#ffe066' },
+                                      ]}
+                                    >
+                                      {shipDef?.icon ?? '🚀'}{' '}
+                                      {isEquipped ? '✓' : '+'}
+                                    </Text>
+                                  </Pressable>
+                                );
+                              })}
                           </View>
                         </>
                       )}
@@ -628,8 +752,10 @@ export function ShipyardScreen({
 
           <View style={styles.hint}>
             <Text style={styles.hintText}>
-              💡 Нажмите на корабль чтобы открыть его вооружение. Отправляйте
-              корабли в ЭКСПЕДИЦИИ за металлами.
+              💡 Нажмите на корабль чтобы открыть его вооружение.
+              {expeditionsUnlocked
+                ? ' Отправляйте корабли в ЭКСПЕДИЦИИ за металлами.'
+                : ''}
             </Text>
           </View>
         </ScrollView>
@@ -657,7 +783,7 @@ export function ShipyardScreen({
                     key={exp.shipId}
                     style={[
                       styles.activeExpCard,
-                      done ? styles.activeExpCardDone : null
+                      done ? styles.activeExpCardDone : null,
                     ]}
                   >
                     <View style={styles.activeExpHeader}>
@@ -666,7 +792,7 @@ export function ShipyardScreen({
                         <Text
                           style={[
                             styles.activeExpName,
-                            done ? { color: '#00ff88' } : null
+                            done ? { color: '#00ff88' } : null,
                           ]}
                         >
                           {def.name}
@@ -678,7 +804,7 @@ export function ShipyardScreen({
                       <Text
                         style={[
                           styles.activeExpTimer,
-                          done ? { color: '#00ff88' } : null
+                          done ? { color: '#00ff88' } : null,
                         ]}
                       >
                         {done ? 'ГОТОВО!' : formatDuration(remaining)}
@@ -689,33 +815,42 @@ export function ShipyardScreen({
                         style={[
                           styles.progressBarFill,
                           { width: `${progress * 100}%` },
-                          done ? { backgroundColor: '#00ff88' } : null
+                          done ? { backgroundColor: '#00ff88' } : null,
                         ]}
                       />
                     </View>
-                    {done && (() => {
-                      const timely = Date.now() - exp.completesAt <= TIMELY_CLAIM_WINDOW_MS;
-                      return (
-                        <>
-                          {timely && (
-                            <Text style={styles.timelyBonusLabel}>+25% БОНУС · ЗАБЕРИТЕ ВОВРЕМЯ</Text>
-                          )}
-                          <Pressable
-                            onPress={() => onClaimExpedition(exp.shipId)}
-                            style={({ pressed }) => [
-                              styles.claimBtn,
-                              timely ? styles.claimBtnTimely : null,
-                              pressed ? { opacity: 0.85 } : null
-                            ]}
-                          >
-                            <Text style={styles.claimBtnText}>✓ ЗАБРАТЬ ГРУЗ</Text>
-                          </Pressable>
-                        </>
-                      );
-                    })()}
+                    {done &&
+                      (() => {
+                        const timely =
+                          Date.now() - exp.completesAt <=
+                          TIMELY_CLAIM_WINDOW_MS;
+                        return (
+                          <>
+                            {timely && (
+                              <Text style={styles.timelyBonusLabel}>
+                                +25% БОНУС · ЗАБЕРИТЕ ВОВРЕМЯ
+                              </Text>
+                            )}
+                            <Pressable
+                              onPress={() => onClaimExpedition(exp.shipId)}
+                              style={({ pressed }) => [
+                                styles.claimBtn,
+                                timely ? styles.claimBtnTimely : null,
+                                pressed ? { opacity: 0.85 } : null,
+                              ]}
+                            >
+                              <Text style={styles.claimBtnText}>
+                                ✓ ЗАБРАТЬ ГРУЗ
+                              </Text>
+                            </Pressable>
+                          </>
+                        );
+                      })()}
                     {!done && (
                       <View style={styles.activeExpRewardsRow}>
-                        <Text style={styles.activeExpRewardsLabel}>Ожидаемый груз:</Text>
+                        <Text style={styles.activeExpRewardsLabel}>
+                          Ожидаемый груз:
+                        </Text>
                         {Object.entries(def.metalRewards).map(([k, v]) => {
                           const m = METALS.find((x) => x.id === k);
                           if (!m) return null;
@@ -726,7 +861,9 @@ export function ShipyardScreen({
                                 style={styles.expRewardIcon}
                                 resizeMode="contain"
                               />
-                              <Text style={styles.activeExpRewards}>×{v * expMetalMultiplier}</Text>
+                              <Text style={styles.activeExpRewards}>
+                                ×{v * expMetalMultiplier}
+                              </Text>
                             </View>
                           );
                         })}
@@ -765,13 +902,15 @@ export function ShipyardScreen({
                       key={s.shipId}
                       onPress={() => {
                         if (onExpedition) return;
-                        logEvent('expedition_ship_select', { shipId: s.shipId });
+                        logEvent('expedition_ship_select', {
+                          shipId: s.shipId,
+                        });
                         setExpeditionShipId(s.shipId);
                       }}
                       style={[
                         styles.shipChip,
                         selected ? styles.shipChipSelected : null,
-                        onExpedition ? styles.shipChipDisabled : null
+                        onExpedition ? styles.shipChipDisabled : null,
                       ]}
                     >
                       <Text style={styles.shipChipText}>
@@ -816,7 +955,10 @@ export function ShipyardScreen({
                           resizeMode="contain"
                         />
                         <Text style={styles.expRewardText}>
-                          ×{Math.floor(v * expMetalMultiplier * shipExpMultiplier)}
+                          ×
+                          {Math.floor(
+                            v * expMetalMultiplier * shipExpMultiplier,
+                          )}
                         </Text>
                       </View>
                     );
@@ -827,8 +969,20 @@ export function ShipyardScreen({
                     </View>
                   )}
                   {shipExpMultiplier > 1 && (
-                    <View style={[styles.expMultiplierBadge, { backgroundColor: 'rgba(0,200,255,0.15)', borderColor: '#00c8ff' }]}>
-                      <Text style={[styles.expMultiplierText, { color: '#00c8ff' }]}>×{shipExpMultiplier} КОРАБЛЬ</Text>
+                    <View
+                      style={[
+                        styles.expMultiplierBadge,
+                        {
+                          backgroundColor: 'rgba(0,200,255,0.15)',
+                          borderColor: '#00c8ff',
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[styles.expMultiplierText, { color: '#00c8ff' }]}
+                      >
+                        ×{shipExpMultiplier} КОРАБЛЬ
+                      </Text>
                     </View>
                   )}
                 </View>
@@ -843,13 +997,13 @@ export function ShipyardScreen({
                   style={({ pressed }) => [
                     styles.sendBtn,
                     canSend ? styles.sendBtnActive : styles.sendBtnDisabled,
-                    pressed && canSend ? { opacity: 0.85 } : null
+                    pressed && canSend ? { opacity: 0.85 } : null,
                   ]}
                 >
                   <Text
                     style={[
                       styles.sendBtnText,
-                      { color: canSend ? '#f39c12' : 'rgba(255,255,255,0.2)' }
+                      { color: canSend ? '#f39c12' : 'rgba(255,255,255,0.2)' },
                     ]}
                   >
                     {isBattleActive
@@ -876,23 +1030,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0,212,255,0.1)',
-    backgroundColor: 'rgba(0,10,30,0.8)'
+    backgroundColor: 'rgba(0,10,30,0.8)',
   },
   subTab: {
     flex: 1,
     paddingVertical: 10,
     alignItems: 'center',
-    position: 'relative'
+    position: 'relative',
   },
   subTabActive: {
     borderBottomWidth: 2,
-    borderBottomColor: '#00d4ff'
+    borderBottomColor: '#00d4ff',
   },
   subTabText: {
     fontSize: 10,
     color: 'rgba(255,255,255,0.55)',
     fontWeight: '800',
-    letterSpacing: 1
+    letterSpacing: 1,
   },
   subTabTextActive: { color: '#00d4ff' },
   subTabBadge: {
@@ -902,7 +1056,7 @@ const styles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 4,
-    backgroundColor: '#ff3b30'
+    backgroundColor: '#ff3b30',
   },
   title: {
     textAlign: 'center',
@@ -910,7 +1064,7 @@ const styles = StyleSheet.create({
     color: 'rgba(0,212,255,0.5)',
     letterSpacing: 3,
     fontWeight: '800',
-    marginBottom: 14
+    marginBottom: 14,
   },
   inventoryRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
   metalBox: {
@@ -920,20 +1074,20 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.08)',
-    backgroundColor: 'rgba(255,255,255,0.03)'
+    backgroundColor: 'rgba(255,255,255,0.03)',
   },
   metalImage: { width: 32, height: 32 },
   metalName: {
     fontSize: 8,
     color: 'rgba(255,255,255,0.65)',
     marginTop: 3,
-    fontWeight: '700'
+    fontWeight: '700',
   },
   metalCount: {
     fontSize: 16,
     color: '#ffd700',
     fontWeight: '900',
-    marginTop: 2
+    marginTop: 2,
   },
   damageBox: {
     flexDirection: 'row',
@@ -945,13 +1099,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,80,80,0.25)',
     backgroundColor: 'rgba(255,80,80,0.06)',
-    marginBottom: 16
+    marginBottom: 16,
   },
   damageLabel: {
     fontSize: 10,
     color: 'rgba(255,80,80,0.7)',
     fontWeight: '800',
-    letterSpacing: 1
+    letterSpacing: 1,
   },
   damageValue: { fontSize: 16, color: '#ff5050', fontWeight: '900' },
   sectionTitle: {
@@ -959,7 +1113,7 @@ const styles = StyleSheet.create({
     color: 'rgba(0,212,255,0.4)',
     letterSpacing: 2,
     fontWeight: '800',
-    marginBottom: 10
+    marginBottom: 10,
   },
   // Ship cards
   shipCard: {
@@ -967,7 +1121,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     borderWidth: 1,
     overflow: 'hidden',
-    position: 'relative'
+    position: 'relative',
   },
   shipBadge: {
     position: 'absolute',
@@ -977,33 +1131,33 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
     backgroundColor: '#ff3b3b',
-    zIndex: 2
+    zIndex: 2,
   },
   cardSelected: {
     backgroundColor: 'rgba(0,255,136,0.05)',
-    borderColor: 'rgba(0,255,136,0.3)'
+    borderColor: 'rgba(0,255,136,0.3)',
   },
   cardOwned: {
     backgroundColor: 'rgba(0,212,255,0.04)',
-    borderColor: 'rgba(0,212,255,0.18)'
+    borderColor: 'rgba(0,212,255,0.18)',
   },
   cardBroken: {
     backgroundColor: 'rgba(255,40,40,0.05)',
-    borderColor: 'rgba(255,80,80,0.3)'
+    borderColor: 'rgba(255,80,80,0.3)',
   },
   cardLocked: {
     backgroundColor: 'rgba(255,255,255,0.01)',
-    borderColor: 'rgba(255,255,255,0.05)'
+    borderColor: 'rgba(255,255,255,0.05)',
   },
   cardOnExpedition: {
     backgroundColor: 'rgba(243,156,18,0.05)',
-    borderColor: 'rgba(243,156,18,0.25)'
+    borderColor: 'rgba(243,156,18,0.25)',
   },
   shipHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 10,
-    padding: 12
+    padding: 12,
   },
   shipImage: { width: 52, height: 52, marginTop: 2 },
   shipInfo: { flex: 1 },
@@ -1011,30 +1165,30 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '800',
     letterSpacing: 0.5,
-    marginBottom: 2
+    marginBottom: 2,
   },
   shipLore: {
     fontSize: 9,
     color: 'rgba(255,255,255,0.6)',
     lineHeight: 13,
-    marginBottom: 4
+    marginBottom: 4,
   },
   shipStatsRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   shipMult: { fontSize: 9, color: 'rgba(255,80,80,0.6)', fontWeight: '700' },
   shipTotalDmg: {
     fontSize: 9,
     color: 'rgba(255,150,150,0.7)',
-    fontWeight: '700'
+    fontWeight: '700',
   },
   expeditionStatus: {
     fontSize: 9,
     color: 'rgba(243,156,18,0.8)',
-    fontWeight: '700'
+    fontWeight: '700',
   },
   expandIcon: {
     fontSize: 10,
     color: 'rgba(0,212,255,0.4)',
-    alignSelf: 'center'
+    alignSelf: 'center',
   },
   shipActions: {
     flexDirection: 'row',
@@ -1042,7 +1196,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     gap: 8,
     paddingHorizontal: 12,
-    paddingBottom: 12
+    paddingBottom: 12,
   },
   metalCostRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   metalCostItem: { flexDirection: 'row', alignItems: 'center', gap: 3 },
@@ -1052,36 +1206,36 @@ const styles = StyleSheet.create({
     fontSize: 9,
     color: 'rgba(0,255,136,0.65)',
     fontWeight: '700',
-    letterSpacing: 1
+    letterSpacing: 1,
   },
   expeditionLabel: {
     fontSize: 9,
     color: 'rgba(243,156,18,0.65)',
     fontWeight: '700',
-    letterSpacing: 1
+    letterSpacing: 1,
   },
   actionBtn: {
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 8,
     borderWidth: 1,
-    alignItems: 'center'
+    alignItems: 'center',
   },
   btnYellow: {
     borderColor: 'rgba(255,200,0,0.4)',
-    backgroundColor: 'rgba(255,200,0,0.07)'
+    backgroundColor: 'rgba(255,200,0,0.07)',
   },
   btnOrange: {
     borderColor: 'rgba(255,150,0,0.4)',
-    backgroundColor: 'rgba(255,150,0,0.07)'
+    backgroundColor: 'rgba(255,150,0,0.07)',
   },
   btnGreen: {
     borderColor: 'rgba(0,255,136,0.35)',
-    backgroundColor: 'rgba(0,255,136,0.07)'
+    backgroundColor: 'rgba(0,255,136,0.07)',
   },
   btnDisabled: {
     borderColor: 'rgba(255,255,255,0.07)',
-    backgroundColor: 'transparent'
+    backgroundColor: 'transparent',
   },
   actionBtnText: { fontSize: 9, fontWeight: '900', letterSpacing: 1 },
   cannonsSection: {
@@ -1090,14 +1244,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingTop: 10,
     paddingBottom: 12,
-    gap: 8
+    gap: 8,
   },
   cannonsSectionTitle: {
     fontSize: 9,
     color: 'rgba(255,255,255,0.6)',
     letterSpacing: 2,
     fontWeight: '800',
-    marginBottom: 4
+    marginBottom: 4,
   },
   cannonRow: {
     flexDirection: 'row',
@@ -1106,14 +1260,14 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 8,
     borderRadius: 8,
-    backgroundColor: 'rgba(0,0,0,0.2)'
+    backgroundColor: 'rgba(0,0,0,0.2)',
   },
   cannonImage: { width: 26, height: 26 },
   cannonInfo: { flex: 1 },
   cannonName: {
     fontSize: 10,
     color: 'rgba(255,255,255,0.6)',
-    fontWeight: '700'
+    fontWeight: '700',
   },
   cannonDmg: { fontSize: 8, color: 'rgba(255,80,80,0.8)', marginTop: 1 },
   cannonRight: { alignItems: 'flex-end', gap: 4 },
@@ -1122,7 +1276,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     borderRadius: 6,
     borderWidth: 1,
-    alignItems: 'center'
+    alignItems: 'center',
   },
   hint: {
     marginTop: 12,
@@ -1130,7 +1284,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: 'rgba(0,212,255,0.04)',
     borderWidth: 1,
-    borderColor: 'rgba(0,212,255,0.1)'
+    borderColor: 'rgba(0,212,255,0.1)',
   },
   hintText: { fontSize: 10, color: 'rgba(0,212,255,0.5)', lineHeight: 16 },
   battleBanner: {
@@ -1141,13 +1295,13 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,80,80,0.4)',
     backgroundColor: 'rgba(255,40,40,0.08)',
     alignItems: 'center',
-    gap: 4
+    gap: 4,
   },
   battleBannerText: {
     fontSize: 11,
     color: '#ff5555',
     fontWeight: '900',
-    letterSpacing: 1
+    letterSpacing: 1,
   },
   battleBannerHint: { fontSize: 10, color: 'rgba(255,150,150,0.5)' },
   // Active expeditions
@@ -1157,24 +1311,24 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(243,156,18,0.25)',
     backgroundColor: 'rgba(243,156,18,0.04)',
     padding: 12,
-    marginBottom: 10
+    marginBottom: 10,
   },
   activeExpCardDone: {
     borderColor: 'rgba(0,255,136,0.3)',
-    backgroundColor: 'rgba(0,255,136,0.04)'
+    backgroundColor: 'rgba(0,255,136,0.04)',
   },
   activeExpHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 8
+    marginBottom: 8,
   },
   activeExpIcon: { fontSize: 22 },
   activeExpName: {
     fontSize: 12,
     fontWeight: '800',
     color: '#f39c12',
-    marginBottom: 1
+    marginBottom: 1,
   },
   activeExpShip: { fontSize: 9, color: 'rgba(255,255,255,0.65)' },
   activeExpTimer: { fontSize: 14, fontWeight: '900', color: '#f39c12' },
@@ -1183,12 +1337,12 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     backgroundColor: 'rgba(255,255,255,0.06)',
     overflow: 'hidden',
-    marginBottom: 8
+    marginBottom: 8,
   },
   progressBarFill: {
     height: '100%',
     borderRadius: 3,
-    backgroundColor: '#f39c12'
+    backgroundColor: '#f39c12',
   },
   claimBtn: {
     paddingVertical: 10,
@@ -1196,17 +1350,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(0,255,136,0.4)',
     backgroundColor: 'rgba(0,255,136,0.08)',
-    alignItems: 'center'
+    alignItems: 'center',
   },
   claimBtnText: {
     fontSize: 11,
     color: '#00ff88',
     fontWeight: '900',
-    letterSpacing: 1
+    letterSpacing: 1,
   },
   claimBtnTimely: {
     borderColor: 'rgba(255,200,0,0.5)',
-    backgroundColor: 'rgba(255,200,0,0.08)'
+    backgroundColor: 'rgba(255,200,0,0.08)',
   },
   timelyBonusLabel: {
     fontSize: 9,
@@ -1214,18 +1368,18 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     letterSpacing: 1,
     textAlign: 'center',
-    marginBottom: 4
+    marginBottom: 4,
   },
   activeExpRewardsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     marginTop: 4,
-    flexWrap: 'wrap'
+    flexWrap: 'wrap',
   },
   activeExpRewardsLabel: {
     fontSize: 9,
-    color: 'rgba(255,255,255,0.6)'
+    color: 'rgba(255,255,255,0.6)',
   },
   activeExpRewards: {
     fontSize: 9,
@@ -1238,7 +1392,7 @@ const styles = StyleSheet.create({
     color: 'rgba(0,212,255,0.4)',
     fontWeight: '800',
     letterSpacing: 1,
-    marginBottom: 6
+    marginBottom: 6,
   },
   shipSelectorScroll: { flexDirection: 'row' },
   shipChip: {
@@ -1248,17 +1402,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.12)',
     backgroundColor: 'rgba(255,255,255,0.03)',
-    marginRight: 8
+    marginRight: 8,
   },
   shipChipSelected: {
     borderColor: 'rgba(243,156,18,0.5)',
-    backgroundColor: 'rgba(243,156,18,0.08)'
+    backgroundColor: 'rgba(243,156,18,0.08)',
   },
   shipChipDisabled: { opacity: 0.4 },
   shipChipText: {
     fontSize: 9,
     color: 'rgba(255,255,255,0.6)',
-    fontWeight: '700'
+    fontWeight: '700',
   },
   noShipsHint: { fontSize: 10, color: 'rgba(255,255,255,0.6)', marginTop: 4 },
   // Expedition cards
@@ -1268,39 +1422,39 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(243,156,18,0.15)',
     backgroundColor: 'rgba(243,156,18,0.03)',
     padding: 12,
-    marginBottom: 10
+    marginBottom: 10,
   },
   expCardHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 10,
-    marginBottom: 6
+    marginBottom: 6,
   },
   expIcon: { fontSize: 22 },
   expName: {
     fontSize: 12,
     fontWeight: '800',
     color: '#f39c12',
-    marginBottom: 1
+    marginBottom: 1,
   },
   expDuration: {
     fontSize: 9,
     color: 'rgba(255,255,255,0.4)',
-    fontWeight: '700'
+    fontWeight: '700',
   },
   expXp: { fontSize: 10, color: 'rgba(0,212,255,0.6)', fontWeight: '800' },
   expLore: {
     fontSize: 10,
     color: 'rgba(200,220,255,0.75)',
     lineHeight: 16,
-    marginBottom: 8
+    marginBottom: 8,
   },
   expRewardsRow: {
     flexDirection: 'row',
     gap: 10,
     marginBottom: 10,
     alignItems: 'center',
-    flexWrap: 'wrap'
+    flexWrap: 'wrap',
   },
   expRewardItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   expMultiplierBadge: {
@@ -1309,33 +1463,33 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     borderWidth: 1,
     borderColor: 'rgba(0,212,255,0.35)',
-    backgroundColor: 'rgba(0,212,255,0.08)'
+    backgroundColor: 'rgba(0,212,255,0.08)',
   },
   expMultiplierText: {
     fontSize: 8,
     color: '#00d4ff',
     fontWeight: '900',
-    letterSpacing: 0.5
+    letterSpacing: 0.5,
   },
   expRewardIcon: { width: 16, height: 16 },
   expRewardText: {
     fontSize: 10,
     color: 'rgba(255,200,100,0.7)',
-    fontWeight: '700'
+    fontWeight: '700',
   },
   sendBtn: {
     paddingVertical: 10,
     borderRadius: 10,
     borderWidth: 1,
-    alignItems: 'center'
+    alignItems: 'center',
   },
   sendBtnActive: {
     borderColor: 'rgba(243,156,18,0.4)',
-    backgroundColor: 'rgba(243,156,18,0.08)'
+    backgroundColor: 'rgba(243,156,18,0.08)',
   },
   sendBtnDisabled: {
     borderColor: 'rgba(255,255,255,0.07)',
-    backgroundColor: 'transparent'
+    backgroundColor: 'transparent',
   },
   sendBtnText: { fontSize: 10, fontWeight: '900', letterSpacing: 1 },
   levelLockLabel: {

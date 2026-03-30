@@ -89,6 +89,7 @@ export function BattleScreen({
   const abilityTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const warnTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const opportunityTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const healDismissRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const breakShieldEarlyRef = useRef<(() => void) | null>(null);
   const warnAnim = useRef(new Animated.Value(1)).current;
   const warnAnimRef = useRef<Animated.CompositeAnimation | null>(null);
@@ -102,6 +103,18 @@ export function BattleScreen({
   const dispelImmuneRef = useRef(false);
   const ultTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [ultsUsedThisBattle, setUltsUsedThisBattle] = useState(0);
+
+  // Auto-dismiss heal floater (native only — web uses canvas TTL)
+  useEffect(() => {
+    if (Platform.OS === 'web' || healState.count === 0) return;
+    if (healDismissRef.current) clearTimeout(healDismissRef.current);
+    healDismissRef.current = setTimeout(() => {
+      setHealState({ count: 0 });
+    }, 800);
+    return () => {
+      if (healDismissRef.current) clearTimeout(healDismissRef.current);
+    };
+  }, [healState.count]);
 
   // Reset ult state when battle starts/ends
   const battleId = battle ? `${battle.planetId}-${battle.expiresAt}` : null;
@@ -224,7 +237,7 @@ export function BattleScreen({
     setQteAttempted(true);
     if (isIllusion) {
       setQteFailed(true);
-      onHeal(0.10); // противник восстанавливает 10% maxHP
+      onHeal(Math.floor(totalDamage * 2), 'flatHp'); // противник восстанавливает 2× атаку игрока
     } else {
       onReflect(2000); // -2s за провал QTE (щит)
     }
@@ -388,7 +401,7 @@ export function BattleScreen({
             боя.{'\n\n'}
             Отправьтесь в Верфь для починки.
           </Text>
-          <Pressable onPress={() => { onClearDefeat(); onGoToShipyard(); }} style={styles.goShipyardBtn}>
+          <Pressable onPress={() => { onClearDefeat(); onGoToShipyard(); }} style={styles.goShipyardBtn} hitSlop={10}>
             <Text style={styles.goShipyardText}>🛠️ ПЕРЕЙТИ В ВЕРФЬ</Text>
           </Pressable>
         </View>
@@ -458,7 +471,7 @@ export function BattleScreen({
           )}
           {abilityActive && qteAttempted && isIllusion && (
             <Text style={[styles.statChip, { color: '#44ff88' }]}>
-              👻 клики лечат врага +5%
+              👻 клики лечат врага +{formatNum(Math.floor(totalDamage * attackMultiplier))} HP
             </Text>
           )}
           {opportunityActive && (
@@ -479,46 +492,49 @@ export function BattleScreen({
         </View>
       </View>
 
-      {/* Forfeit button + Ult button row */}
+      {/* Forfeit button */}
       <View style={styles.forfeitRow}>
-        <Pressable onPress={onForfeit} style={styles.forfeitBtn}>
+        <Pressable onPress={onForfeit} style={styles.forfeitBtn} hitSlop={10}>
           <Text style={styles.forfeitText}>✕ ОТСТУПИТЬ</Text>
         </Pressable>
-        {equippedModule && (
-          <Pressable
-            onPress={handleActivateUlt}
-            disabled={!ultReady}
-            style={[styles.ultBtn, ultReady && styles.ultBtnReady, ultActive && styles.ultBtnActive]}
-          >
-            <View style={styles.ultBtnInner}>
-              <Text style={styles.ultBtnIcon}>{equippedModule.icon}</Text>
-              <View style={styles.ultBtnText}>
-                <View style={styles.ultBtnTopRow}>
-                  <Text style={[styles.ultBtnName, ultReady && { color: '#ffe066' }]}>
-                    {ultActive ? '◈ АКТИВНО' : ultReady ? `◈ ${equippedModule.ultName}` : equippedModule.ultName}
-                  </Text>
-                  <Text style={[styles.ultBtnCounter, ultLimitReached && { color: '#ff5555' }]}>
-                    {ultsUsedThisBattle}/{maxUltsPerBattle}
-                  </Text>
-                </View>
-                <View style={styles.ultChargeBarBg}>
-                  <View
-                    style={[
-                      styles.ultChargeBarFill,
-                      { width: `${Math.min(100, (ultCharge / hitsToCharge) * 100)}%` },
-                      ultReady && { backgroundColor: '#ffe066' },
-                      ultActive && { backgroundColor: '#ff9900', width: '100%' },
-                    ]}
-                  />
-                </View>
-              </View>
-            </View>
-          </Pressable>
-        )}
       </View>
 
       {/* Main — clickable rocket */}
       <View style={styles.main}>
+        {equippedModule && (
+          <View style={styles.ultSideContainer}>
+            <Pressable
+              onPress={handleActivateUlt}
+              disabled={!ultReady}
+              hitSlop={10}
+              style={[styles.ultBtn, ultReady && styles.ultBtnReady, ultActive && styles.ultBtnActive]}
+            >
+              <View style={styles.ultBtnInner}>
+                <Text style={styles.ultBtnIcon}>{equippedModule.icon}</Text>
+                <View style={styles.ultBtnText}>
+                  <View style={styles.ultBtnTopRow}>
+                    <Text style={[styles.ultBtnName, ultReady && { color: '#ffe066' }]}>
+                      {ultActive ? '◈ АКТИВНО' : ultReady ? `◈ ${equippedModule.ultName}` : equippedModule.ultName}
+                    </Text>
+                    <Text style={[styles.ultBtnCounter, ultLimitReached && { color: '#ff5555' }]}>
+                      {ultsUsedThisBattle}/{maxUltsPerBattle}
+                    </Text>
+                  </View>
+                  <View style={styles.ultChargeBarBg}>
+                    <View
+                      style={[
+                        styles.ultChargeBarFill,
+                        { width: `${Math.min(100, (ultCharge / hitsToCharge) * 100)}%` },
+                        ultReady && { backgroundColor: '#ffe066' },
+                        ultActive && { backgroundColor: '#ff9900', width: '100%' },
+                      ]}
+                    />
+                  </View>
+                </View>
+              </View>
+            </Pressable>
+          </View>
+        )}
         <View
           ref={battleHitAreaRef}
           style={styles.battleHitArea}
@@ -528,6 +544,17 @@ export function BattleScreen({
             trigger={hitState.count}
             origin={hitState.origin}
             damage={lastHitDamageRef.current || effectiveDamage}
+            healEffect={Platform.OS === 'web' ? healState : undefined}
+            skillRing={Platform.OS === 'web' ? {
+              active: abilityActive,
+              speedMs: 1800,
+              successZoneDeg: 65,
+              successZoneStart,
+              attempted: qteAttempted,
+              onSuccess: handleQteSuccess,
+              onFail: handleQteFail,
+              size: 220,
+            } : undefined}
             style={[
               styles.rocketBtn,
               abilityActive && !isIllusion && styles.rocketBtnShield,
@@ -572,8 +599,8 @@ export function BattleScreen({
             </Pressable>
           </AnimatedHitEffects>
 
-          {/* Heal effect overlay — green HP floater */}
-          {healState.count > 0 && healState.origin && (
+          {/* Heal effect overlay — native only; web renders it in unified canvas */}
+          {Platform.OS !== 'web' && healState.count > 0 && healState.origin && (
             <View
               style={[StyleSheet.absoluteFill, styles.healOverlay]}
               pointerEvents="none"
@@ -589,8 +616,8 @@ export function BattleScreen({
             </View>
           )}
 
-          {/* QTE ring overlay — поверх корабля, скрывается после попытки */}
-          {abilityActive && !qteAttempted && (
+          {/* QTE ring overlay — native only; web renders it in unified canvas */}
+          {Platform.OS !== 'web' && abilityActive && !qteAttempted && (
             <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]} pointerEvents="box-none">
               <SkillCheckRing
                 active={abilityActive}
@@ -814,9 +841,16 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     letterSpacing: 1,
   },
+  ultSideContainer: {
+    position: 'absolute',
+    right: 10,
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    zIndex: 3,
+  },
   ultBtn: {
-    flex: 1,
-    marginLeft: 8,
+    width: 130,
     paddingVertical: 7,
     paddingHorizontal: 12,
     borderRadius: 8,
