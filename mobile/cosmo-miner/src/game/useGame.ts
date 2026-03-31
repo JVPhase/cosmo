@@ -24,6 +24,7 @@ import {
   type MetalId
 } from './METALS';
 import { PLANETS, type PlanetId, type PlanetDefinition } from './PLANETS';
+import { getPlanetIdsForSector } from './SECTORS';
 import { computePlayerLevel } from './PLAYER';
 import {
   computeModuleUpgradeCost,
@@ -68,10 +69,11 @@ function computeInitialShownSectorUnlocks(
 ): Set<number> {
   const shown = new Set<number>();
   const unlocked = initial?.unlockedPlanetIds ?? [];
-  if ([1, 2, 3, 4, 5].every((id) => unlocked.includes(id as PlanetId)))
-    shown.add(2);
-  if ([6, 7, 8, 9, 10].every((id) => unlocked.includes(id as PlanetId)))
-    shown.add(3);
+  for (let sectorId = 2; sectorId <= 100; sectorId++) {
+    if (getPlanetIdsForSector(sectorId - 1).every((id) => unlocked.includes(id))) {
+      shown.add(sectorId);
+    }
+  }
   return shown;
 }
 
@@ -1297,8 +1299,7 @@ export function useGame(initial?: GameStateInit) {
       const exp = prev.expeditions.find((e) => e.shipId === shipId);
       if (!exp || Date.now() < exp.completesAt) return prev;
       const def = getExpeditionById(exp.expeditionId);
-      const sector1Planets: PlanetId[] = [1, 2, 3, 4, 5];
-      const sector2Unlocked = sector1Planets.every((id) =>
+      const sector2Unlocked = getPlanetIdsForSector(1).every((id) =>
         prev.unlockedPlanetIds.includes(id)
       );
       const metalMultiplier = sector2Unlocked ? 5 : 1;

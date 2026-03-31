@@ -12,7 +12,7 @@ import { ALIENS } from '../game/ALIENS';
 import { formatNum } from '../game/formatNum';
 import { METALS, PLANET_DROP_TABLE } from '../game/METALS';
 import { PLANETS, type PlanetDefinition, type PlanetId } from '../game/PLANETS';
-import { SECTORS, isSectorUnlocked } from '../game/SECTORS';
+import { SECTORS, getSectorLockReason, isSectorUnlocked } from '../game/SECTORS';
 import type { BattleState } from '../game/types';
 
 export type PlanetsScreenProps = {
@@ -21,6 +21,7 @@ export type PlanetsScreenProps = {
   battle: BattleState | null;
   shipDamage: number;
   energy: number;
+  playerLevel: number;
   onAttackPlanet: (id: PlanetId) => void;
   onChoosePlanet: (id: PlanetId) => void;
 };
@@ -31,6 +32,7 @@ export function PlanetsScreen({
   battle,
   shipDamage,
   energy,
+  playerLevel,
   onAttackPlanet,
   onChoosePlanet
 }: PlanetsScreenProps) {
@@ -39,13 +41,18 @@ export function PlanetsScreen({
     () => new Set(unlockedPlanetIds),
     [unlockedPlanetIds]
   );
+  // Show only unlocked sectors + the next locked sector (to avoid rendering all 100)
   const sections = useMemo(
     () =>
-      SECTORS.map((sector) => ({
+      SECTORS.filter(
+        (s) =>
+          isSectorUnlocked(s.id, unlockedPlanetIds, playerLevel) ||
+          (s.id > 1 && isSectorUnlocked(s.id - 1, unlockedPlanetIds, playerLevel))
+      ).map((sector) => ({
         sector,
         data: PLANETS.filter((p) => p.sectorId === sector.id),
       })),
-    []
+    [unlockedPlanetIds, playerLevel]
   );
 
   if (selPlanet) {
@@ -55,8 +62,7 @@ export function PlanetsScreen({
     const otherBattle = !!battle && battle.planetId !== selPlanet.id;
     const notEnoughEnergy =
       !!alien && !unlocked && energy < alien.attackEnergyCost;
-    const sector2Locked =
-      selPlanet.sectorId === 2 && !isSectorUnlocked(2, unlockedPlanetIds);
+    const sectorLocked = !isSectorUnlocked(selPlanet.sectorId, unlockedPlanetIds, playerLevel);
 
     return (
       <View style={styles.screen}>
@@ -106,7 +112,7 @@ export function PlanetsScreen({
             <Text style={styles.dossierText}>{selPlanet.lore}</Text>
           </View>
 
-          {alien && !unlocked && !sector2Locked && (
+          {alien && !unlocked && !sectorLocked && (
             <View
               style={[
                 styles.dossier,
@@ -139,7 +145,7 @@ export function PlanetsScreen({
             </View>
           )}
 
-          {sector2Locked ? (
+          {sectorLocked ? (
             <View
               style={[
                 styles.attackingBox,
@@ -149,10 +155,10 @@ export function PlanetsScreen({
               <Text
                 style={[styles.attackingText, { color: 'rgba(255,200,0,0.6)' }]}
               >
-                🔒 СЕКТОР 2 ЗАБЛОКИРОВАН
+                🔒 СЕКТОР {selPlanet.sectorId} ЗАБЛОКИРОВАН
               </Text>
               <Text style={styles.attackingHint}>
-                Захватите все планеты Сектора 1
+                Захватите все планеты Сектора {selPlanet.sectorId - 1}
               </Text>
             </View>
           ) : unlocked ? (
@@ -255,7 +261,8 @@ export function PlanetsScreen({
         contentContainerStyle={styles.content}
         ListHeaderComponent={<Text style={styles.title}>◈ ЛОКАЦИИ ДОБЫЧИ ◈</Text>}
         renderSectionHeader={({ section: { sector } }) => {
-          const sectorUnlocked = isSectorUnlocked(sector.id, unlockedPlanetIds);
+          const sectorUnlocked = isSectorUnlocked(sector.id, unlockedPlanetIds, playerLevel);
+          const lockReason = getSectorLockReason(sector.id, unlockedPlanetIds, playerLevel);
           return (
             <View
               style={[
@@ -277,9 +284,9 @@ export function PlanetsScreen({
                 >
                   СЕКТОР {sector.id} · {sector.name.toUpperCase()}
                 </Text>
-                {!sectorUnlocked && (
+                {lockReason && (
                   <Text style={styles.sectorLockHint}>
-                    Захватите все планеты Сектора 1
+                    {lockReason}
                   </Text>
                 )}
               </View>
@@ -288,7 +295,7 @@ export function PlanetsScreen({
           );
         }}
         renderItem={({ item: p, section: { sector } }) => {
-          const sectorUnlocked = isSectorUnlocked(sector.id, unlockedPlanetIds);
+          const sectorUnlocked = isSectorUnlocked(sector.id, unlockedPlanetIds, playerLevel);
           const unlocked = unlockedSet.has(p.id);
           const active = p.id === selectedPlanetId;
           const isBattling = battle?.planetId === p.id;
