@@ -242,7 +242,7 @@ const PLANETS_HARDCODED: PlanetDefinition[] = [
     name: 'Мираго Прайм', icon: '🌈',
     image: require('../../assets/mirageprime.png'),
     unlocked: false, cost: 50_000_000,
-    resource: 'Мираж-ферит', color: '#7ecbd4', bonus: 500_000,
+    resource: 'Мираж-ферит', color: '#7ecbd4', bonus: 30_000,
     lore: 'Министерство настаивает: это не мираж. Это «плановый зрительный эффект». Форма МРЖ-1 подтверждает существование планеты. Иногда.',
   },
   {
@@ -250,7 +250,7 @@ const PLANETS_HARDCODED: PlanetDefinition[] = [
     name: 'Фантомная Вуаль', icon: '👻',
     image: require('../../assets/phantomveil.png'),
     unlocked: false, cost: 500_000_000,
-    resource: 'Фантом-титан', color: '#c490d1', bonus: 2_000_000,
+    resource: 'Фантом-титан', color: '#c490d1', bonus: 100_000,
     lore: 'Официально не существует. Лицензия на добычу выдана на «вероятный объект класса Р». Буква «Р» расшифровке не поддаётся.',
   },
   {
@@ -258,7 +258,7 @@ const PLANETS_HARDCODED: PlanetDefinition[] = [
     name: 'Эхо-Разлом', icon: '🔊',
     image: require('../../assets/echorift.png'),
     unlocked: false, cost: 5_000_000_000,
-    resource: 'Эхо-иридий', color: '#6dd49c', bonus: 10_000_000,
+    resource: 'Эхо-иридий', color: '#6dd49c', bonus: 300_000,
     lore: 'Каждый звук здесь возвращается с процентами. Жалобы — трижды. Приказы — ни разу. Парадокс задокументирован в 12 томах.',
   },
   {
@@ -266,7 +266,7 @@ const PLANETS_HARDCODED: PlanetDefinition[] = [
     name: 'Глубины Миражей', icon: '🏜️',
     image: require('../../assets/depthsofmirages.png'),
     unlocked: false, cost: 50_000_000_000,
-    resource: 'Мираж-сплав', color: '#d4a17e', bonus: 50_000_000,
+    resource: 'Мираж-сплав', color: '#d4a17e', bonus: 1_000_000,
     lore: 'Глубина иллюзии измеряется в бюрократических единицах. Одна единица — один недоступный чиновник. Здесь их 50 миллионов.',
   },
   {
@@ -274,7 +274,7 @@ const PLANETS_HARDCODED: PlanetDefinition[] = [
     name: 'Призрак Пустоты', icon: '🌑',
     image: require('../../assets/ghostofthevoid.png'),
     unlocked: false, cost: 500_000_000_000,
-    resource: 'Пустот-титан', color: '#8090d4', bonus: 200_000_000,
+    resource: 'Пустот-титан', color: '#8090d4', bonus: 3_000_000,
     lore: 'Пустота смотрит на вас. Отдел охраны труда смотрит на пустоту. Министерство смотрит в отчёт. Все делают вид, что всё нормально.',
   },
 ];
