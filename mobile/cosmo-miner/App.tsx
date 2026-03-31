@@ -342,6 +342,7 @@ function GameApp({
           battle={game.battle}
           shipDamage={game.totalDamage}
           energy={game.energy}
+          playerLevel={game.playerLevel}
           onAttackPlanet={(id) => {
             game.startBattle(id);
             onSetTab('battle');
@@ -666,7 +667,7 @@ function GameApp({
                   if (!planet) return false;
                   return (
                     !game.unlockedPlanetIds.includes(alien.planetId) &&
-                    isSectorUnlocked(planet.sectorId, game.unlockedPlanetIds) &&
+                    isSectorUnlocked(planet.sectorId, game.unlockedPlanetIds, game.playerLevel) &&
                     game.battle?.planetId !== alien.planetId &&
                     game.energy >= alien.attackEnergyCost
                   );
