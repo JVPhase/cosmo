@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import {
   RESEARCH,
   type ResearchBranch,
@@ -218,73 +218,90 @@ export function ResearchScreen({
       (r) => getNodeState(r, playerLevel, energy, research) === 'available'
     );
 
-  return (
-    <View style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.content}>
-        {/* Player level card */}
-        <View style={styles.levelCard}>
-          <View style={styles.levelRow}>
-            <Text style={styles.levelNum}>УР. {playerLevel}</Text>
-            <Text style={styles.levelTitle}>{getPlayerTitle(playerLevel)}</Text>
-          </View>
-          <View style={styles.xpBarBg}>
-            <View
-              style={[styles.xpBarFill, { width: `${xpPercent * 100}%` }]}
-            />
-          </View>
-          <Text style={styles.xpLabel}>
-            {xpNext !== null
-              ? `${formatNum(xpInLevel)} / ${formatNum(xpNeeded!)} XP до уровня ${playerLevel + 1}`
-              : `${formatNum(playerXP)} XP · МАКСИМАЛЬНЫЙ УРОВЕНЬ`}
-          </Text>
+  const listHeader = (
+    <>
+      {/* Player level card */}
+      <View style={styles.levelCard}>
+        <View style={styles.levelRow}>
+          <Text style={styles.levelNum}>УР. {playerLevel}</Text>
+          <Text style={styles.levelTitle}>{getPlayerTitle(playerLevel)}</Text>
         </View>
+        <View style={styles.xpBarBg}>
+          <View
+            style={[styles.xpBarFill, { width: `${xpPercent * 100}%` }]}
+          />
+        </View>
+        <Text style={styles.xpLabel}>
+          {xpNext !== null
+            ? `${formatNum(xpInLevel)} / ${formatNum(xpNeeded!)} XP до уровня ${playerLevel + 1}`
+            : `${formatNum(playerXP)} XP · МАКСИМАЛЬНЫЙ УРОВЕНЬ`}
+        </Text>
+      </View>
 
-        {/* Branch tabs */}
-        <View style={styles.branchTabs}>
+      {/* Branch tabs */}
+      <View style={styles.branchTabs}>
+        <Pressable
+          onPress={() => setBranch('mining')}
+          style={[
+            styles.branchTab,
+            branch === 'mining' ? styles.branchTabActive : null
+          ]}
+        >
+          <Text
+            style={[
+              styles.branchTabText,
+              branch === 'mining' ? styles.branchTabTextActive : null
+            ]}
+          >
+            ⛏️ ДОБЫЧА
+          </Text>
+          {branchHasAvailable('mining') && <View style={styles.branchTabBadge} />}
+        </Pressable>
+        {battleUnlocked && (
           <Pressable
-            onPress={() => setBranch('mining')}
+            onPress={() => setBranch('battle')}
             style={[
               styles.branchTab,
-              branch === 'mining' ? styles.branchTabActive : null
+              branch === 'battle' ? styles.branchTabActive : null
             ]}
           >
             <Text
               style={[
                 styles.branchTabText,
-                branch === 'mining' ? styles.branchTabTextActive : null
+                branch === 'battle' ? styles.branchTabTextActive : null
               ]}
             >
-              ⛏️ ДОБЫЧА
+              ⚔️ БОЙ
             </Text>
-            {branchHasAvailable('mining') && <View style={styles.branchTabBadge} />}
+            {branchHasAvailable('battle') && <View style={styles.branchTabBadge} />}
           </Pressable>
-          {battleUnlocked && (
-            <Pressable
-              onPress={() => setBranch('battle')}
-              style={[
-                styles.branchTab,
-                branch === 'battle' ? styles.branchTabActive : null
-              ]}
-            >
-              <Text
-                style={[
-                  styles.branchTabText,
-                  branch === 'battle' ? styles.branchTabTextActive : null
-                ]}
-              >
-                ⚔️ БОЙ
-              </Text>
-              {branchHasAvailable('battle') && <View style={styles.branchTabBadge} />}
-            </Pressable>
-          )}
-        </View>
+        )}
+      </View>
+    </>
+  );
 
-        {/* Research nodes */}
-        {nodes.map((node) => {
+  const listFooter = (
+    <View style={styles.hint}>
+      <Text style={styles.hintText}>
+        💡 XP начисляется за клики, пассивный доход, победы в боях и
+        экспедиции.
+      </Text>
+    </View>
+  );
+
+  return (
+    <View style={styles.screen}>
+      <FlatList
+        data={nodes}
+        keyExtractor={(node) => node.id}
+        contentContainerStyle={styles.content}
+        ListHeaderComponent={listHeader}
+        ListFooterComponent={listFooter}
+        extraData={branch}
+        renderItem={({ item: node }) => {
           const nodeState = getNodeState(node, playerLevel, energy, research);
           return (
             <ResearchCard
-              key={node.id}
               node={node}
               state={nodeState}
               playerLevel={playerLevel}
@@ -292,15 +309,8 @@ export function ResearchScreen({
               onBuy={() => onBuyResearch(node.id)}
             />
           );
-        })}
-
-        <View style={styles.hint}>
-          <Text style={styles.hintText}>
-            💡 XP начисляется за клики, пассивный доход, победы в боях и
-            экспедиции.
-          </Text>
-        </View>
-      </ScrollView>
+        }}
+      />
     </View>
   );
 }

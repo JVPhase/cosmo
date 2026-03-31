@@ -495,6 +495,7 @@ function GameApp({
         title={game.currentUnlockToast?.title ?? ''}
         onClose={() => { logEvent('toast_close', { toast: 'unlock', id: game.currentUnlockToast?.id }); game.dismissUnlockToast(); }}
         image={game.currentUnlockToast?.image}
+        images={game.currentUnlockToast?.images}
         text={game.currentUnlockToast?.text ?? ''}
         headerEmoji={game.currentUnlockToast?.headerEmoji}
         clerk
@@ -586,9 +587,9 @@ function GameApp({
         visible={planetBonusInfoOpen}
         title="◈ БОНУС ПЛАНЕТЫ · КЛЕРК-7 ◈"
         onClose={() => { logEvent('toast_close', { toast: 'planet_bonus_info' }); setPlanetBonusInfoOpen(false); }}
-        headerEmoji={`×${game.planet.bonus}`}
+        headerEmoji={`×${formatNum(game.planet.bonus)}`}
         headerEmojiStyle={{ color: game.planet.color }}
-        text={`Бонус планеты — множитель добычи энергиума на текущей локации.\n\nСейчас: ×${game.planet.bonus} на планете ${game.planet.name}.\n\nКаждая планета имеет свой бонус к добыче энергиума (клики и пассивный доход). Более далёкие планеты дают более высокий множитель. Чтобы разблокировать их — победите охраняющего пришельца во вкладке «БОЙ».`}
+        text={`Бонус планеты — множитель добычи энергиума на текущей локации.\n\nСейчас: ×${formatNum(game.planet.bonus)} на планете ${game.planet.name}.\n\nКаждая планета имеет свой бонус к добыче энергиума (клики и пассивный доход). Более далёкие планеты дают более высокий множитель. Чтобы разблокировать их — победите охраняющего пришельца во вкладке «БОЙ».`}
         clerk
       />
 

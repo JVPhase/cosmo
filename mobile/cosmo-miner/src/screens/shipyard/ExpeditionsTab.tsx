@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import {
+  FlatList,
   Image,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -47,8 +47,10 @@ export function ExpeditionsTab({
     : null;
   const shipExpMultiplier = selectedShipDef?.expeditionMultiplier ?? 1;
 
-  return (
-    <ScrollView contentContainerStyle={styles.content}>
+  const availableShips = fleet.ownedShips.filter((s) => !s.broken);
+
+  const listHeader = (
+    <>
       <Text style={styles.title}>◈ ЭКСПЕДИЦИИ · МММРДР ◈</Text>
 
       {expeditions.length > 0 && (
@@ -60,9 +62,7 @@ export function ExpeditionsTab({
             const remaining = expeditionRemainingMap[exp.shipId] ?? 0;
             const done = remaining === 0;
             const totalMs = def.durationMs;
-            const progress = done
-              ? 1
-              : Math.max(0, 1 - remaining / totalMs);
+            const progress = done ? 1 : Math.max(0, 1 - remaining / totalMs);
 
             return (
               <View
@@ -169,50 +169,56 @@ export function ExpeditionsTab({
         <Text style={styles.shipSelectorLabel}>
           КОРАБЛЬ ДЛЯ ЭКСПЕДИЦИИ:
         </Text>
-        <ScrollView
+        <FlatList
           horizontal
           showsHorizontalScrollIndicator={false}
           style={styles.shipSelectorScroll}
-        >
-          {fleet.ownedShips
-            .filter((s) => !s.broken)
-            .map((s) => {
-              const def = SHIPS.find((x) => x.id === s.shipId)!;
-              const onExpedition = expeditionShipIds.has(s.shipId);
-              const selected = expeditionShipId === s.shipId;
-              return (
-                <Pressable
-                  key={s.shipId}
-                  onPress={() => {
-                    if (onExpedition) return;
-                    logEvent('expedition_ship_select', { shipId: s.shipId });
-                    setExpeditionShipId(s.shipId);
-                  }}
-                  style={[
-                    styles.shipChip,
-                    selected ? styles.shipChipSelected : null,
-                    onExpedition ? styles.shipChipDisabled : null,
-                  ]}
-                >
-                  <Text style={styles.shipChipText}>
-                    {def.icon} {def.name.split('«')[0].trim()}
-                    {onExpedition ? ' 🚀' : ''}
-                  </Text>
-                </Pressable>
-              );
-            })}
-        </ScrollView>
-        {fleet.ownedShips.filter((s) => !s.broken).length === 0 && (
+          data={availableShips}
+          keyExtractor={(s) => s.shipId}
+          renderItem={({ item: s }) => {
+            const def = SHIPS.find((x) => x.id === s.shipId)!;
+            const onExpedition = expeditionShipIds.has(s.shipId);
+            const selected = expeditionShipId === s.shipId;
+            return (
+              <Pressable
+                onPress={() => {
+                  if (onExpedition) return;
+                  logEvent('expedition_ship_select', { shipId: s.shipId });
+                  setExpeditionShipId(s.shipId);
+                }}
+                style={[
+                  styles.shipChip,
+                  selected ? styles.shipChipSelected : null,
+                  onExpedition ? styles.shipChipDisabled : null,
+                ]}
+              >
+                <Text style={styles.shipChipText}>
+                  {def.icon} {def.name.split('«')[0].trim()}
+                  {onExpedition ? ' 🚀' : ''}
+                </Text>
+              </Pressable>
+            );
+          }}
+        />
+        {availableShips.length === 0 && (
           <Text style={styles.noShipsHint}>
             Нет доступных кораблей. Постройте флот во вкладке ФЛОТ.
           </Text>
         )}
       </View>
+    </>
+  );
 
-      {EXPEDITIONS.map((def) => {
+  return (
+    <FlatList
+      data={EXPEDITIONS}
+      keyExtractor={(def) => def.id}
+      contentContainerStyle={styles.content}
+      ListHeaderComponent={listHeader}
+      renderItem={({ item: def }) => {
         const canSend = expeditionShipId !== null && !isBattleActive;
         return (
-          <View key={def.id} style={styles.expCard}>
+          <View style={styles.expCard}>
             <View style={styles.expCardHeader}>
               <Text style={styles.expIcon}>{def.icon}</Text>
               <View style={styles.expCardHeaderBody}>
@@ -289,8 +295,8 @@ export function ExpeditionsTab({
             </Pressable>
           </View>
         );
-      })}
-    </ScrollView>
+      }}
+    />
   );
 }
 

@@ -370,7 +370,7 @@ export function GameScreen({
             ]}
           >
             <Text style={[styles.statText, { color: planet.color }]}>
-              ×{planet.bonus} бонус
+              ×{formatNum(planet.bonus)} бонус
             </Text>
           </Pressable>
         </View>

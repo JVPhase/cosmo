@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import {
+  FlatList,
   Image,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 import type { CannonId } from '../../game/CANNONS';
+import { formatNum } from '../../game/formatNum';
 import { METALS, type MetalId } from '../../game/METALS';
 import {
   computeModuleUpgradeCost,
@@ -83,8 +84,8 @@ export function FleetTab({
     (s) => ownedMap.has(s.id) || playerLevel >= s.unlockLevel,
   );
 
-  return (
-    <ScrollView contentContainerStyle={styles.content}>
+  const listHeader = (
+    <>
       <Text style={styles.title}>◈ ВЕРФЬ · МБК «ЗВЁЗДНЫЙ» ◈</Text>
 
       {isBattleActive && (
@@ -107,38 +108,22 @@ export function FleetTab({
               resizeMode="contain"
             />
             <Text style={styles.metalName}>{m.name}</Text>
-            <Text style={styles.metalCount}>{metals[m.id] ?? 0}</Text>
+            <Text style={styles.metalCount}>{formatNum(metals[m.id] ?? 0)}</Text>
           </View>
         ))}
       </View>
 
       <View style={styles.damageBox}>
         <Text style={styles.damageLabel}>⚔️ УРОН АКТИВНОГО КОРАБЛЯ</Text>
-        <Text style={styles.damageValue}>{totalDamage} / клик</Text>
+        <Text style={styles.damageValue}>{formatNum(totalDamage)} / клик</Text>
       </View>
 
       <Text style={styles.sectionTitle}>ФЛОТ</Text>
+    </>
+  );
 
-      {visibleShips.map((ship) => (
-        <ShipCard
-          key={ship.id}
-          ship={ship}
-          owned={ownedMap.get(ship.id)}
-          isSelected={fleet.selectedShipId === ship.id}
-          isExpanded={expandedShipId === ship.id}
-          isOnExpedition={expeditionShipIds.has(ship.id)}
-          expeditionRemainingMap={expeditionRemainingMap}
-          metals={metals}
-          discoveredMetals={discoveredMetals}
-          isBattleActive={isBattleActive}
-          onExpand={setExpandedShipId}
-          onBuildShip={onBuildShip}
-          onRepairShip={onRepairShip}
-          onSelectShip={onSelectShip}
-          onCraftCannon={onCraftCannon}
-        />
-      ))}
-
+  const listFooter = (
+    <>
       {(discoveredMetals.includes('voidCrystal') ||
         discoveredMetals.includes('echoShard') ||
         Object.keys(moduleLevels).length > 0) && (
@@ -334,7 +319,36 @@ export function FleetTab({
             : ''}
         </Text>
       </View>
-    </ScrollView>
+    </>
+  );
+
+  return (
+    <FlatList
+      data={visibleShips}
+      keyExtractor={(ship) => ship.id}
+      contentContainerStyle={styles.content}
+      ListHeaderComponent={listHeader}
+      ListFooterComponent={listFooter}
+      extraData={expandedShipId}
+      renderItem={({ item: ship }) => (
+        <ShipCard
+          ship={ship}
+          owned={ownedMap.get(ship.id)}
+          isSelected={fleet.selectedShipId === ship.id}
+          isExpanded={expandedShipId === ship.id}
+          isOnExpedition={expeditionShipIds.has(ship.id)}
+          expeditionRemainingMap={expeditionRemainingMap}
+          metals={metals}
+          discoveredMetals={discoveredMetals}
+          isBattleActive={isBattleActive}
+          onExpand={setExpandedShipId}
+          onBuildShip={onBuildShip}
+          onRepairShip={onRepairShip}
+          onSelectShip={onSelectShip}
+          onCraftCannon={onCraftCannon}
+        />
+      )}
+    />
   );
 }
 

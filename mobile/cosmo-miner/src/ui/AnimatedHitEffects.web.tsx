@@ -6,6 +6,7 @@ import {
   StyleSheet,
   View,
 } from "react-native";
+import { formatNum } from "../game/formatNum";
 import type { AnimatedHitEffectsProps } from "./animatedHitEffectsShared";
 import { SPARK_COLORS } from "./animatedHitEffectsShared";
 
@@ -246,7 +247,7 @@ export function AnimatedHitEffects({
 
       ctx.globalAlpha = opacity;
       ctx.fillStyle = "#ff6622";
-      ctx.fillText(`⚔️ ${f.value}`, f.originX + tx, f.originY + ty);
+      ctx.fillText(`⚔️ ${formatNum(f.value)}`, f.originX + tx, f.originY + ty);
     }
     ctx.globalAlpha = 1;
 

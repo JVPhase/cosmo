@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import {
   Image,
   Pressable,
+  SectionList,
   ScrollView,
   StyleSheet,
   Text,
@@ -37,6 +38,14 @@ export function PlanetsScreen({
   const unlockedSet = useMemo(
     () => new Set(unlockedPlanetIds),
     [unlockedPlanetIds]
+  );
+  const sections = useMemo(
+    () =>
+      SECTORS.map((sector) => ({
+        sector,
+        data: PLANETS.filter((p) => p.sectorId === sector.id),
+      })),
+    []
   );
 
   if (selPlanet) {
@@ -240,115 +249,111 @@ export function PlanetsScreen({
 
   return (
     <View style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.title}>◈ ЛОКАЦИИ ДОБЫЧИ ◈</Text>
-
-        {SECTORS.map((sector) => {
+      <SectionList
+        sections={sections}
+        keyExtractor={(p) => String(p.id)}
+        contentContainerStyle={styles.content}
+        ListHeaderComponent={<Text style={styles.title}>◈ ЛОКАЦИИ ДОБЫЧИ ◈</Text>}
+        renderSectionHeader={({ section: { sector } }) => {
           const sectorUnlocked = isSectorUnlocked(sector.id, unlockedPlanetIds);
-          const sectorPlanets = PLANETS.filter((p) => p.sectorId === sector.id);
-
           return (
-            <View key={sector.id}>
-              {/* Sector header */}
-              <View
-                style={[
-                  styles.sectorHeader,
-                  sectorUnlocked
-                    ? styles.sectorHeaderUnlocked
-                    : styles.sectorHeaderLocked
-                ]}
-              >
-                <Text style={styles.sectorIcon}>{sector.icon}</Text>
-                <View style={{ flex: 1 }}>
-                  <Text
-                    style={[
-                      styles.sectorName,
-                      sectorUnlocked
-                        ? { color: '#00d4ff' }
-                        : { color: 'rgba(255,255,255,0.5)' }
-                    ]}
-                  >
-                    СЕКТОР {sector.id} · {sector.name.toUpperCase()}
+            <View
+              style={[
+                styles.sectorHeader,
+                sectorUnlocked
+                  ? styles.sectorHeaderUnlocked
+                  : styles.sectorHeaderLocked
+              ]}
+            >
+              <Text style={styles.sectorIcon}>{sector.icon}</Text>
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={[
+                    styles.sectorName,
+                    sectorUnlocked
+                      ? { color: '#00d4ff' }
+                      : { color: 'rgba(255,255,255,0.5)' }
+                  ]}
+                >
+                  СЕКТОР {sector.id} · {sector.name.toUpperCase()}
+                </Text>
+                {!sectorUnlocked && (
+                  <Text style={styles.sectorLockHint}>
+                    Захватите все планеты Сектора 1
                   </Text>
-                  {!sectorUnlocked && (
-                    <Text style={styles.sectorLockHint}>
-                      Захватите все планеты Сектора 1
-                    </Text>
-                  )}
-                </View>
-                {!sectorUnlocked && <Text style={styles.lockIcon}>🔒</Text>}
+                )}
               </View>
-
-              {sectorPlanets.map((p) => {
-                const unlocked = unlockedSet.has(p.id);
-                const active = p.id === selectedPlanetId;
-                const isBattling = battle?.planetId === p.id;
-                const alien = ALIENS.find((a) => a.planetId === p.id);
-                const grayed = !sectorUnlocked && !unlocked;
-
-                const showBadge =
-                  !!alien &&
-                  !unlocked &&
-                  sectorUnlocked &&
-                  !isBattling &&
-                  energy >= alien.attackEnergyCost;
-
-                return (
-                  <Pressable
-                    key={p.id}
-                    onPress={() => setSelPlanet(p)}
-                    style={({ pressed }) => [
-                      styles.card,
-                      active ? styles.cardActive : null,
-                      isBattling ? styles.cardBattling : null,
-                      !unlocked && !isBattling ? styles.cardLocked : null,
-                      unlocked && !active ? styles.cardUnlocked : null,
-                      pressed ? { opacity: 0.92 } : null
-                    ]}
-                  >
-                    {showBadge && <View style={styles.planetBadge} />}
-                    <Image
-                      source={p.image}
-                      style={[
-                        styles.cardIcon,
-                        grayed || (!unlocked && !isBattling)
-                          ? { opacity: 0.5 }
-                          : null
-                      ]}
-                      resizeMode="contain"
-                    />
-                    <View style={{ flex: 1 }}>
-                      <Text
-                        style={[
-                          styles.cardName,
-                          unlocked
-                            ? { color: p.color }
-                            : { color: 'rgba(255,255,255,0.5)' }
-                        ]}
-                      >
-                        {p.name}
-                      </Text>
-                      <Text style={styles.cardMeta}>
-                        {unlocked
-                          ? `${p.resource} · ×${p.bonus}`
-                          : isBattling
-                            ? `⚔️ Бой с ${alien?.name ?? 'противником'}`
-                            : !sectorUnlocked
-                              ? '🔒 Сектор заблокирован'
-                              : alien
-                                ? `👾 Оккупирована: ${alien.name} · ${p.resource}`
-                                : 'Недоступна'}
-                      </Text>
-                    </View>
-                    {active && <Text style={styles.activeLabel}>АКТИВНА</Text>}
-                    {isBattling && <Text style={styles.battleLabel}>БОЙ</Text>}
-                  </Pressable>
-                );
-              })}
+              {!sectorUnlocked && <Text style={styles.lockIcon}>🔒</Text>}
             </View>
           );
-        })}
-      </ScrollView>
+        }}
+        renderItem={({ item: p, section: { sector } }) => {
+          const sectorUnlocked = isSectorUnlocked(sector.id, unlockedPlanetIds);
+          const unlocked = unlockedSet.has(p.id);
+          const active = p.id === selectedPlanetId;
+          const isBattling = battle?.planetId === p.id;
+          const alien = ALIENS.find((a) => a.planetId === p.id);
+          const grayed = !sectorUnlocked && !unlocked;
+
+          const showBadge =
+            !!alien &&
+            !unlocked &&
+            sectorUnlocked &&
+            !isBattling &&
+            energy >= alien.attackEnergyCost;
+
+          return (
+            <Pressable
+              onPress={() => setSelPlanet(p)}
+              style={({ pressed }) => [
+                styles.card,
+                active ? styles.cardActive : null,
+                isBattling ? styles.cardBattling : null,
+                !unlocked && !isBattling ? styles.cardLocked : null,
+                unlocked && !active ? styles.cardUnlocked : null,
+                pressed ? { opacity: 0.92 } : null
+              ]}
+            >
+              {showBadge && <View style={styles.planetBadge} />}
+              <Image
+                source={p.image}
+                style={[
+                  styles.cardIcon,
+                  grayed || (!unlocked && !isBattling)
+                    ? { opacity: 0.5 }
+                    : null
+                ]}
+                resizeMode="contain"
+              />
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={[
+                    styles.cardName,
+                    unlocked
+                      ? { color: p.color }
+                      : { color: 'rgba(255,255,255,0.5)' }
+                  ]}
+                >
+                  {p.name}
+                </Text>
+                <Text style={styles.cardMeta}>
+                  {unlocked
+                    ? `${p.resource} · ×${p.bonus}`
+                    : isBattling
+                      ? `⚔️ Бой с ${alien?.name ?? 'противником'}`
+                      : !sectorUnlocked
+                        ? '🔒 Сектор заблокирован'
+                        : alien
+                          ? `👾 Оккупирована: ${alien.name} · ${p.resource}`
+                          : 'Недоступна'}
+                </Text>
+              </View>
+              {active && <Text style={styles.activeLabel}>АКТИВНА</Text>}
+              {isBattling && <Text style={styles.battleLabel}>БОЙ</Text>}
+            </Pressable>
+          );
+        }}
+      />
     </View>
   );
 }

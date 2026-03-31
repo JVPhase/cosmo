@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { CHARACTERS, type CharacterId } from '../game/CHARACTERS';
 import {
   STORY_LOG,
@@ -26,12 +26,16 @@ export function StoryLogScreen({ unlockedPlanetIds, chosenCharacterId, metalDeal
 
   return (
     <View style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.subtitle}>
-          {unlockedEntries.length}/{STORY_LOG.length} записей получено
-        </Text>
-
-        {unlockedEntries.map((entry) => {
+      <FlatList
+        data={unlockedEntries}
+        keyExtractor={(entry) => entry.id}
+        contentContainerStyle={styles.content}
+        ListHeaderComponent={
+          <Text style={styles.subtitle}>
+            {unlockedEntries.length}/{STORY_LOG.length} записей получено
+          </Text>
+        }
+        renderItem={({ item: entry }) => {
           let bodyText = entry.text;
           if (entry.id === 'entry_11' && chosenChar) {
             bodyText = getCharacterContactEntry(
@@ -45,7 +49,7 @@ export function StoryLogScreen({ unlockedPlanetIds, chosenCharacterId, metalDeal
           }
 
           return (
-            <View key={entry.id} style={[styles.card, styles.cardUnlocked]}>
+            <View style={[styles.card, styles.cardUnlocked]}>
               <View style={styles.cardHeader}>
                 <Text style={styles.icon}>{entry.icon}</Text>
                 <View style={styles.cardMeta}>
@@ -56,8 +60,8 @@ export function StoryLogScreen({ unlockedPlanetIds, chosenCharacterId, metalDeal
               <Text style={styles.body}>{bodyText}</Text>
             </View>
           );
-        })}
-      </ScrollView>
+        }}
+      />
     </View>
   );
 }

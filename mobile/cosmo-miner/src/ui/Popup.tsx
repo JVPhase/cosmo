@@ -16,6 +16,7 @@ type PopupProps = {
   title: string;
   onClose: () => void;
   image?: ImageSourcePropType;
+  images?: ImageSourcePropType[];
   text: string;
   clerk?: boolean;
   headerEmoji?: string;
@@ -29,6 +30,7 @@ export function Popup({
   title,
   onClose,
   image,
+  images,
   text,
   clerk,
   headerEmoji,
@@ -52,7 +54,13 @@ export function Popup({
             </Pressable>
           </View>
 
-          {image ? (
+          {images && images.length > 0 ? (
+            <View style={styles.imagesRow}>
+              {images.map((src, i) => (
+                <Image key={i} source={src} style={styles.image} resizeMode="contain" />
+              ))}
+            </View>
+          ) : image ? (
             <Image source={image} style={styles.image} resizeMode="contain" />
           ) : null}
 
@@ -116,6 +124,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: 'rgba(0,212,255,0.4)',
     fontWeight: '700'
+  },
+  imagesRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 16,
+    marginTop: 20,
   },
   image: {
     width: 200,

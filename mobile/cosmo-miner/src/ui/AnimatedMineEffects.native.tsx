@@ -9,6 +9,7 @@ import Animated, {
   withSequence,
   withTiming,
 } from "react-native-reanimated";
+import { formatNum } from "../game/formatNum";
 import type { AnimatedMineEffectsProps } from "./animatedMineEffectsShared";
 import { MINE_DOT_COLORS } from "./animatedMineEffectsShared";
 
@@ -125,7 +126,7 @@ function FloatLabelRow({
 
   return (
     <Animated.View style={[styles.floatNum, { left: ox - 20, top: oy - 12 }, anim]} pointerEvents="none">
-      <Text style={styles.floatText}>+{value.toFixed(2)}</Text>
+      <Text style={styles.floatText}>+{formatNum(value)}</Text>
     </Animated.View>
   );
 }
