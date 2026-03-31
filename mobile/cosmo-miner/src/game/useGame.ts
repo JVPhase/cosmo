@@ -59,6 +59,7 @@ type UnlockToast = {
   title: string;
   text: string;
   image?: number;
+  images?: number[];
   headerEmoji?: string;
 };
 
@@ -640,7 +641,10 @@ export function useGame(initial?: GameStateInit) {
       enqueue('sector3_metals', {
         title: '◈ МАТЕРИАЛЫ СЕКТОРА 3 · КЛЕРК-7 ◈',
         text: 'Зафиксированы Кристалл Пустоты и Осколок Эха!\n\nМинистерство ещё не придумало, как их классифицировать. Зато инженеры уже знают, что с ними делать — загляните в Верфь, раздел «Модули».',
-        image: METALS.find((m) => m.id === 'iridium')!.image
+        images: [
+          METALS.find((m) => m.id === 'voidCrystal')!.image,
+          METALS.find((m) => m.id === 'echoShard')!.image,
+        ]
       });
     }
   }, [

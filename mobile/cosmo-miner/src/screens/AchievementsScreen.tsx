@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import {
   ACHIEVEMENTS,
   type AchievementId
@@ -65,12 +65,16 @@ export function AchievementsScreen({ achievements, onClaim }: AchievementsScreen
 
   return (
     <View style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.subtitle}>
-          {unlockedSet.size}/{ACHIEVEMENTS.length} страниц получено
-        </Text>
-
-        {sortedAchievements.map((def) => {
+      <FlatList
+        data={sortedAchievements}
+        keyExtractor={(def) => String(def.id)}
+        contentContainerStyle={styles.content}
+        ListHeaderComponent={
+          <Text style={styles.subtitle}>
+            {unlockedSet.size}/{ACHIEVEMENTS.length} страниц получено
+          </Text>
+        }
+        renderItem={({ item: def }) => {
           const unlocked = unlockedSet.has(def.id);
           const claimed = claimedSet.has(def.id);
           const claimable = unlocked && !claimed;
@@ -125,7 +129,6 @@ export function AchievementsScreen({ achievements, onClaim }: AchievementsScreen
           if (claimable) {
             return (
               <Pressable
-                key={def.id}
                 onPress={() => onClaim(def.id)}
                 style={({ pressed }) => [pressed ? { opacity: 0.8 } : null]}
               >
@@ -134,9 +137,9 @@ export function AchievementsScreen({ achievements, onClaim }: AchievementsScreen
             );
           }
 
-          return <View key={def.id}>{card}</View>;
-        })}
-      </ScrollView>
+          return <View>{card}</View>;
+        }}
+      />
     </View>
   );
 }

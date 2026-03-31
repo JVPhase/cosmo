@@ -5,6 +5,7 @@ import {
   StyleSheet,
   View,
 } from "react-native";
+import { formatNum } from "../game/formatNum";
 import type { AnimatedMineEffectsProps } from "./animatedMineEffectsShared";
 import { MINE_DOT_COLORS } from "./animatedMineEffectsShared";
 
@@ -159,7 +160,7 @@ export function AnimatedMineEffects({
       const t = age / FLOAT_DURATION_MS;
       const ty = -62 * t;
       const opacity = 1 - t;
-      const text = `+${f.value.toFixed(2)}`;
+      const text = `+${formatNum(f.value)}`;
       ctx.save();
       ctx.globalAlpha = opacity;
       ctx.font = '900 16px system-ui, -apple-system, sans-serif';

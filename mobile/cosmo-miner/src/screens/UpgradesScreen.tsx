@@ -1,5 +1,5 @@
 import React from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { computeUpgradeCost, UPGRADES, type UpgradeId } from "../game/UPGRADES";
 import { formatNum } from "../game/formatNum";
 import type { UpgradesState } from "../game/types";
@@ -13,17 +13,19 @@ export type UpgradesScreenProps = {
 export function UpgradesScreen({ energy, upgrades, onBuyUpgrade }: UpgradesScreenProps) {
   return (
     <View style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.title}>◈ КАТАЛОГ АПГРЕЙДОВ ◈</Text>
-
-        {UPGRADES.map((upg) => {
+      <FlatList
+        data={UPGRADES}
+        keyExtractor={(upg) => String(upg.id)}
+        contentContainerStyle={styles.content}
+        ListHeaderComponent={<Text style={styles.title}>◈ КАТАЛОГ АПГРЕЙДОВ ◈</Text>}
+        ListFooterComponent={<Text style={styles.energyFooter}>Энергий: {formatNum(energy)}</Text>}
+        renderItem={({ item: upg }) => {
           const level = upgrades[upg.id] ?? 0;
           const cost = computeUpgradeCost(upg, level);
           const canBuy = energy >= cost;
 
           return (
             <Pressable
-              key={upg.id}
               onPress={() => onBuyUpgrade(upg.id)}
               disabled={!canBuy}
               style={({ pressed }) => [
@@ -50,10 +52,8 @@ export function UpgradesScreen({ energy, upgrades, onBuyUpgrade }: UpgradesScree
               </View>
             </Pressable>
           );
-        })}
-
-        <Text style={styles.energyFooter}>Энергий: {formatNum(energy)}</Text>
-      </ScrollView>
+        }}
+      />
     </View>
   );
 }

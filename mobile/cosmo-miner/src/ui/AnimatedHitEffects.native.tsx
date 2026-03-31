@@ -10,6 +10,7 @@ import Animated, {
   withSequence,
   withTiming,
 } from "react-native-reanimated";
+import { formatNum } from "../game/formatNum";
 import type { AnimatedHitEffectsProps } from "./animatedHitEffectsShared";
 import { SPARK_COLORS } from "./animatedHitEffectsShared";
 
@@ -163,7 +164,7 @@ function FloatDmgLabel({
       style={[styles.floatNum, { left: ox - 30, top: oy - 16 }, anim]}
       pointerEvents="none"
     >
-      <Text style={styles.dmgText}>⚔️ {value}</Text>
+      <Text style={styles.dmgText}>⚔️ {formatNum(value)}</Text>
     </Animated.View>
   );
 }
