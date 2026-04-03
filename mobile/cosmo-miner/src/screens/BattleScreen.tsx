@@ -55,6 +55,7 @@ export type BattleScreenProps = {
   onGoToShipyard: () => void;
   onClearDefeat: () => void;
   onAddBattleTime: (ms: number) => void;
+  onUltActivated?: () => void;
 };
 
 export function BattleScreen({
@@ -70,6 +71,7 @@ export function BattleScreen({
   onGoToShipyard,
   onClearDefeat,
   onAddBattleTime,
+  onUltActivated,
 }: BattleScreenProps) {
   const [hitState, setHitState] = useState<{ count: number; origin?: { x: number; y: number } }>({ count: 0 });
   const battleHitAreaRef = useRef<View>(null);
@@ -255,6 +257,7 @@ export function BattleScreen({
   const handleActivateUlt = useCallback(() => {
     if (!ultReady || !equippedModule) return;
     logEvent('activate_ult', { moduleId: equippedModule.id });
+    onUltActivated?.();
     setUltCharge(0);
     setUltsUsedThisBattle((prev) => prev + 1);
     setUltActive(true);
