@@ -32,6 +32,30 @@ function formatEffect(node: ResearchNode): string {
       return `+${effect.value / 1000} сек к таймеру боя`;
     case 'damageMultiplier':
       return `+${Math.round(effect.value * 100)}% к урону в бою`;
+    case 'battleRegenBlock':
+      return `Регенерация врага заблокирована на ${effect.value / 1000} сек`;
+    case 'critChance':
+      return `+${Math.round(effect.value * 100)}% шанс крита`;
+    case 'critMultiplier':
+      return `+${Math.round(effect.value * 100)}% к урону крита`;
+    case 'expeditionTimeReduction':
+      return `−${Math.round(effect.value * 100)}% время экспедиции`;
+    case 'expeditionYieldBonus':
+      return `+${Math.round(effect.value * 100)}% металла за экспедицию`;
+    case 'expeditionSlotBonus':
+      return `+${effect.value} слот экспедиции`;
+    case 'specificMetalDropBonus':
+      return `+${Math.round(effect.value * 100)}% к шансу выпадения ${effect.metalId}`;
+    case 'moduleChargeReduction':
+      return `−${Math.round(effect.value * 100)}% ударов для зарядки модуля`;
+    case 'moduleEffectBonus':
+      return `+${Math.round(effect.value * 100)}% к эффекту модуля`;
+    case 'moduleSlotBonus':
+      return `+${effect.value} слот модуля`;
+    case 'xpMultiplierBonus':
+      return `+${Math.round(effect.value * 100)}% к получаемому XP`;
+    case 'upgradeCostReduction':
+      return `−${Math.round(effect.value * 100)}% к стоимости улучшений`;
   }
 }
 

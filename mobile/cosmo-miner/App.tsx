@@ -400,6 +400,7 @@ function GameApp({
             return modId ? (game.moduleLevels[modId] ?? 0) : 0;
           })()}
           onAttack={game.attackBattle}
+          onUltActivated={game.notifyUltActivated}
           onReflect={game.reflectBattle}
           onHeal={game.healBattle}
           onForfeit={game.forfeitBattle}

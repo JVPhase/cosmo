@@ -42,6 +42,8 @@ export type GameState = {
   moduleLevels: Partial<Record<ModuleId, number>>;
   chosenCharacterId: CharacterId | null;
   metalDealDone: boolean;
+  battlesWon: number;
+  battleWinStreak: number;
 };
 
 export type GameStateInit = {
@@ -71,6 +73,8 @@ export type GameStateInit = {
   moduleLevels?: Partial<Record<ModuleId, number>>;
   chosenCharacterId?: CharacterId | null;
   metalDealDone?: boolean;
+  battlesWon?: number;
+  battleWinStreak?: number;
 };
 
 export type { ActiveExpedition, BattleState, CharacterId, FleetState, MetalsState, ModuleId, OwnedShip, ResearchId, ResearchState };

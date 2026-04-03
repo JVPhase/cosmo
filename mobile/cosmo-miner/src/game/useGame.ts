@@ -6,7 +6,7 @@ import {
   type CharacterId
 } from './CHARACTERS';
 import { CLERK_MESSAGES, type ClerkTrigger } from './CLERK_MESSAGES';
-import { ACHIEVEMENTS, type AchievementDefinition } from './ACHIEVEMENTS';
+import { ACHIEVEMENTS, type AchievementDefinition, type AchievementId } from './ACHIEVEMENTS';
 import { ALIENS, type BattleState } from './ALIENS';
 import { CANNONS, computeCannonCost, MAX_CANNON_LEVEL, type CannonId } from './CANNONS';
 import {
@@ -169,7 +169,9 @@ export function useGame(initial?: GameStateInit) {
       tabsUnlocked: { shipyard: false, upgrades: false, planets: false },
       moduleLevels: {},
       chosenCharacterId: null,
-      metalDealDone: false
+      metalDealDone: false,
+      battlesWon: 0,
+      battleWinStreak: 0,
     }),
     []
   );
@@ -257,7 +259,9 @@ export function useGame(initial?: GameStateInit) {
       },
       moduleLevels: initial?.moduleLevels ?? {},
       chosenCharacterId: initial?.chosenCharacterId ?? null,
-      metalDealDone: initial?.metalDealDone ?? false
+      metalDealDone: initial?.metalDealDone ?? false,
+      battlesWon: initial?.battlesWon ?? 0,
+      battleWinStreak: initial?.battleWinStreak ?? 0,
     };
   });
 
@@ -667,20 +671,36 @@ export function useGame(initial?: GameStateInit) {
     setState((prev) => {
       const alreadyUnlocked = new Set(prev.achievements.unlockedIds);
       const newlyUnlocked: AchievementDefinition[] = [];
+      const researchCount = Object.values(prev.research).filter(Boolean).length;
       for (const def of ACHIEVEMENTS) {
         if (alreadyUnlocked.has(def.id)) continue;
+        const t = def.target;
         const ok =
-          def.target.type === 'totalAtLeast'
-            ? prev.totalEarned >= def.target.value
-            : def.target.type === 'passiveAtLeast'
-              ? derived.basePassiveRate >= def.target.value
-              : def.target.type === 'planetsAtLeast'
-                ? prev.unlockedPlanetIds.length >= def.target.value
-                : def.target.type === 'clicksAtLeast'
-                  ? prev.clicks >= def.target.value
-                  : def.target.type === 'upgCountAtLeast'
-                    ? upgCount >= def.target.value
-                    : false;
+          t.type === 'totalAtLeast'
+            ? prev.totalEarned >= t.value
+            : t.type === 'passiveAtLeast'
+              ? derived.basePassiveRate >= t.value
+              : t.type === 'planetsAtLeast'
+                ? prev.unlockedPlanetIds.length >= t.value
+                : t.type === 'clicksAtLeast'
+                  ? prev.clicks >= t.value
+                  : t.type === 'upgCountAtLeast'
+                    ? upgCount >= t.value
+                    : t.type === 'battlesWonAtLeast'
+                      ? prev.battlesWon >= t.value
+                      : t.type === 'battleWinStreakAtLeast'
+                        ? prev.battleWinStreak >= t.value
+                        : t.type === 'researchCountAtLeast'
+                          ? researchCount >= t.value
+                          : t.type === 'playerLevelAtLeast'
+                            ? playerLevel >= t.value
+                            : t.type === 'metalAtLeast'
+                              ? (prev.metals[t.metalId as keyof typeof prev.metals] ?? 0) >= t.value
+                              : t.type === 'allMetalsAtLeast'
+                                ? (['titan', 'iridium', 'voidCrystal', 'echoShard'] as const).every(
+                                    (m) => (prev.metals[m] ?? 0) >= t.value
+                                  )
+                                : false; // battleCondition unlocked inline in attackBattle
         if (ok) newlyUnlocked.push(def);
       }
       if (newlyUnlocked.length === 0) return prev;
@@ -699,9 +719,14 @@ export function useGame(initial?: GameStateInit) {
   }, [
     derived.basePassiveRate,
     upgCount,
+    playerLevel,
     state.totalEarned,
     state.clicks,
-    state.unlockedPlanetIds
+    state.unlockedPlanetIds,
+    state.battlesWon,
+    state.battleWinStreak,
+    state.research,
+    state.metals,
   ]);
 
   // Level-up detection
@@ -800,6 +825,7 @@ export function useGame(initial?: GameStateInit) {
         return {
           ...prev,
           battle: null,
+          battleWinStreak: 0,
           fleet: {
             ...prev.fleet,
             ownedShips: prev.fleet.ownedShips.map((s) =>
@@ -1047,7 +1073,9 @@ export function useGame(initial?: GameStateInit) {
             shipId: selectedShipId,
             currentHP: alien.maxHP,
             maxHP: alien.maxHP,
-            expiresAt: Date.now() + derived.battleTimerMs
+            expiresAt: Date.now() + derived.battleTimerMs,
+            timerMs: derived.battleTimerMs,
+            ultsInBattle: 0,
           }
         };
       });
@@ -1071,6 +1099,17 @@ export function useGame(initial?: GameStateInit) {
           const alien = ALIENS.find(
             (a) => a.planetId === prev.battle!.planetId
           );
+          const msRemaining = prev.battle.expiresAt - Date.now();
+          const timerPct = prev.battle.timerMs > 0 ? msRemaining / prev.battle.timerMs : 0;
+          const ultsInBattle = prev.battle.ultsInBattle;
+          const alreadyUnlocked = new Set(prev.achievements.unlockedIds);
+          const conditionUnlocks: AchievementId[] = [];
+          // ach id 44: win with >90% timer remaining
+          if (timerPct >= 0.9 && !alreadyUnlocked.has(44)) conditionUnlocks.push(44);
+          // ach id 45: win in last 3 seconds
+          if (msRemaining >= 0 && msRemaining <= 3000 && !alreadyUnlocked.has(45)) conditionUnlocks.push(45);
+          // ach id 46: use ult 5 times in one battle
+          if (ultsInBattle >= 5 && !alreadyUnlocked.has(46)) conditionUnlocks.push(46);
           return {
             ...prev,
             battle: null,
@@ -1079,7 +1118,13 @@ export function useGame(initial?: GameStateInit) {
               prev.battle.planetId
             ],
             selectedPlanetId: prev.battle.planetId,
-            playerXP: prev.playerXP + (alien?.xpReward ?? 0)
+            playerXP: prev.playerXP + (alien?.xpReward ?? 0),
+            battlesWon: prev.battlesWon + 1,
+            battleWinStreak: prev.battleWinStreak + 1,
+            achievements: conditionUnlocks.length > 0 ? {
+              ...prev.achievements,
+              unlockedIds: [...prev.achievements.unlockedIds, ...conditionUnlocks],
+            } : prev.achievements,
           };
         }
         return { ...prev, battle: { ...prev.battle, currentHP: newHP } };
@@ -1087,6 +1132,13 @@ export function useGame(initial?: GameStateInit) {
     },
     [derived.damageResearchMultiplier]
   );
+
+  const notifyUltActivated = useCallback(() => {
+    setState((prev) => {
+      if (!prev.battle) return prev;
+      return { ...prev, battle: { ...prev.battle, ultsInBattle: prev.battle.ultsInBattle + 1 } };
+    });
+  }, []);
 
   const selectPlanet = useCallback((planetId: PlanetId) => {
     logEvent('select_planet', { planetId });
@@ -1400,6 +1452,7 @@ export function useGame(initial?: GameStateInit) {
     upgradeModule,
     equipModule,
     addBattleTime,
+    notifyUltActivated,
     characterFlowStep,
     openCharacterSelectFlow: useCallback(
       () => setCharacterFlowStep('select'),
