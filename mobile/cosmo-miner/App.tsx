@@ -1,5 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { SafeAreaProvider, SafeAreaView as RNSAView } from 'react-native-safe-area-context';
 import {
   Alert,
   Modal,
@@ -457,7 +458,7 @@ onOpenMetalInfo={(metalId) => { logEvent('modal_open', { modal: 'metal_info', me
   }
 
   return (
-    <View style={styles.container}>
+    <RNSAView edges={['top']} style={styles.container}>
       <StatusBar style="light" />
       <View style={styles.content}>{tabContent}</View>
 
@@ -692,6 +693,7 @@ onOpenMetalInfo={(metalId) => { logEvent('modal_open', { modal: 'metal_info', me
         });
         if (visibleTabs.length < 2) return null;
         return (
+          <RNSAView edges={['bottom']} style={styles.tabBarOuter}>
           <View style={styles.tabBar}>
             {visibleTabs.map((t) => {
               const active = tab === t.id;
@@ -795,6 +797,7 @@ onOpenMetalInfo={(metalId) => { logEvent('modal_open', { modal: 'metal_info', me
               );
             })}
           </View>
+          </RNSAView>
         );
       })()}
 
@@ -962,7 +965,7 @@ onOpenMetalInfo={(metalId) => { logEvent('modal_open', { modal: 'metal_info', me
           </Pressable>
         </Pressable>
       </Modal>
-    </View>
+    </RNSAView>
   );
 }
 
@@ -1082,6 +1085,7 @@ export default function App() {
   }
 
   return (
+    <SafeAreaProvider>
     <View style={styles.container}>
       <GameApp
         key={gameKey}
@@ -1105,6 +1109,7 @@ export default function App() {
         onClose={() => setOfflineEarnings(0)}
       />
     </View>
+    </SafeAreaProvider>
   );
 }
 
@@ -1113,15 +1118,18 @@ const styles = StyleSheet.create({
   content: { flex: 1 },
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   loadingText: { color: 'rgba(0,212,255,0.7)', fontWeight: '800' },
-  tabBar: {
-    height: 68,
-    flexDirection: 'row',
+  tabBarOuter: {
     borderTopWidth: 1,
     borderTopColor: 'rgba(0,212,255,0.15)',
     backgroundColor: 'rgba(0,10,30,0.95)'
   },
+  tabBar: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
   tabBtn: {
     flex: 1,
+    height: 68,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 1,

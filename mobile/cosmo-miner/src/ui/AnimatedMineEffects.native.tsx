@@ -50,6 +50,7 @@ type MineLayers = {
 const MAX_MINE_PARTICLES = 30; // ~3 clicks
 const MAX_MINE_RIPPLES = 6;
 const MAX_MINE_FLOATS = 3;
+const CANVAS_OVERFLOW = 130;
 
 function SkiaBurstParticle({
   ox,
@@ -126,7 +127,7 @@ function FloatLabelRow({
 
   return (
     <Animated.View style={[styles.floatNum, { left: ox - 20, top: oy - 12 }, anim]} pointerEvents="none">
-      <Text style={styles.floatText}>+{formatNum(value)}</Text>
+      <Text style={styles.floatText} numberOfLines={1}>+{formatNum(value)}</Text>
     </Animated.View>
   );
 }
@@ -236,12 +237,12 @@ export function AnimatedMineEffects({
     <Animated.View style={[styles.root, style, pulseStyle]}>
       {children}
 
-      <Canvas style={StyleSheet.absoluteFill} pointerEvents="none">
+      <Canvas style={styles.overflowCanvas} pointerEvents="none">
         {ripples.map((r) => (
           <SkiaRippleRing
             key={r.id}
-            ox={r.ox}
-            oy={r.oy}
+            ox={r.ox + CANVAS_OVERFLOW}
+            oy={r.oy + CANVAS_OVERFLOW}
             mineColor={mineColor}
             scaleTo={r.scaleTo}
           />
@@ -249,8 +250,8 @@ export function AnimatedMineEffects({
         {particles.map((p) => (
           <SkiaBurstParticle
             key={p.id}
-            ox={p.ox}
-            oy={p.oy}
+            ox={p.ox + CANVAS_OVERFLOW}
+            oy={p.oy + CANVAS_OVERFLOW}
             angleRad={p.angleRad}
             dist={p.dist}
             color={p.color}
@@ -258,9 +259,9 @@ export function AnimatedMineEffects({
         ))}
       </Canvas>
 
-      <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+      <View pointerEvents="none" style={styles.overflowCanvas}>
         {floats.map((f) => (
-          <FloatLabelRow key={f.id} floatId={f.id} ox={f.ox} oy={f.oy} value={f.value} />
+          <FloatLabelRow key={f.id} floatId={f.id} ox={f.ox + CANVAS_OVERFLOW} oy={f.oy + CANVAS_OVERFLOW} value={f.value} />
         ))}
       </View>
     </Animated.View>
@@ -270,10 +271,17 @@ export function AnimatedMineEffects({
 const styles = StyleSheet.create({
   root: {
     position: "relative",
+    overflow: "visible",
+  },
+  overflowCanvas: {
+    position: "absolute",
+    top: -CANVAS_OVERFLOW,
+    left: -CANVAS_OVERFLOW,
+    right: -CANVAS_OVERFLOW,
+    bottom: -CANVAS_OVERFLOW,
   },
   floatNum: {
     position: "absolute",
-    width: 40,
     alignItems: "center",
     justifyContent: "center",
   },

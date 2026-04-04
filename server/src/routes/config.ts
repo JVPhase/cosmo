@@ -25,6 +25,7 @@ import {
 const CONFIG_PAYLOAD = {
   version: 1,
   generatedAt: Date.now(),
+  monetizationEnabled: process.env.MONETIZATION_ENABLED !== 'false',
   formulaConstants: FORMULA_CONSTANTS,
   upgrades: UPGRADES_DATA,
   sectors: {

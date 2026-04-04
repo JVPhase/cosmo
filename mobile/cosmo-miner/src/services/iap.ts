@@ -8,9 +8,12 @@
  *      The returned promise resolves with the number of credits earned,
  *      or rejects with an error message.
  *   4. Call `disconnectIAP()` when the app goes to background / unmounts.
+ *
+ * The native module is loaded lazily via require() so Expo Go / missing native
+ * builds do not evaluate it at startup. (Dynamic import() can still surface
+ * native errors in ways that confuse Fast Refresh.)
  */
 
-import * as InAppPurchases from "expo-in-app-purchases";
 import { IAP_PRODUCT_IDS, CREDIT_PACKS } from "../game/CREDIT_PACKS";
 
 export type IAPProduct = {
@@ -21,12 +24,32 @@ export type IAPProduct = {
   priceCurrencyCode: string;
 };
 
+type IAPModule = typeof import("expo-in-app-purchases");
+
+let iapModule: IAPModule | null = null;
+let iapImportFailed = false;
 let connected = false;
 let purchaseResolve: ((credits: number) => void) | null = null;
 let purchaseReject: ((reason: string) => void) | null = null;
 
+function loadIAPModule(): IAPModule | null {
+  if (iapImportFailed) return null;
+  if (iapModule) return iapModule;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    iapModule = require("expo-in-app-purchases") as IAPModule;
+    return iapModule;
+  } catch (e) {
+    iapImportFailed = true;
+    console.warn("[IAP] Native module unavailable (use a dev build for IAP):", e);
+    return null;
+  }
+}
+
 export async function initIAP(): Promise<void> {
   if (connected) return;
+  const InAppPurchases = loadIAPModule();
+  if (!InAppPurchases) return;
   try {
     await InAppPurchases.connectAsync();
     connected = true;
@@ -55,13 +78,14 @@ export async function initIAP(): Promise<void> {
       }
     });
   } catch (e) {
-    // IAP not available in Expo Go / simulator — silently ignore
+    // Simulator / store unavailable — keep iapModule for retry semantics if needed
     console.warn("[IAP] initIAP failed:", e);
   }
 }
 
 export async function getProducts(): Promise<IAPProduct[]> {
-  if (!connected) return [];
+  const InAppPurchases = iapModule;
+  if (!connected || !InAppPurchases) return [];
   try {
     const { responseCode, results } = await InAppPurchases.getProductsAsync(IAP_PRODUCT_IDS);
     if (responseCode !== InAppPurchases.IAPResponseCode.OK || !results) return [];
@@ -69,7 +93,7 @@ export async function getProducts(): Promise<IAPProduct[]> {
       productId: p.productId,
       title: p.title,
       price: p.price,
-      priceAmountMicros: p.priceAmountMicros,
+      priceAmountMicros: String(p.priceAmountMicros),
       priceCurrencyCode: p.priceCurrencyCode,
     }));
   } catch {
@@ -82,8 +106,9 @@ export async function getProducts(): Promise<IAPProduct[]> {
  * Resolves with credits earned, rejects with reason string.
  */
 export function purchasePack(productId: string): Promise<number> {
+  const InAppPurchases = iapModule;
   return new Promise((resolve, reject) => {
-    if (!connected) {
+    if (!connected || !InAppPurchases) {
       reject("IAP not initialised");
       return;
     }
@@ -98,7 +123,8 @@ export function purchasePack(productId: string): Promise<number> {
 }
 
 export async function disconnectIAP(): Promise<void> {
-  if (!connected) return;
+  const InAppPurchases = iapModule;
+  if (!connected || !InAppPurchases) return;
   try {
     await InAppPurchases.disconnectAsync();
     connected = false;
