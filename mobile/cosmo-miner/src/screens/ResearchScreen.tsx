@@ -17,6 +17,7 @@ export type ResearchScreenProps = {
   research: ResearchState;
   onBuyResearch: (id: ResearchId) => void;
   battleUnlocked: boolean;
+  expeditionUnlocked: boolean;
 };
 
 function formatEffect(node: ResearchNode): string {
@@ -225,7 +226,8 @@ export function ResearchScreen({
   energy,
   research,
   onBuyResearch,
-  battleUnlocked
+  battleUnlocked,
+  expeditionUnlocked
 }: ResearchScreenProps) {
   const [branch, setBranch] = useState<ResearchBranch>('mining');
 
@@ -298,6 +300,25 @@ export function ResearchScreen({
               ⚔️ БОЙ
             </Text>
             {branchHasAvailable('battle') && <View style={styles.branchTabBadge} />}
+          </Pressable>
+        )}
+        {expeditionUnlocked && (
+          <Pressable
+            onPress={() => setBranch('expedition')}
+            style={[
+              styles.branchTab,
+              branch === 'expedition' ? styles.branchTabActive : null
+            ]}
+          >
+            <Text
+              style={[
+                styles.branchTabText,
+                branch === 'expedition' ? styles.branchTabTextActive : null
+              ]}
+            >
+              🚀 ЭКСПЕДИЦИИ
+            </Text>
+            {branchHasAvailable('expedition') && <View style={styles.branchTabBadge} />}
           </Pressable>
         )}
       </View>

@@ -1,6 +1,5 @@
 import type { MetalId, MetalsState } from './METALS';
 
-export const MAX_CANNON_LEVEL = 50;
 
 export type CannonId = 'standard' | 'titan' | 'iridium' | 'alloy';
 

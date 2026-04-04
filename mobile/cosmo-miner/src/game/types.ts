@@ -9,6 +9,14 @@ import type { PlanetId } from "./PLANETS";
 import type { ResearchId, ResearchState } from "./RESEARCH";
 import type { FleetState, OwnedShip, ShipId } from "./SHIPS";
 import type { UpgradeId } from "./UPGRADES";
+import type { BoostEffect, ShopItemId } from "./SHOP";
+
+export type ActiveBoost = {
+  instanceId: string;
+  shopItemId: ShopItemId;
+  effect: BoostEffect;
+  expiresAt: number;
+};
 
 export type UpgradesState = Record<UpgradeId, number>;
 
@@ -44,6 +52,8 @@ export type GameState = {
   metalDealDone: boolean;
   battlesWon: number;
   battleWinStreak: number;
+  credits: number;
+  activeBoosts: ActiveBoost[];
 };
 
 export type GameStateInit = {
@@ -75,6 +85,8 @@ export type GameStateInit = {
   metalDealDone?: boolean;
   battlesWon?: number;
   battleWinStreak?: number;
+  credits?: number;
+  activeBoosts?: ActiveBoost[];
 };
 
 export type { ActiveExpedition, BattleState, CharacterId, FleetState, MetalsState, ModuleId, OwnedShip, ResearchId, ResearchState };

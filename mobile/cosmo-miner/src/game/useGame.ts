@@ -8,7 +8,7 @@ import {
 import { CLERK_MESSAGES, type ClerkTrigger } from './CLERK_MESSAGES';
 import { ACHIEVEMENTS, type AchievementDefinition, type AchievementId } from './ACHIEVEMENTS';
 import { ALIENS, type BattleState } from './ALIENS';
-import { CANNONS, computeCannonCost, MAX_CANNON_LEVEL, type CannonId } from './CANNONS';
+import { CANNONS, computeCannonCost, type CannonId } from './CANNONS';
 import {
   EXPEDITIONS,
   getExpeditionById,
@@ -49,11 +49,19 @@ import {
   UPGRADES
 } from './UPGRADES';
 import type {
+  ActiveBoost,
   GameState,
   GameStateInit,
   TabsUnlockedState,
   UpgradesState
 } from './types';
+import {
+  getShopItemById,
+  getConversionRate,
+  getConverterCreditCost,
+  rollLootBox,
+  type ShopItemId
+} from './SHOP';
 
 type UnlockToast = {
   id: string;
@@ -129,10 +137,11 @@ function computeBaseShipDamage(fleet: GameState['fleet']): number {
     (s) => s.shipId === fleet.selectedShipId
   );
   if (!shipDef || !ownedShip || ownedShip.broken) return 0;
-  const cannonDamage = CANNONS.reduce(
-    (sum, c) => sum + c.damagePerLevel * (ownedShip.cannons[c.id] ?? 0),
-    0
-  );
+  const cannonDamage = CANNONS.reduce((sum, c) => {
+    const level = ownedShip.cannons[c.id] ?? 0;
+    const scale = level > 0 ? Math.pow(1.6, level) : 0;
+    return sum + c.damagePerLevel * scale;
+  }, 0);
   return Math.floor((1 + cannonDamage) * shipDef.damageMultiplier);
 }
 
@@ -262,6 +271,8 @@ export function useGame(initial?: GameStateInit) {
       metalDealDone: initial?.metalDealDone ?? false,
       battlesWon: initial?.battlesWon ?? 0,
       battleWinStreak: initial?.battleWinStreak ?? 0,
+      credits: initial?.credits ?? 0,
+      activeBoosts: initial?.activeBoosts ?? [],
     };
   });
 
@@ -270,9 +281,10 @@ export function useGame(initial?: GameStateInit) {
       computeStats({
         upgrades: state.upgrades,
         selectedPlanetId: state.selectedPlanetId,
-        research: state.research
+        research: state.research,
+        activeBoosts: state.activeBoosts,
       }),
-    [state.upgrades, state.selectedPlanetId, state.research]
+    [state.upgrades, state.selectedPlanetId, state.research, state.activeBoosts]
   );
 
   const totalDamage = useMemo(
@@ -346,6 +358,18 @@ export function useGame(initial?: GameStateInit) {
   );
   const shownSectorUnlocksRef = useRef(
     computeInitialShownSectorUnlocks(initial)
+  );
+  const shownSectorCharacterMessagesRef = useRef<Set<number>>(
+    (() => {
+      const shown = new Set<number>();
+      const unlocked = initial?.unlockedPlanetIds ?? [];
+      for (let sectorId = 3; sectorId <= 100; sectorId++) {
+        if (getPlanetIdsForSector(sectorId).every((id) => unlocked.includes(id))) {
+          shown.add(sectorId);
+        }
+      }
+      return shown;
+    })()
   );
 
   const [planetsUnlockToast, setPlanetsUnlockToast] = useState(false);
@@ -431,15 +455,22 @@ export function useGame(initial?: GameStateInit) {
     setClerkMessage(msgs[Math.floor(Math.random() * msgs.length)].text);
   }, []);
 
-  // Passive income tick
+  // Passive income tick + expired boost cleanup
   useEffect(() => {
-    if (derived.passiveRate <= 0) return;
     const interval = setInterval(() => {
-      setState((prev) => ({
-        ...prev,
-        energy: prev.energy + derived.passiveRate,
-        totalEarned: prev.totalEarned + derived.passiveRate
-      }));
+      setState((prev) => {
+        const now = Date.now();
+        const activeBoosts = prev.activeBoosts.filter((b) => b.expiresAt > now);
+        const base: GameState = activeBoosts.length !== prev.activeBoosts.length
+          ? { ...prev, activeBoosts }
+          : prev;
+        if (derived.passiveRate <= 0) return base;
+        return {
+          ...base,
+          energy: base.energy + derived.passiveRate,
+          totalEarned: base.totalEarned + derived.passiveRate,
+        };
+      });
     }, 1000);
     return () => clearInterval(interval);
   }, [derived.passiveRate]);
@@ -814,6 +845,23 @@ export function useGame(initial?: GameStateInit) {
     }
   }, [state.unlockedPlanetIds]);
 
+  // Character sector complete messages — shown when a sector is fully conquered (from sector 3+)
+  useEffect(() => {
+    if (!state.chosenCharacterId) return;
+    if (!state.unlockedPlanetIds.includes(10 as PlanetId)) return;
+    for (let sectorId = 3; sectorId <= 100; sectorId++) {
+      const planets = getPlanetIdsForSector(sectorId);
+      const complete = planets.every((id) => state.unlockedPlanetIds.includes(id as PlanetId));
+      if (complete && !shownSectorCharacterMessagesRef.current.has(sectorId)) {
+        shownSectorCharacterMessagesRef.current.add(sectorId);
+        const character = getCharacterById(state.chosenCharacterId);
+        const msgs = character.sectorCompleteMessages;
+        setCharacterMessage(msgs[Math.floor(Math.random() * msgs.length)]!);
+        break;
+      }
+    }
+  }, [state.unlockedPlanetIds, state.chosenCharacterId]);
+
   // Battle timer — defeat when expiresAt passes
   useEffect(() => {
     if (!state.battle) return;
@@ -907,10 +955,12 @@ export function useGame(initial?: GameStateInit) {
       if (prev.achievements.claimedIds.includes(id)) return prev;
       const def = ACHIEVEMENTS.find((a) => a.id === id);
       if (!def) return prev;
+      const creditReward = ('creditReward' in def ? (def as { creditReward?: number }).creditReward : undefined) ?? 0;
       return {
         ...prev,
         energy: prev.energy + def.reward,
         totalEarned: prev.totalEarned + def.reward,
+        credits: prev.credits + creditReward,
         achievements: {
           ...prev.achievements,
           claimedIds: [...prev.achievements.claimedIds, id]
@@ -919,19 +969,132 @@ export function useGame(initial?: GameStateInit) {
     });
   }, []);
 
-  const buyUpgrade = useCallback(
-    (id: UpgradeId) => {
-      logEvent('buy_upgrade', { id });
-      setState((prev) => {
-        const upg = getUpgradeById(id);
-        const level = prev.upgrades[id] ?? 0;
-        const cost = computeUpgradeCost(upg, level);
-        if (prev.energy < cost) return prev;
-        showClerk(upg.passiveBonus > 0 ? 'upgrade_drone' : 'upgrade');
+  /** Add credits directly (called after IAP purchase or rewarded ad). */
+  const addCredits = useCallback((amount: number) => {
+    if (amount <= 0) return;
+    setState((prev) => ({ ...prev, credits: prev.credits + amount }));
+  }, []);
+
+  /**
+   * Purchase a shop item with credits.
+   * For the converter, pass `convertFrom` and `convertTo` + `convertAmount`.
+   * For loot boxes, pass `onLootResult` to receive the rolled rewards.
+   */
+  const buyShopItem = useCallback((
+    id: ShopItemId,
+    opts?: {
+      convertFrom?: string;
+      convertTo?: string;
+      convertAmount?: number;
+      onLootResult?: (drops: Partial<Record<import('./METALS').MetalId, number>>) => void;
+    }
+  ) => {
+    logEvent('buy_shop_item', { id });
+
+    const item = getShopItemById(id);
+    // Pre-roll loot outside setState so the callback can be called after
+    const preRolledDrops = item.lootPool ? rollLootBox(item.lootPool) : null;
+
+    setState((prev) => {
+      if (id === 'converter') {
+        const { convertFrom, convertTo, convertAmount = 1 } = opts ?? {};
+        if (!convertFrom || !convertTo) return prev;
+        const fromId = convertFrom as import('./METALS').MetalId;
+        const toId = convertTo as import('./METALS').MetalId;
+        const rate = getConversionRate(fromId, toId);
+        if (rate === 0) return prev;
+        const totalFrom = convertAmount * rate;
+        const creditCost = getConverterCreditCost(fromId, toId) * convertAmount;
+        if (prev.credits < creditCost) return prev;
+        if ((prev.metals[fromId] ?? 0) < totalFrom) return prev;
         return {
           ...prev,
-          energy: prev.energy - cost,
-          upgrades: { ...prev.upgrades, [id]: level + 1 }
+          credits: prev.credits - creditCost,
+          metals: {
+            ...prev.metals,
+            [fromId]: prev.metals[fromId] - totalFrom,
+            [toId]: prev.metals[toId] + convertAmount,
+          },
+        };
+      }
+
+      if (prev.credits < item.creditCost) return prev;
+
+      // Booster
+      if (item.boostEffect) {
+        const boost: ActiveBoost = {
+          instanceId: `${id}_${Date.now()}`,
+          shopItemId: id,
+          effect: item.boostEffect,
+          expiresAt: Date.now() + item.boostEffect.durationMs,
+        };
+        return {
+          ...prev,
+          credits: prev.credits - item.creditCost,
+          activeBoosts: [...prev.activeBoosts, boost],
+        };
+      }
+
+      // Metal pack
+      if (item.metalReward) {
+        const newMetals = { ...prev.metals };
+        for (const { metalId, amount } of item.metalReward) {
+          newMetals[metalId] = (newMetals[metalId] ?? 0) + amount;
+        }
+        const discovered = new Set(prev.discoveredMetals);
+        for (const { metalId } of item.metalReward) discovered.add(metalId);
+        return {
+          ...prev,
+          credits: prev.credits - item.creditCost,
+          metals: newMetals,
+          discoveredMetals: Array.from(discovered),
+        };
+      }
+
+      // Loot box
+      if (preRolledDrops) {
+        const newMetals = { ...prev.metals };
+        const discovered = new Set(prev.discoveredMetals);
+        for (const [metalId, amount] of Object.entries(preRolledDrops) as [import('./METALS').MetalId, number][]) {
+          newMetals[metalId] = (newMetals[metalId] ?? 0) + amount;
+          if (amount > 0) discovered.add(metalId);
+        }
+        return {
+          ...prev,
+          credits: prev.credits - item.creditCost,
+          metals: newMetals,
+          discoveredMetals: Array.from(discovered),
+        };
+      }
+
+      return prev;
+    });
+
+    if (preRolledDrops) opts?.onLootResult?.(preRolledDrops);
+  }, []);
+
+  const buyUpgrade = useCallback(
+    (id: UpgradeId, count: number = 1) => {
+      logEvent('buy_upgrade', { id, count });
+      setState((prev) => {
+        const upg = getUpgradeById(id);
+        let level = prev.upgrades[id] ?? 0;
+        let energy = prev.energy;
+        let bought = 0;
+        const limit = count === Infinity ? 9999 : count;
+        for (let i = 0; i < limit; i++) {
+          const cost = computeUpgradeCost(upg, level);
+          if (energy < cost) break;
+          energy -= cost;
+          level += 1;
+          bought += 1;
+        }
+        if (bought === 0) return prev;
+        if (bought === 1) showClerk(upg.passiveBonus > 0 ? 'upgrade_drone' : 'upgrade');
+        return {
+          ...prev,
+          energy,
+          upgrades: { ...prev.upgrades, [id]: level }
         };
       });
     },
@@ -967,7 +1130,6 @@ export function useGame(initial?: GameStateInit) {
       const ownedShip = prev.fleet.ownedShips.find((s) => s.shipId === shipId);
       if (!ownedShip) return prev;
       const level = ownedShip.cannons[cannonId] ?? 0;
-      if (level >= MAX_CANNON_LEVEL) return prev;
       const cost = computeCannonCost(cannon, level);
       if (!hasEnoughMetals(prev.metals, cost)) return prev;
       return {
@@ -1469,6 +1631,10 @@ export function useGame(initial?: GameStateInit) {
     declineMetalDeal,
     canAffordMetalDeal: state.energy >= METAL_DEAL_ENERGY_COST,
     metalDealEnergyCost: METAL_DEAL_ENERGY_COST,
+    credits: state.credits,
+    activeBoosts: state.activeBoosts,
+    addCredits,
+    buyShopItem,
     debugSetValues: useCallback(
       (patch: {
         energy?: number;

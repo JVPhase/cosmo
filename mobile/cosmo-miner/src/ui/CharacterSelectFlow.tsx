@@ -21,6 +21,7 @@ type Props = {
   onAcceptMetalDeal: () => void;
   canAffordMetalDeal: boolean;
   metalDealEnergyCost: number;
+  onEarnEnergy: () => void;
 };
 
 export function CharacterSelectFlow({
@@ -31,7 +32,8 @@ export function CharacterSelectFlow({
   onClose,
   onAcceptMetalDeal,
   canAffordMetalDeal,
-  metalDealEnergyCost
+  metalDealEnergyCost,
+  onEarnEnergy
 }: Props) {
   const [pendingId, setPendingId] = useState<CharacterId | null>(null);
 
@@ -257,6 +259,20 @@ export function CharacterSelectFlow({
                   {canAffordMetalDeal ? 'ВЗЯТЬ' : 'НЕТ ЭНЕРГИУМА'}
                 </Text>
               </Pressable>
+              {!canAffordMetalDeal && (
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.actionBtn,
+                    styles.actionBtnSecondary,
+                    pressed && { opacity: 0.85 }
+                  ]}
+                  onPress={() => { logEvent('character_flow_earn_energy', {}); onEarnEnergy(); }}
+                >
+                  <Text style={[styles.actionBtnText, styles.actionBtnTextSecondary]}>
+                    ЗАРАБОТАТЬ ЭНЕРГИУМ
+                  </Text>
+                </Pressable>
+              )}
             </>
           )}
         </View>

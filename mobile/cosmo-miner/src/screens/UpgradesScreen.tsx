@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { computeUpgradeCost, UPGRADES, type UpgradeId } from "../game/UPGRADES";
 import { formatNum } from "../game/formatNum";
@@ -7,26 +7,108 @@ import type { UpgradesState } from "../game/types";
 export type UpgradesScreenProps = {
   energy: number;
   upgrades: UpgradesState;
-  onBuyUpgrade: (id: UpgradeId) => void;
+  onBuyUpgrade: (id: UpgradeId, count: number) => void;
 };
 
+type Tab = 'click' | 'passive';
+const MULT_OPTIONS: Array<{ label: string; value: number }> = [
+  { label: '1x', value: 1 },
+  { label: '2x', value: 2 },
+  { label: '5x', value: 5 },
+  { label: 'max', value: Infinity },
+];
+
+const CLICK_UPGRADES = UPGRADES.filter((u) => u.clickBonus > 0);
+const PASSIVE_UPGRADES = UPGRADES.filter((u) => u.passiveBonus > 0);
+
 export function UpgradesScreen({ energy, upgrades, onBuyUpgrade }: UpgradesScreenProps) {
+  const [tab, setTab] = useState<Tab>('click');
+  const [mult, setMult] = useState<number>(1);
+
+  const visibleUpgrades = (list: typeof CLICK_UPGRADES) => {
+    const firstUnboughtIdx = list.findIndex((u) => (upgrades[u.id] ?? 0) === 0);
+    return firstUnboughtIdx === -1 ? list : list.slice(0, firstUnboughtIdx + 1);
+  };
+
+  const data = visibleUpgrades(tab === 'click' ? CLICK_UPGRADES : PASSIVE_UPGRADES);
+
   return (
     <View style={styles.screen}>
+      {/* Tabs */}
+      <View style={styles.tabs}>
+        <Pressable
+          style={[styles.tab, tab === 'click' && styles.tabActive]}
+          onPress={() => setTab('click')}
+        >
+          <Text style={[styles.tabText, tab === 'click' && styles.tabTextActive]}>
+            ⚡ АКТИВНАЯ
+          </Text>
+        </Pressable>
+        <Pressable
+          style={[styles.tab, tab === 'passive' && styles.tabActive]}
+          onPress={() => setTab('passive')}
+        >
+          <Text style={[styles.tabText, tab === 'passive' && styles.tabTextActive]}>
+            🔄 ПАССИВНАЯ
+          </Text>
+        </Pressable>
+      </View>
+
+      {/* Multiplier selector */}
+      <View style={styles.multRow}>
+        {MULT_OPTIONS.map((opt) => (
+          <Pressable
+            key={opt.label}
+            style={[styles.multBtn, mult === opt.value && styles.multBtnActive]}
+            onPress={() => setMult(opt.value)}
+          >
+            <Text style={[styles.multText, mult === opt.value && styles.multTextActive]}>
+              {opt.label}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+
       <FlatList
-        data={UPGRADES}
+        data={data}
         keyExtractor={(upg) => String(upg.id)}
         contentContainerStyle={styles.content}
-        ListHeaderComponent={<Text style={styles.title}>◈ КАТАЛОГ АПГРЕЙДОВ ◈</Text>}
         ListFooterComponent={<Text style={styles.energyFooter}>Энергий: {formatNum(energy)}</Text>}
         renderItem={({ item: upg }) => {
           const level = upgrades[upg.id] ?? 0;
-          const cost = computeUpgradeCost(upg, level);
-          const canBuy = energy >= cost;
+          const baseBonus = upg.clickBonus > 0 ? upg.clickBonus : upg.passiveBonus;
+          const unit = upg.clickBonus > 0 ? '⚡/клик' : '⚡/сек';
+          const currentScale = level > 0 ? Math.pow(1.6, level) : 0;
+          const currentOutput = baseBonus * currentScale;
+
+          // For max: count affordable levels; for 1x/2x/5x: compute full cost regardless of balance
+          let displayCost = 0;
+          let affordableCount = 0;
+          if (mult === Infinity) {
+            for (let i = 0; i < 9999; i++) {
+              const c = computeUpgradeCost(upg, level + i);
+              if (displayCost + c > energy) break;
+              displayCost += c;
+              affordableCount += 1;
+            }
+          } else {
+            for (let i = 0; i < mult; i++) {
+              displayCost += computeUpgradeCost(upg, level + i);
+            }
+            affordableCount = mult;
+          }
+
+          const canBuy = mult === Infinity
+            ? energy >= computeUpgradeCost(upg, level)
+            : energy >= displayCost;
+          const effectiveCount = mult === Infinity ? affordableCount : mult;
+          const nextLevel = level + effectiveCount;
+          const nextScale = Math.pow(1.6, nextLevel);
+          const nextOutput = baseBonus * nextScale;
 
           return (
             <Pressable
-              onPress={() => onBuyUpgrade(upg.id)}
+              onPress={() => onBuyUpgrade(upg.id, mult)}
               disabled={!canBuy}
               style={({ pressed }) => [
                 styles.card,
@@ -39,15 +121,25 @@ export function UpgradesScreen({ energy, upgrades, onBuyUpgrade }: UpgradesScree
               <View style={styles.mainText}>
                 <Text style={[styles.name, { color: canBuy ? "#00d4ff" : "rgba(255,255,255,0.5)" }]}>{upg.name}</Text>
                 <Text style={styles.desc}>{upg.lore}</Text>
-                <Text style={styles.bonus}>
-                  {upg.clickBonus > 0 ? `+${upg.clickBonus} ⚡ за клик` : `+${upg.passiveBonus} ⚡/сек`}
-                  {" за уровень"}
-                </Text>
+                {level > 0 ? (
+                  <Text style={styles.bonus}>
+                    {`${formatNum(currentOutput)} ${unit}  →  ${formatNum(nextOutput)} ${unit}`}
+                  </Text>
+                ) : (
+                  <Text style={styles.bonus}>
+                    {`+${formatNum(nextOutput)} ${unit} после покупки`}
+                  </Text>
+                )}
                 {level > 0 && <Text style={styles.level}>Ур. {level}</Text>}
               </View>
 
               <View style={styles.costBox}>
-                <Text style={[styles.cost, { color: canBuy ? "#ffd700" : "rgba(255,200,0,0.5)" }]}>{formatNum(cost)}</Text>
+                <Text style={[styles.cost, { color: canBuy ? "#ffd700" : "rgba(255,200,0,0.5)" }]}>
+                  {formatNum(displayCost || computeUpgradeCost(upg, level))}
+                </Text>
+                {mult === Infinity && affordableCount > 0 && (
+                  <Text style={styles.costCount}>×{affordableCount}</Text>
+                )}
                 <Text style={styles.costUnit}>⚡ энергий</Text>
               </View>
             </Pressable>
@@ -64,18 +156,67 @@ const styles = StyleSheet.create({
     backgroundColor: "#050918",
     userSelect: 'none',
   },
+  tabs: {
+    flexDirection: 'row',
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 4,
+    borderRadius: 10,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(0,212,255,0.15)',
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.03)',
+  },
+  tabActive: {
+    backgroundColor: 'rgba(0,212,255,0.12)',
+  },
+  tabText: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1,
+    color: 'rgba(255,255,255,0.35)',
+  },
+  tabTextActive: {
+    color: '#00d4ff',
+  },
+  multRow: {
+    flexDirection: 'row',
+    marginHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 0,
+    gap: 6,
+  },
+  multBtn: {
+    flex: 1,
+    paddingVertical: 6,
+    alignItems: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255,200,0,0.15)',
+    backgroundColor: 'rgba(255,255,255,0.03)',
+  },
+  multBtnActive: {
+    backgroundColor: 'rgba(255,200,0,0.12)',
+    borderColor: 'rgba(255,200,0,0.5)',
+  },
+  multText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: 'rgba(255,200,0,0.35)',
+    letterSpacing: 0.5,
+  },
+  multTextActive: {
+    color: '#ffd700',
+  },
   content: {
     paddingHorizontal: 16,
-    paddingTop: 18,
+    paddingTop: 12,
     paddingBottom: 24,
-  },
-  title: {
-    textAlign: "center",
-    fontSize: 12,
-    color: "rgba(0,212,255,0.5)",
-    letterSpacing: 3,
-    fontWeight: "800",
-    marginBottom: 14,
   },
   card: {
     flexDirection: "row",
@@ -131,6 +272,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "900",
   },
+  costCount: {
+    fontSize: 9,
+    color: "rgba(255,200,0,0.6)",
+    fontWeight: "700",
+  },
   costUnit: {
     marginTop: 2,
     fontSize: 9,
@@ -144,4 +290,3 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 });
-
