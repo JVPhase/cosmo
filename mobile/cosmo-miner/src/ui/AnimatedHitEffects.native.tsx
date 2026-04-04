@@ -57,6 +57,7 @@ const MAX_SPARKS = 42;
 const MAX_RIPPLES = 9;
 const MAX_FLOATS = 3;
 const RIPPLE_COLORS = ["#ff4400", "#ff8800", "#ffcc00"];
+const CANVAS_OVERFLOW = 150;
 
 function SkiaSpark({
   ox,
@@ -164,7 +165,7 @@ function FloatDmgLabel({
       style={[styles.floatNum, { left: ox - 30, top: oy - 16 }, anim]}
       pointerEvents="none"
     >
-      <Text style={styles.dmgText}>⚔️ {formatNum(value)}</Text>
+      <Text style={styles.dmgText} numberOfLines={1}>⚔️ {formatNum(value)}</Text>
     </Animated.View>
   );
 }
@@ -268,15 +269,15 @@ export function AnimatedHitEffects({
   }, [trigger, originMemo, damage]);
 
   return (
-    <Animated.View style={[style, pulseStyle]}>
+    <Animated.View style={[style, pulseStyle, styles.root]}>
       {children}
 
-      <Canvas style={StyleSheet.absoluteFill} pointerEvents="none">
+      <Canvas style={styles.overflowCanvas} pointerEvents="none">
         {ripples.map((r) => (
           <SkiaRipple
             key={r.id}
-            ox={r.ox}
-            oy={r.oy}
+            ox={r.ox + CANVAS_OVERFLOW}
+            oy={r.oy + CANVAS_OVERFLOW}
             scaleTo={r.scaleTo}
             delay={r.delay}
             color={r.color}
@@ -285,8 +286,8 @@ export function AnimatedHitEffects({
         {sparks.map((s) => (
           <SkiaSpark
             key={s.id}
-            ox={s.ox}
-            oy={s.oy}
+            ox={s.ox + CANVAS_OVERFLOW}
+            oy={s.oy + CANVAS_OVERFLOW}
             angleRad={s.angleRad}
             dist={s.dist}
             r={s.r}
@@ -296,13 +297,13 @@ export function AnimatedHitEffects({
         ))}
       </Canvas>
 
-      <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+      <View pointerEvents="none" style={styles.overflowCanvas}>
         {floats.map((f) => (
           <FloatDmgLabel
             key={f.id}
             floatId={f.id}
-            ox={f.ox}
-            oy={f.oy}
+            ox={f.ox + CANVAS_OVERFLOW}
+            oy={f.oy + CANVAS_OVERFLOW}
             value={f.value}
             driftX={f.driftX}
           />
@@ -313,9 +314,18 @@ export function AnimatedHitEffects({
 }
 
 const styles = StyleSheet.create({
+  root: {
+    overflow: "visible",
+  },
+  overflowCanvas: {
+    position: "absolute",
+    top: -CANVAS_OVERFLOW,
+    left: -CANVAS_OVERFLOW,
+    right: -CANVAS_OVERFLOW,
+    bottom: -CANVAS_OVERFLOW,
+  },
   floatNum: {
     position: "absolute",
-    width: 60,
     alignItems: "center",
     justifyContent: "center",
   },

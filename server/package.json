@@ -10,6 +10,7 @@
     "db:generate": "prisma generate"
   },
   "dependencies": {
+    "dotenv": "^16.4.7",
     "@cosmo/game-config": "file:../packages/game-config",
     "@fastify/jwt": "^9.0.0",
     "@fastify/rate-limit": "^10.0.0",

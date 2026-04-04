@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
+  BackHandler,
   Image,
-  Modal,
   Pressable,
   StyleProp,
   StyleSheet,
@@ -38,13 +38,23 @@ export function Popup({
   actionLabel,
   onAction,
 }: PopupProps) {
+  useEffect(() => {
+    if (!visible) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      onClose();
+      return true;
+    });
+    return () => sub.remove();
+  }, [visible, onClose]);
+
+  if (!visible) {
+    return null;
+  }
+
+  // Avoid RN Modal here: on some iOS/RN versions a dismissed transparent Modal
+  // leaves a full-screen native view that still dims and intercepts touches.
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={onClose}
-    >
+    <View style={styles.layer}>
       <Pressable style={styles.overlay} onPress={onClose}>
         <Pressable style={styles.card} onPress={() => {}}>
           <View style={styles.header}>
@@ -85,13 +95,18 @@ export function Popup({
           ) : null}
         </Pressable>
       </Pressable>
-    </Modal>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  layer: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 100000,
+    elevation: 24
+  },
   overlay: {
-    flex: 1,
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,5,20,0.75)',
     alignItems: 'center',
     justifyContent: 'center',

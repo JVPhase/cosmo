@@ -388,7 +388,12 @@ export function useGame(initial?: GameStateInit) {
   );
 
   const [planetsUnlockToast, setPlanetsUnlockToast] = useState(false);
-  const planetsUnlockShownRef = useRef(initial?.tabsUnlocked?.planets ?? false);
+  const planetsUnlockShownRef = useRef(
+    initial?.tabsUnlocked?.planets ??
+      ((initial?.unlockedPlanetIds?.length ?? 0) > 1 ||
+        (initial?.energy ?? 0) >=
+          Math.min(...ALIENS.map((a) => a.attackEnergyCost))),
+  );
 
   // Character select flow — triggered after planet 9 unlocked
   const [characterFlowStep, setCharacterFlowStep] = useState<

@@ -10,6 +10,7 @@ export type RemoteGameConfig = {
   version: number;
   generatedAt: number;
   formulaConstants?: Partial<typeof FORMULA_CONSTANTS>;
+  monetizationEnabled?: boolean;
 };
 
 let _cachedConfig: RemoteGameConfig | null = null;
