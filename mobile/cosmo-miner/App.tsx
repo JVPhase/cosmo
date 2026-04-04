@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -16,6 +17,7 @@ import {
   flushAnalytics,
   getAnalyticsSizeKb,
   initAnalytics,
+  logError,
   logEvent
 } from './src/game/analytics';
 import { AchievementsScreen } from './src/screens/AchievementsScreen';
@@ -975,6 +977,20 @@ export default function App() {
   const sessionIdRef = useRef(Math.random().toString(36).slice(2) + Date.now().toString(36));
   useEffect(() => {
     initAnalytics(sessionIdRef.current);
+
+    const prevHandler = ErrorUtils.getGlobalHandler();
+    ErrorUtils.setGlobalHandler((error, isFatal) => {
+      logError(error, { isFatal });
+      prevHandler?.(error, isFatal);
+    });
+
+    if (Platform.OS === 'web') {
+      const onUnhandled = (event: PromiseRejectionEvent) => {
+        logError(event.reason, { type: 'unhandledrejection' });
+      };
+      window.addEventListener('unhandledrejection', onUnhandled);
+      return () => window.removeEventListener('unhandledrejection', onUnhandled);
+    }
   }, []);
 
   useEffect(() => {
