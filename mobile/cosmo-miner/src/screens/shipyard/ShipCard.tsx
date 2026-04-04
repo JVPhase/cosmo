@@ -10,7 +10,6 @@ import { logEvent } from '../../game/analytics';
 import {
   CANNONS,
   computeCannonCost,
-  MAX_CANNON_LEVEL,
   type CannonId,
 } from '../../game/CANNONS';
 import type { MetalId } from '../../game/METALS';
@@ -232,10 +231,8 @@ export function ShipCard({
             costMetalsDiscovered(discoveredMetals, c.baseCost),
           ).map((cannon) => {
             const level = owned!.cannons[cannon.id] ?? 0;
-            const isMaxLevel = level >= MAX_CANNON_LEVEL;
             const cost = computeCannonCost(cannon, level);
-            const canAfford =
-              !isMaxLevel && canAffordCost(metals, cost) && !isBattleActive;
+            const canAfford = canAffordCost(metals, cost) && !isBattleActive;
             return (
               <View key={cannon.id} style={styles.cannonRow}>
                 <Image
@@ -253,34 +250,28 @@ export function ShipCard({
                   </Text>
                 </View>
                 <View style={styles.cannonRight}>
-                  {isMaxLevel ? (
-                    <Text style={styles.cannonMaxText}>MAX</Text>
-                  ) : (
-                    <>
-                      <MetalCost
-                        cost={cost}
-                        color={canAfford ? '#ffd700' : 'rgba(255,200,0,0.3)'}
-                      />
-                      <Pressable
-                        onPress={() => onCraftCannon(ship.id, cannon.id)}
-                        disabled={!canAfford}
-                        style={({ pressed }) => [
-                          styles.cannonBtn,
-                          canAfford ? sharedStyles.btnYellow : sharedStyles.btnDisabled,
-                          pressed && canAfford ? { opacity: 0.85 } : null,
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            sharedStyles.actionBtnText,
-                            { color: canAfford ? '#ffd700' : 'rgba(255,255,255,0.2)' },
-                          ]}
-                        >
-                          {level === 0 ? 'КУПИТЬ' : 'УЛУ.'}
-                        </Text>
-                      </Pressable>
-                    </>
-                  )}
+                  <MetalCost
+                    cost={cost}
+                    color={canAfford ? '#ffd700' : 'rgba(255,200,0,0.3)'}
+                  />
+                  <Pressable
+                    onPress={() => onCraftCannon(ship.id, cannon.id)}
+                    disabled={!canAfford}
+                    style={({ pressed }) => [
+                      styles.cannonBtn,
+                      canAfford ? sharedStyles.btnYellow : sharedStyles.btnDisabled,
+                      pressed && canAfford ? { opacity: 0.85 } : null,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        sharedStyles.actionBtnText,
+                        { color: canAfford ? '#ffd700' : 'rgba(255,255,255,0.2)' },
+                      ]}
+                    >
+                      {level === 0 ? 'КУПИТЬ' : 'УЛУ.'}
+                    </Text>
+                  </Pressable>
                 </View>
               </View>
             );

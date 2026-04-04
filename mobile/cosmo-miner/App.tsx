@@ -25,8 +25,10 @@ import { GameScreen } from './src/screens/GameScreen';
 import { PlanetsScreen } from './src/screens/PlanetsScreen';
 import { ResearchScreen } from './src/screens/ResearchScreen';
 import { ShipyardScreen } from './src/screens/shipyard';
+import { ShopScreen } from './src/screens/ShopScreen';
 import { UpgradesScreen } from './src/screens/UpgradesScreen';
 import { CharacterSelectFlow } from './src/ui/CharacterSelectFlow';
+import { CharacterCommunicationChannel } from './src/ui/CharacterCommunicationChannel';
 import { IntroOverlay } from './src/ui/IntroOverlay';
 import { ModalSheet } from './src/ui/ModalSheet';
 import { Popup } from './src/ui/Popup';
@@ -55,14 +57,15 @@ import type { GameStateInit } from './src/game/types';
 const MIN_ATTACK_ENERGY = Math.min(...ALIENS.map((a) => a.attackEnergyCost));
 const ironMetal = METALS.find((m) => m.id === 'iron')!;
 
-type TabId = 'game' | 'upgrades' | 'planets' | 'shipyard' | 'battle';
+type TabId = 'game' | 'upgrades' | 'planets' | 'shipyard' | 'battle' | 'shop';
 
 const TABS: Array<{ id: TabId; icon: string; label: string }> = [
   { id: 'game', icon: '⛏️', label: 'ДОБЫЧА' },
   { id: 'upgrades', icon: '⚡', label: 'АПГР.' },
   { id: 'planets', icon: '🌍', label: 'ПЛАН.' },
   { id: 'shipyard', icon: '🛠️', label: 'ВЕРФЬ' },
-  { id: 'battle', icon: '⚔️', label: 'БОЙ' }
+  { id: 'battle', icon: '⚔️', label: 'БОЙ' },
+  { id: 'shop', icon: '🛒', label: 'МАГАЗ.' }
 ];
 
 function GameApp({
@@ -81,11 +84,11 @@ function GameApp({
   const [researchOpen, setResearchOpen] = useState(false);
   const [achievementsOpen, setAchievementsOpen] = useState(false);
   const [storyLogOpen, setStoryLogOpen] = useState(false);
+  const [channelOpen, setChannelOpen] = useState(false);
   const [seenStoryCount, setSeenStoryCount] = useState(0);
   const [clickPowerInfoOpen, setClickPowerInfoOpen] = useState(false);
   const [passiveRateInfoOpen, setPassiveRateInfoOpen] = useState(false);
-  const [planetBonusInfoOpen, setPlanetBonusInfoOpen] = useState(false);
-  const [metalInfoOpenId, setMetalInfoOpenId] = useState<MetalId | null>(null);
+const [metalInfoOpenId, setMetalInfoOpenId] = useState<MetalId | null>(null);
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const [resetShowIntro, setResetShowIntro] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
@@ -226,6 +229,7 @@ function GameApp({
   const shipyardUnlocked = game.tabsUnlocked.shipyard;
   const upgradesUnlocked = game.tabsUnlocked.upgrades;
   const planetsUnlocked = game.tabsUnlocked.planets;
+  const shopUnlocked = game.achievements.claimedIds.length > 0;
 
   const battleUnlocked =
     !!game.battle || game.unlockedPlanetIds.length > 1 || !!game.defeatInfo;
@@ -291,7 +295,9 @@ function GameApp({
               game.playerLevel >= n.requiredLevel &&
               n.requires.every((r) => game.research[r]) &&
               game.energy >= n.energyCost &&
-              (n.branch !== 'battle' || battleUnlocked)
+              (n.branch === 'mining' ||
+                (n.branch === 'battle' && battleUnlocked) ||
+                (n.branch === 'expedition' && shipyardUnlocked))
           )}
           onOpenResearch={() => {
             if (!screenGreetedRef.current.has('research')) {
@@ -306,8 +312,7 @@ function GameApp({
           hasUnclaimedAchievements={game.hasUnclaimedAchievements}
           onOpenClickPowerInfo={() => { logEvent('modal_open', { modal: 'click_power_info' }); setClickPowerInfoOpen(true); }}
           onOpenPassiveRateInfo={() => { logEvent('modal_open', { modal: 'passive_rate_info' }); setPassiveRateInfoOpen(true); }}
-          onOpenPlanetBonusInfo={() => { logEvent('modal_open', { modal: 'planet_bonus_info' }); setPlanetBonusInfoOpen(true); }}
-          onOpenMetalInfo={(metalId) => { logEvent('modal_open', { modal: 'metal_info', metalId }); setMetalInfoOpenId(metalId); }}
+onOpenMetalInfo={(metalId) => { logEvent('modal_open', { modal: 'metal_info', metalId }); setMetalInfoOpenId(metalId); }}
           onOpenStoryLog={() => {
             const ctx = { unlockedPlanetIds: game.unlockedPlanetIds, chosenCharacterId: game.chosenCharacterId, metalDealDone: game.metalDealDone };
             setSeenStoryCount(STORY_LOG.filter((e) => e.isUnlocked(ctx)).length);
@@ -322,6 +327,8 @@ function GameApp({
           characterMessage={game.characterMessage}
           onCloseCharacterMessage={() => { logEvent('toast_close', { toast: 'character_message' }); game.closeCharacterMessage(); }}
           chosenCharacter={game.chosenCharacter}
+          onOpenCharacterChannel={() => { logEvent('modal_open', { modal: 'character_channel' }); setChannelOpen(true); }}
+          characterChannelUnlocked={game.unlockedPlanetIds.includes(ALIENS[7].planetId as any) && !game.metalDealDone}
         />
       );
       break;
@@ -381,6 +388,17 @@ function GameApp({
         />
       );
       break;
+    case 'shop':
+      tabContent = (
+        <ShopScreen
+          credits={game.credits}
+          activeBoosts={game.activeBoosts}
+          metals={game.metals}
+          onBuyShopItem={game.buyShopItem}
+          onAddCredits={game.addCredits}
+        />
+      );
+      break;
     case 'battle':
       tabContent = (
         <BattleScreen
@@ -429,6 +447,7 @@ function GameApp({
           research={game.research}
           onBuyResearch={game.buyResearch}
           battleUnlocked={battleUnlocked}
+          expeditionUnlocked={shipyardUnlocked}
         />
       </ModalSheet>
 
@@ -565,7 +584,21 @@ function GameApp({
         onAcceptMetalDeal={game.acceptMetalDeal}
         canAffordMetalDeal={game.canAffordMetalDeal}
         metalDealEnergyCost={game.metalDealEnergyCost}
+        onEarnEnergy={() => { game.closeCharacterFlow(); goToTab('game'); }}
       />
+
+      {game.chosenCharacter && (
+        <CharacterCommunicationChannel
+          visible={channelOpen}
+          onClose={() => setChannelOpen(false)}
+          chosenCharacter={game.chosenCharacter}
+          planet10Unlocked={game.unlockedPlanetIds.includes(10 as any)}
+          canAffordMetalDeal={game.canAffordMetalDeal}
+          metalDealEnergyCost={game.metalDealEnergyCost}
+          onAcceptMetalDeal={() => { game.acceptMetalDeal(); setChannelOpen(false); }}
+          onEarnEnergy={() => { setChannelOpen(false); goToTab('game'); }}
+        />
+      )}
 
       <Popup
         visible={clickPowerInfoOpen}
@@ -585,17 +618,7 @@ function GameApp({
         clerk
       />
 
-      <Popup
-        visible={planetBonusInfoOpen}
-        title="◈ БОНУС ПЛАНЕТЫ · КЛЕРК-7 ◈"
-        onClose={() => { logEvent('toast_close', { toast: 'planet_bonus_info' }); setPlanetBonusInfoOpen(false); }}
-        headerEmoji={`×${formatNum(game.planet.bonus)}`}
-        headerEmojiStyle={{ color: game.planet.color }}
-        text={`Бонус планеты — множитель добычи энергиума на текущей локации.\n\nСейчас: ×${formatNum(game.planet.bonus)} на планете ${game.planet.name}.\n\nКаждая планета имеет свой бонус к добыче энергиума (клики и пассивный доход). Более далёкие планеты дают более высокий множитель. Чтобы разблокировать их — победите охраняющего пришельца во вкладке «БОЙ».`}
-        clerk
-      />
-
-      {(() => {
+{(() => {
         const METAL_INFO: Record<MetalId, { title: string; text: string }> = {
           iron: {
             title: '◈ ЖЕЛЕЗО™ · КЛЕРК-7 ◈',
@@ -638,6 +661,7 @@ function GameApp({
           if (t.id === 'shipyard') return shipyardUnlocked;
           if (t.id === 'planets') return planetsUnlocked;
           if (t.id === 'battle') return battleUnlocked;
+          if (t.id === 'shop') return shopUnlocked;
           return true;
         });
         if (visibleTabs.length < 2) return null;

@@ -37,6 +37,7 @@ export const ACHIEVEMENTS = [
     icon: "🌌",
     target: { type: "planetsAtLeast", value: 3 },
     reward: 10_000,
+    creditReward: 20,
     lore: "3 планеты! Ваше личное дело занимает 3 папки. Архивариус Зофф начинает вас не любить.",
   },
   {
@@ -53,6 +54,7 @@ export const ACHIEVEMENTS = [
     icon: "💰",
     target: { type: "totalAtLeast", value: 100000 },
     reward: 200_000,
+    creditReward: 30,
     lore: "100 000 единиц! Вы богаче министра. Он об этом не знает. Лучше не говорите.",
   },
   {
@@ -141,6 +143,7 @@ export const ACHIEVEMENTS = [
     icon: "🪐",
     target: { type: "planetsAtLeast", value: 5 },
     reward: 500_000,
+    creditReward: 50,
     lore: "Все 5 планет! Галактическая кадастровая служба прислала форму П-99 в семи экземплярах. Поздравляем.",
   },
 
@@ -219,6 +222,7 @@ export const ACHIEVEMENTS = [
     icon: "🌍",
     target: { type: "planetsAtLeast", value: 10 },
     reward: 5_000_000,
+    creditReward: 80,
     lore: "10 планет! Картографическое бюро выдало вам пятую степень наглости и первую — величия.",
   },
   {
@@ -329,6 +333,7 @@ export const ACHIEVEMENTS = [
     icon: "🛡️",
     target: { type: "battlesWonAtLeast", value: 10 },
     reward: 20_000,
+    creditReward: 40,
     lore: "10 побед! Военный архив МММРДР присвоил вашему личному делу класс 'Тревожный'.",
   },
   {
@@ -337,6 +342,7 @@ export const ACHIEVEMENTS = [
     icon: "🌑",
     target: { type: "battlesWonAtLeast", value: 50 },
     reward: 500_000,
+    creditReward: 100,
     lore: "50 сражений позади. Вакуум стал вашим домом. Отдел регистрации подтвердил: налог на домовладение не предусмотрен.",
   },
   {
@@ -385,6 +391,7 @@ export const ACHIEVEMENTS = [
     icon: "🎯",
     target: { type: "battleWinStreakAtLeast", value: 10 },
     reward: 5_000_000,
+    creditReward: 120,
     lore: "10 побед подряд без поражений. Противники начали подозревать сговор. Сговора не было — только превосходство.",
   },
   {
@@ -419,6 +426,7 @@ export const ACHIEVEMENTS = [
     icon: "🎓",
     target: { type: "researchCountAtLeast", value: 15 },
     reward: 2_000_000,
+    creditReward: 75,
     lore: "15 исследований. Диссертационный совет Галактики-3 признал ваш вклад. Диплом выслан почтой. Потерялся.",
   },
   {
@@ -469,6 +477,7 @@ export const ACHIEVEMENTS = [
     icon: "🏛️",
     target: { type: "playerLevelAtLeast", value: 20 },
     reward: 25_000_000,
+    creditReward: 150,
     lore: "Уровень 20. Вы достигли предела прежней системы рангов. Она переписана под вас. Без вашего ведома.",
   },
   {
@@ -535,6 +544,7 @@ export const ACHIEVEMENTS = [
     icon: "🏅",
     target: { type: "allMetalsAtLeast", value: 500 },
     reward: 1_000_000_000,
+    creditReward: 200,
     lore: "500+ каждого редкого металла. Хранилище расширено до размеров малой луны. Арендная плата пересчитана.",
   },
 

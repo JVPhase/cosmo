@@ -4,6 +4,8 @@ const SUFFIX_MAP: Record<string, number> = {
   TB: 1e21, QB: 1e24, PB: 1e27,
   XB: 1e30, YB: 1e33, ZB: 1e36,
   AB: 1e39, CB: 1e42, FB: 1e45,
+  GB: 1e48, HB: 1e51, IB: 1e54,
+  JB: 1e57, LB: 1e60,
 };
 
 export function bn(s: string): number {
@@ -16,6 +18,11 @@ export function bn(s: string): number {
 
 export function formatNum(n: number): string {
   if (!Number.isFinite(n)) return "0";
+  if (n >= 1e60) return (n / 1e60).toFixed(1) + "LB";
+  if (n >= 1e57) return (n / 1e57).toFixed(1) + "JB";
+  if (n >= 1e54) return (n / 1e54).toFixed(1) + "IB";
+  if (n >= 1e51) return (n / 1e51).toFixed(1) + "HB";
+  if (n >= 1e48) return (n / 1e48).toFixed(1) + "GB";
   if (n >= 1e45) return (n / 1e45).toFixed(1) + "FB";
   if (n >= 1e42) return (n / 1e42).toFixed(1) + "CB";
   if (n >= 1e39) return (n / 1e39).toFixed(1) + "AB";

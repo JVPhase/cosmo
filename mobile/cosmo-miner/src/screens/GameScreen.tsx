@@ -75,13 +75,14 @@ export type GameScreenProps = {
   hasUnclaimedAchievements: boolean;
   onOpenClickPowerInfo: () => void;
   onOpenPassiveRateInfo: () => void;
-  onOpenPlanetBonusInfo: () => void;
   onOpenMetalInfo: (metalId: MetalId) => void;
   onOpenStoryLog: () => void;
   hasNewStoryEntry: boolean;
   characterMessage: string | null;
   onCloseCharacterMessage: () => void;
   chosenCharacter: { id: string; name: string; icon: string } | null;
+  onOpenCharacterChannel: () => void;
+  characterChannelUnlocked: boolean;
 };
 
 export function GameScreen({
@@ -108,13 +109,14 @@ export function GameScreen({
   hasUnclaimedAchievements,
   onOpenClickPowerInfo,
   onOpenPassiveRateInfo,
-  onOpenPlanetBonusInfo,
   onOpenMetalInfo,
   onOpenStoryLog,
   hasNewStoryEntry,
   characterMessage,
   onCloseCharacterMessage,
   chosenCharacter,
+  onOpenCharacterChannel,
+  characterChannelUnlocked,
 }: GameScreenProps) {
   const xpStart = xpAtLevelStart(playerLevel);
   const xpNext = xpForNextLevel(playerLevel);
@@ -359,20 +361,6 @@ export function GameScreen({
               style={[styles.statText, { color: 'rgba(0,212,255,0.75)' }]}
             >{`${formatNum(passiveRate)}/сек`}</Text>
           </Pressable>
-          <Pressable
-            onPress={onOpenPlanetBonusInfo}
-            style={[
-              styles.statBox,
-              {
-                backgroundColor: 'rgba(255,255,255,0.03)',
-                borderColor: 'rgba(255,255,255,0.06)'
-              }
-            ]}
-          >
-            <Text style={[styles.statText, { color: planet.color }]}>
-              ×{formatNum(planet.bonus)} бонус
-            </Text>
-          </Pressable>
         </View>
 
         {/* Metal inventory */}
@@ -441,6 +429,23 @@ export function GameScreen({
           >
             <Text style={styles.floatingBtnIcon}>📖</Text>
             {hasNewStoryEntry && <View style={styles.floatingBtnBadge} />}
+          </Pressable>
+        </View>
+      )}
+
+      {/* Character channel button (top-right) */}
+      {headerHeight > 0 && chosenCharacter && characterChannelUnlocked && (
+        <View style={[styles.floatingBtnsRight, { top: headerHeight + 10 }]}>
+          <Pressable
+            onPress={onOpenCharacterChannel}
+            style={({ pressed }) => [
+              styles.floatingBtn,
+              styles.floatingBtnChannel,
+              pressed ? { opacity: 0.7 } : null
+            ]}
+          >
+            <Text style={styles.floatingBtnIcon}>{chosenCharacter.icon}</Text>
+            <Text style={styles.floatingBtnChannelLabel}>КАНАЛ СВЯЗИ</Text>
           </Pressable>
         </View>
       )}
@@ -966,6 +971,25 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     gap: 6 as any,
     zIndex: 5
+  },
+  floatingBtnsRight: {
+    position: 'absolute',
+    right: 10,
+    flexDirection: 'column',
+    gap: 6 as any,
+    zIndex: 5
+  },
+  floatingBtnChannel: {
+    width: 'auto' as any,
+    paddingHorizontal: 10,
+    flexDirection: 'row',
+    gap: 5 as any
+  },
+  floatingBtnChannelLabel: {
+    fontSize: 8,
+    fontWeight: '900',
+    color: 'rgba(0,212,255,0.75)',
+    letterSpacing: 1
   },
   floatingBtn: {
     width: 36,

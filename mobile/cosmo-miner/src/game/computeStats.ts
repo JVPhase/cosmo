@@ -3,7 +3,29 @@ import { PLANETS, type PlanetDefinition, type PlanetId } from "./PLANETS";
 import { computeResearchEffects, type ResearchState } from "./RESEARCH";
 import { UPGRADES, type UpgradeId } from "./UPGRADES";
 import type { MetalId } from "./METALS";
-import type { UpgradesState } from "./types";
+import type { ActiveBoost, UpgradesState } from "./types";
+
+function getBoostMultiplier(boosts: ActiveBoost[], stat: ActiveBoost["effect"]["stat"]): number {
+  const now = Date.now();
+  let multiplier = 1;
+  for (const b of boosts) {
+    if (b.effect.stat === stat && b.expiresAt > now) {
+      multiplier *= b.effect.multiplier;
+    }
+  }
+  return multiplier;
+}
+
+function getBoostAdditive(boosts: ActiveBoost[], stat: ActiveBoost["effect"]["stat"]): number {
+  const now = Date.now();
+  let bonus = 0;
+  for (const b of boosts) {
+    if (b.effect.stat === stat && b.expiresAt > now) {
+      bonus += b.effect.multiplier - 1;
+    }
+  }
+  return bonus;
+}
 
 export type DerivedStats = {
   // ── Mining ──
@@ -43,16 +65,20 @@ export function computeStats(args: {
   upgrades: UpgradesState;
   selectedPlanetId: PlanetId;
   research: ResearchState;
+  activeBoosts?: ActiveBoost[];
 }): DerivedStats {
-  const { upgrades, selectedPlanetId, research } = args;
+  const { upgrades, selectedPlanetId, research, activeBoosts = [] } = args;
 
   let baseClickPower = 1;
   let basePassiveRate = 0;
 
   for (const upg of UPGRADES) {
     const level = upgrades[upg.id] ?? 0;
-    if (upg.clickBonus) baseClickPower += upg.clickBonus * level;
-    if (upg.passiveBonus) basePassiveRate += upg.passiveBonus * level;
+    // Экспоненциальная прогрессия: каждый уровень в 1.6× сильнее предыдущего
+    // level 1 = 1.6×, level 2 = 2.56×, level 5 = 10.5×, level 10 = 109×
+    const scale = level > 0 ? Math.pow(1.6, level) : 0;
+    if (upg.clickBonus) baseClickPower += upg.clickBonus * scale;
+    if (upg.passiveBonus) basePassiveRate += upg.passiveBonus * scale;
   }
 
   const planet = getPlanetByIdLoose(selectedPlanetId);
@@ -61,15 +87,15 @@ export function computeStats(args: {
   const fx = computeResearchEffects(research);
 
   return {
-    clickPower: baseClickPower * planetBonus * (1 + fx.clickMultiplierBonus),
-    passiveRate: basePassiveRate * planetBonus * (1 + fx.passiveMultiplierBonus),
+    clickPower: baseClickPower * (1 + fx.clickMultiplierBonus) * getBoostMultiplier(activeBoosts, "clickMultiplier"),
+    passiveRate: basePassiveRate * (1 + fx.passiveMultiplierBonus) * getBoostMultiplier(activeBoosts, "passiveMultiplier"),
     baseClickPower,
     basePassiveRate,
     planetBonus,
-    metalDropBonus: fx.metalDropBonus,
+    metalDropBonus: fx.metalDropBonus + getBoostAdditive(activeBoosts, "metalDropBonus"),
     specificMetalDropBonus: fx.specificMetalDropBonus,
     battleTimerMs: BATTLE_DURATION_MS + fx.battleTimerBonus,
-    damageResearchMultiplier: 1 + fx.damageMultiplierBonus,
+    damageResearchMultiplier: (1 + fx.damageMultiplierBonus) * getBoostMultiplier(activeBoosts, "damageMultiplier"),
     battleRegenBlockMs: fx.battleRegenBlockMs,
     critChance: fx.critChance,
     critMultiplier: fx.critMultiplier,
