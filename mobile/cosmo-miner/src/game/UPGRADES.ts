@@ -1,3 +1,5 @@
+import { FORMULA_CONSTANTS } from '@cosmo/game-config';
+
 export const UPGRADES = [
   // ── Активная добыча (клики) ──────────────────────────────────────────────
   {
@@ -135,5 +137,5 @@ export function computeUpgradeCost(
 ): number {
   // Нелинейная прогрессия: polynomial × exponential
   // level 0 = baseCost, level 5 ≈ 200×, level 10 ≈ 5000×
-  return Math.floor(upg.baseCost * Math.pow(level + 1, 2) * Math.pow(1.7, level));
+  return Math.floor(upg.baseCost * Math.pow(level + 1, 2) * Math.pow(FORMULA_CONSTANTS.UPGRADE_COST_EXP, level));
 }

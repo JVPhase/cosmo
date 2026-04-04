@@ -1,5 +1,6 @@
 import type { ShipId } from './SHIPS';
 import { bn } from './formatNum';
+import { FORMULA_CONSTANTS } from '@cosmo/game-config';
 
 export type AlienAbility =
   | { type: 'shield'; intervalMs: number; durationMs: number }
@@ -156,7 +157,7 @@ function alienAbilityForZone(zoneIndex: number, sectorInZone: number): AlienAbil
   return { type: 'shield', intervalMs: Math.max(2_000, 6_000 - sectorInZone * 400), durationMs: 4_000 + sectorInZone * 300 };
 }
 
-const PLANET_SCALE = 4;
+const PLANET_SCALE = FORMULA_CONSTANTS.ZONE_PLANET_SCALE;
 
 /** Returns { maxHP, xpReward, attackEnergyCost } for a given planetId using the zone formula. */
 function statsFor(planetId: number) {
@@ -165,7 +166,7 @@ function statsFor(planetId: number) {
   const maxHP = computeEnemyHP(sectorId, pi);
   const xpReward = computeEnemyXP(sectorId, pi);
   const zoneIndex = Math.floor((sectorId - 1) / 10);
-  const attackEnergyCost = Math.round(maxHP * (10 + zoneIndex * 5));
+  const attackEnergyCost = Math.round(maxHP * (FORMULA_CONSTANTS.ENERGY_BASE + zoneIndex * FORMULA_CONSTANTS.ENERGY_STEP));
   return { maxHP, xpReward, attackEnergyCost };
 }
 
@@ -319,7 +320,7 @@ function generateAliens(): AlienRace[] {
       const maxHP = computeEnemyHP(sectorId, pi);
       const xpReward = computeEnemyXP(sectorId, pi);
       // energyCost: HP × zone-scaled ratio (10 for zone1, +5 per zone)
-      const attackEnergyCost = Math.round(maxHP * (10 + zoneIndex * 5));
+      const attackEnergyCost = Math.round(maxHP * (FORMULA_CONSTANTS.ENERGY_BASE + zoneIndex * FORMULA_CONSTANTS.ENERGY_STEP));
       const nameIndex = (sectorInZone - 1) % zd.namePool.length;
       const ability = alienAbilityForZone(zoneIndex, sectorInZone);
 

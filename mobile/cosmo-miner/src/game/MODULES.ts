@@ -1,9 +1,10 @@
 import type { MetalsState } from "./METALS";
+import { FORMULA_CONSTANTS } from '@cosmo/game-config';
 
 export const MAX_MODULE_LEVEL = 50;
 
 export function computeModuleUpgradeCost(currentLevel: number): Partial<MetalsState> {
-  const amount = Math.floor(5 * Math.pow(1.15, currentLevel - 1));
+  const amount = Math.floor(FORMULA_CONSTANTS.MODULE_COST_BASE * Math.pow(FORMULA_CONSTANTS.MODULE_COST_EXP, currentLevel - 1));
   return currentLevel % 2 === 1
     ? { voidCrystal: amount }
     : { echoShard: amount };
