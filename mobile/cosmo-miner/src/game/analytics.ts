@@ -1,3 +1,7 @@
+import PostHog from 'posthog-react-native';
+import { Platform } from 'react-native';
+
+// Native-only imports — safe to import unconditionally on native, but we guard calls with Platform checks
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 
@@ -6,6 +10,7 @@ const FLUSH_INTERVAL_MS = 30_000;
 const MAX_BUFFER = 200;
 const DEV_SINK_DEBOUNCE_MS = 400;
 
+let _posthog: PostHog | null = null;
 let _sessionId = '';
 let _buffer: string[] = [];
 let _flushTimer: ReturnType<typeof setTimeout> | null = null;
@@ -39,17 +44,44 @@ function _scheduleDevSinkMirror(line: string): void {
 
 export function initAnalytics(sessionId: string): void {
   _sessionId = sessionId;
-  _scheduleFlush();
+
+  const apiKey = process.env.EXPO_PUBLIC_POSTHOG_API_KEY?.trim();
+  const host = process.env.EXPO_PUBLIC_POSTHOG_HOST?.trim() ?? 'https://us.i.posthog.com';
+
+  if (apiKey) {
+    _posthog = new PostHog(apiKey, { host });
+  }
+
+  if (Platform.OS !== 'web') {
+    _scheduleFlush();
+  }
+
   logEvent('session_start', { sessionId });
 }
 
 export function logEvent(action: string, payload: Record<string, unknown>): void {
-  const line = JSON.stringify({ ts: Date.now(), sid: _sessionId, action, p: payload });
-  _buffer.push(line);
-  _scheduleDevSinkMirror(line);
-  if (_buffer.length >= MAX_BUFFER) {
-    void _flushBuffer();
+  // Send to PostHog on every event
+  _posthog?.capture(action, { ...payload, sid: _sessionId });
+
+  if (Platform.OS !== 'web') {
+    const line = JSON.stringify({ ts: Date.now(), sid: _sessionId, action, p: payload });
+    _buffer.push(line);
+    _scheduleDevSinkMirror(line);
+    if (_buffer.length >= MAX_BUFFER) {
+      void _flushBuffer();
+    }
   }
+}
+
+export function logError(error: unknown, context?: Record<string, unknown>): void {
+  const message = error instanceof Error ? error.message : String(error);
+  const stack = error instanceof Error ? error.stack : undefined;
+  _posthog?.capture('$exception', {
+    sid: _sessionId,
+    message,
+    ...(stack !== undefined ? { stack } : {}),
+    ...context,
+  });
 }
 
 function _scheduleFlush(): void {
@@ -87,10 +119,12 @@ async function _flushBuffer(): Promise<void> {
 }
 
 export async function flushAnalytics(): Promise<void> {
+  if (Platform.OS === 'web') return;
   await _flushBuffer();
 }
 
 export async function exportAnalytics(): Promise<void> {
+  if (Platform.OS === 'web') throw new Error('Экспорт файла недоступен в веб-версии');
   await _flushBuffer();
   const info = await FileSystem.getInfoAsync(FILE_PATH);
   if (!info.exists) {
@@ -109,6 +143,7 @@ export async function exportAnalytics(): Promise<void> {
 
 export async function clearAnalytics(): Promise<void> {
   _buffer = [];
+  if (Platform.OS === 'web') return;
   const info = await FileSystem.getInfoAsync(FILE_PATH);
   if (info.exists) {
     await FileSystem.deleteAsync(FILE_PATH, { idempotent: true });
@@ -116,6 +151,7 @@ export async function clearAnalytics(): Promise<void> {
 }
 
 export async function getAnalyticsSizeKb(): Promise<number> {
+  if (Platform.OS === 'web') return 0;
   const info = await FileSystem.getInfoAsync(FILE_PATH);
   if (!info.exists) return 0;
   const size = (info as FileSystem.FileInfo & { size?: number }).size ?? 0;
