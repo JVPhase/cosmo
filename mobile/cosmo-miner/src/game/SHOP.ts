@@ -1,4 +1,5 @@
 import type { MetalId } from "./METALS";
+import { FORMULA_CONSTANTS } from '@cosmo/game-config';
 
 export type BoostStat =
   | "clickMultiplier"
@@ -213,14 +214,14 @@ export const METAL_TIER: Record<MetalId, number> = {
 export function getConversionRate(from: MetalId, to: MetalId): number {
   const diff = METAL_TIER[to] - METAL_TIER[from];
   if (diff <= 0) return 0; // invalid direction
-  return Math.pow(3, diff);
+  return Math.pow(FORMULA_CONSTANTS.METAL_CONVERSION_RATE, diff);
 }
 
 /** Credit cost for a converter operation (scales by tier jump) */
 export function getConverterCreditCost(from: MetalId, to: MetalId): number {
   const diff = METAL_TIER[to] - METAL_TIER[from];
   if (diff <= 0) return 0;
-  return 20 * diff;
+  return FORMULA_CONSTANTS.CONVERTER_FEE_PER_TIER * diff;
 }
 
 /** Roll loot box rewards, returns metals to add */

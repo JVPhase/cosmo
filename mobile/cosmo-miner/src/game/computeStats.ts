@@ -1,4 +1,5 @@
 import { BATTLE_DURATION_MS } from "./ALIENS";
+import { FORMULA_CONSTANTS } from '@cosmo/game-config';
 import { PLANETS, type PlanetDefinition, type PlanetId } from "./PLANETS";
 import { computeResearchEffects, type ResearchState } from "./RESEARCH";
 import { UPGRADES, type UpgradeId } from "./UPGRADES";
@@ -76,7 +77,7 @@ export function computeStats(args: {
     const level = upgrades[upg.id] ?? 0;
     // Экспоненциальная прогрессия: каждый уровень в 1.6× сильнее предыдущего
     // level 1 = 1.6×, level 2 = 2.56×, level 5 = 10.5×, level 10 = 109×
-    const scale = level > 0 ? Math.pow(1.6, level) : 0;
+    const scale = level > 0 ? Math.pow(FORMULA_CONSTANTS.UPGRADE_POWER_EXP, level) : 0;
     if (upg.clickBonus) baseClickPower += upg.clickBonus * scale;
     if (upg.passiveBonus) basePassiveRate += upg.passiveBonus * scale;
   }

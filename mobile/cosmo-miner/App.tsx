@@ -47,6 +47,13 @@ import {
 import { ALIENS } from './src/game/ALIENS';
 import { STORY_LOG } from './src/game/STORY_LOG';
 import { isSectorUnlocked } from './src/game/SECTORS';
+import { loadRemoteConfigFromCache, fetchAndCacheRemoteConfig } from './src/game/remoteConfig';
+import {
+  fetchCloudSave,
+  getAccessToken,
+  getCloudRev,
+  pushCloudSave,
+} from './src/game/cloudSave';
 import { PLANETS } from './src/game/PLANETS';
 import { SHIPS } from './src/game/SHIPS';
 import { CANNONS, computeCannonCost } from './src/game/CANNONS';
@@ -93,6 +100,11 @@ const [metalInfoOpenId, setMetalInfoOpenId] = useState<MetalId | null>(null);
   const [resetShowIntro, setResetShowIntro] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [analyticsSizeKb, setAnalyticsSizeKb] = useState(0);
+
+  useEffect(() => {
+    loadRemoteConfigFromCache();
+    fetchAndCacheRemoteConfig();
+  }, []);
 
   useEffect(() => {
     getAnalyticsSizeKb().then(setAnalyticsSizeKb).catch(() => {});
@@ -204,9 +216,9 @@ const [metalInfoOpenId, setMetalInfoOpenId] = useState<MetalId | null>(null);
 
   // Save every 3 seconds
   useEffect(() => {
-    const interval = setInterval(() => {
+    const interval = setInterval(async () => {
       const g = latestRef.current;
-      saveGame({
+      const snapshot = {
         energy: g.energy,
         totalEarned: g.totalEarned,
         clicks: g.clicks,
@@ -219,9 +231,21 @@ const [metalInfoOpenId, setMetalInfoOpenId] = useState<MetalId | null>(null);
         battle: g.battle,
         playerXP: g.playerXP,
         research: g.research,
-        expeditions: g.expeditions
-      } as any).catch(() => {});
+        expeditions: g.expeditions,
+      } as any;
+      saveGame(snapshot).catch(() => {});
       flushAnalytics().catch(() => {});
+
+      // Cloud autosave — fire-and-forget, ignore 409 conflicts silently
+      getAccessToken().then((token) => {
+        if (!token) return;
+        getCloudRev().then((rev) =>
+          pushCloudSave(
+            { version: 1, state: snapshot, savedAt: Date.now() },
+            rev ?? undefined,
+          ).catch(() => {}),
+        );
+      });
     }, 3000);
     return () => clearInterval(interval);
   }, []);
@@ -956,10 +980,33 @@ export default function App() {
   useEffect(() => {
     let mounted = true;
     (async () => {
-      const [loaded, seen] = await Promise.all([loadGame(), loadIntroSeen()]);
+      const [loaded, seen, token] = await Promise.all([
+        loadGame(),
+        loadIntroSeen(),
+        getAccessToken(),
+      ]);
       if (!mounted) return;
-      if (loaded) {
-        const { state, savedAt } = loaded;
+
+      // Cloud sync: if logged in, fetch cloud save and pick the newer snapshot
+      let cloudState: GameStateInit | undefined;
+      let cloudSavedAt = 0;
+      if (token) {
+        const cloud = await fetchCloudSave();
+        if (cloud) {
+          const localSavedAt = loaded?.savedAt ?? 0;
+          cloudSavedAt = cloud.data.savedAt ?? 0;
+          if (cloudSavedAt > localSavedAt) {
+            cloudState = cloud.data.state;
+          }
+        }
+      }
+
+      const resolvedState = cloudState ?? loaded?.state;
+      const resolvedSavedAt = cloudState ? cloudSavedAt : (loaded?.savedAt ?? 0);
+
+      if (resolvedState) {
+        const state = resolvedState;
+        const savedAt = resolvedSavedAt;
         if (savedAt > 0) {
           const elapsedSeconds = (Date.now() - savedAt) / 1000;
           let basePassive = 0;

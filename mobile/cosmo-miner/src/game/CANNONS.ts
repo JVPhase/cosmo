@@ -1,4 +1,5 @@
 import type { MetalId, MetalsState } from './METALS';
+import { FORMULA_CONSTANTS } from '@cosmo/game-config';
 
 
 export type CannonId = 'standard' | 'titan' | 'iridium' | 'alloy';
@@ -56,7 +57,7 @@ export function computeCannonCost(
   cannon: CannonDefinition,
   currentLevel: number
 ): Partial<MetalsState> {
-  const factor = Math.pow(1.2, currentLevel);
+  const factor = Math.pow(FORMULA_CONSTANTS.CANNON_COST_EXP, currentLevel);
   const result: Partial<MetalsState> = {};
   for (const [key, amount] of Object.entries(cannon.baseCost) as [
     MetalId,
