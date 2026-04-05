@@ -6,13 +6,17 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  View
+  View,
 } from 'react-native';
 import { ALIENS } from '../game/ALIENS';
 import { formatNum } from '../game/formatNum';
 import { METALS, PLANET_DROP_TABLE } from '../game/METALS';
 import { PLANETS, type PlanetDefinition, type PlanetId } from '../game/PLANETS';
-import { SECTORS, getSectorLockReason, isSectorUnlocked } from '../game/SECTORS';
+import {
+  SECTORS,
+  getSectorLockReason,
+  isSectorUnlocked,
+} from '../game/SECTORS';
 import type { BattleState } from '../game/types';
 
 export type PlanetsScreenProps = {
@@ -34,12 +38,12 @@ export function PlanetsScreen({
   energy,
   playerLevel,
   onAttackPlanet,
-  onChoosePlanet
+  onChoosePlanet,
 }: PlanetsScreenProps) {
   const [selPlanet, setSelPlanet] = useState<PlanetDefinition | null>(null);
   const unlockedSet = useMemo(
     () => new Set(unlockedPlanetIds),
-    [unlockedPlanetIds]
+    [unlockedPlanetIds],
   );
   // Show only unlocked sectors + the next locked sector (to avoid rendering all 100)
   const sections = useMemo(
@@ -47,12 +51,13 @@ export function PlanetsScreen({
       SECTORS.filter(
         (s) =>
           isSectorUnlocked(s.id, unlockedPlanetIds, playerLevel) ||
-          (s.id > 1 && isSectorUnlocked(s.id - 1, unlockedPlanetIds, playerLevel))
+          (s.id > 1 &&
+            isSectorUnlocked(s.id - 1, unlockedPlanetIds, playerLevel)),
       ).map((sector) => ({
         sector,
         data: PLANETS.filter((p) => p.sectorId === sector.id),
       })),
-    [unlockedPlanetIds, playerLevel]
+    [unlockedPlanetIds, playerLevel],
   );
 
   if (selPlanet) {
@@ -62,7 +67,11 @@ export function PlanetsScreen({
     const otherBattle = !!battle && battle.planetId !== selPlanet.id;
     const notEnoughEnergy =
       !!alien && !unlocked && energy < alien.attackEnergyCost;
-    const sectorLocked = !isSectorUnlocked(selPlanet.sectorId, unlockedPlanetIds, playerLevel);
+    const sectorLocked = !isSectorUnlocked(
+      selPlanet.sectorId,
+      unlockedPlanetIds,
+      playerLevel,
+    );
 
     return (
       <View style={styles.screen}>
@@ -80,18 +89,21 @@ export function PlanetsScreen({
             <Text style={[styles.planetName, { color: selPlanet.color }]}>
               {selPlanet.name}
             </Text>
-            <Text style={styles.meta}>
-              Ресурс: {selPlanet.resource} · Бонус ×{selPlanet.bonus}
-            </Text>
+            <Text style={styles.meta}>Ресурс: {selPlanet.resource}</Text>
           </View>
 
           <View
             style={[styles.dossier, { borderColor: 'rgba(255,255,255,0.08)' }]}
           >
             <Text style={styles.dossierTitle}>📋 ДОСЬЕ ПЛАНЕТЫ · МММРДР</Text>
-            <Text style={styles.dossierText}>⛏ Добываемый ресурс: {selPlanet.resource}</Text>
+            <Text style={styles.dossierText}>
+              ⛏ Добываемый ресурс: {selPlanet.resource}
+            </Text>
             {(() => {
-              const drops = PLANET_DROP_TABLE[selPlanet.id as keyof typeof PLANET_DROP_TABLE];
+              const drops =
+                PLANET_DROP_TABLE[
+                  selPlanet.id as keyof typeof PLANET_DROP_TABLE
+                ];
               if (!drops || drops.length === 0) return null;
               return (
                 <View style={styles.metalsRow}>
@@ -101,7 +113,11 @@ export function PlanetsScreen({
                     if (!metal) return null;
                     return (
                       <View key={d.metalId} style={styles.metalChip}>
-                        <Image source={metal.image} style={styles.metalChipIcon} resizeMode="contain" />
+                        <Image
+                          source={metal.image}
+                          style={styles.metalChipIcon}
+                          resizeMode="contain"
+                        />
                         <Text style={styles.metalChipText}>{metal.name}</Text>
                       </View>
                     );
@@ -116,7 +132,7 @@ export function PlanetsScreen({
             <View
               style={[
                 styles.dossier,
-                { borderColor: 'rgba(255,80,80,0.2)', marginTop: 8 }
+                { borderColor: 'rgba(255,80,80,0.2)', marginTop: 8 },
               ]}
             >
               <Text
@@ -135,12 +151,11 @@ export function PlanetsScreen({
                     color:
                       energy >= alien.attackEnergyCost
                         ? 'rgba(0,212,255,0.7)'
-                        : 'rgba(255,80,80,0.7)'
-                  }
+                        : 'rgba(255,80,80,0.7)',
+                  },
                 ]}
               >
-                ⚡ Стоимость атаки: {formatNum(alien.attackEnergyCost)}{' '}
-                энергии
+                ⚡ Стоимость атаки: {formatNum(alien.attackEnergyCost)} энергии
               </Text>
             </View>
           )}
@@ -149,7 +164,7 @@ export function PlanetsScreen({
             <View
               style={[
                 styles.attackingBox,
-                { borderColor: 'rgba(255,200,0,0.2)', marginTop: 16 }
+                { borderColor: 'rgba(255,200,0,0.2)', marginTop: 16 },
               ]}
             >
               <Text
@@ -166,7 +181,7 @@ export function PlanetsScreen({
               onPress={() => onChoosePlanet(selPlanet.id)}
               style={({ pressed }) => [
                 styles.chooseBtn,
-                pressed ? { opacity: 0.92 } : null
+                pressed ? { opacity: 0.92 } : null,
               ]}
             >
               <Text style={styles.chooseBtnText}>✓ ВЫБРАТЬ ЭТУ ЛОКАЦИЮ</Text>
@@ -182,13 +197,13 @@ export function PlanetsScreen({
             <View
               style={[
                 styles.attackingBox,
-                { borderColor: 'rgba(255,255,255,0.08)' }
+                { borderColor: 'rgba(255,255,255,0.08)' },
               ]}
             >
               <Text
                 style={[
                   styles.attackingText,
-                  { color: 'rgba(255,255,255,0.3)' }
+                  { color: 'rgba(255,255,255,0.3)' },
                 ]}
               >
                 ВЫ УЖЕ ВЕДЁТЕ БОЙ
@@ -201,13 +216,13 @@ export function PlanetsScreen({
             <View
               style={[
                 styles.attackingBox,
-                { borderColor: 'rgba(255,255,255,0.08)' }
+                { borderColor: 'rgba(255,255,255,0.08)' },
               ]}
             >
               <Text
                 style={[
                   styles.attackingText,
-                  { color: 'rgba(255,255,255,0.3)' }
+                  { color: 'rgba(255,255,255,0.3)' },
                 ]}
               >
                 НЕТ ВООРУЖЕНИЯ
@@ -218,20 +233,19 @@ export function PlanetsScreen({
             <View
               style={[
                 styles.attackingBox,
-                { borderColor: 'rgba(255,80,80,0.2)' }
+                { borderColor: 'rgba(255,80,80,0.2)' },
               ]}
             >
               <Text
                 style={[
                   styles.attackingText,
-                  { color: 'rgba(255,100,100,0.6)' }
+                  { color: 'rgba(255,100,100,0.6)' },
                 ]}
               >
                 НЕ ХВАТАЕТ ЭНЕРГИИ
               </Text>
               <Text style={styles.attackingHint}>
-                Нужно {formatNum(alien!.attackEnergyCost)} энергии для
-                атаки
+                Нужно {formatNum(alien!.attackEnergyCost)} энергии для атаки
               </Text>
             </View>
           ) : (
@@ -242,7 +256,7 @@ export function PlanetsScreen({
               }}
               style={({ pressed }) => [
                 styles.attackBtn,
-                pressed ? { opacity: 0.92 } : null
+                pressed ? { opacity: 0.92 } : null,
               ]}
             >
               <Text style={styles.attackBtnText}>⚔️ НАЧАТЬ АТАКУ</Text>
@@ -259,17 +273,27 @@ export function PlanetsScreen({
         sections={sections}
         keyExtractor={(p) => String(p.id)}
         contentContainerStyle={styles.content}
-        ListHeaderComponent={<Text style={styles.title}>◈ ЛОКАЦИИ ДОБЫЧИ ◈</Text>}
+        ListHeaderComponent={
+          <Text style={styles.title}>◈ ЛОКАЦИИ ДОБЫЧИ ◈</Text>
+        }
         renderSectionHeader={({ section: { sector } }) => {
-          const sectorUnlocked = isSectorUnlocked(sector.id, unlockedPlanetIds, playerLevel);
-          const lockReason = getSectorLockReason(sector.id, unlockedPlanetIds, playerLevel);
+          const sectorUnlocked = isSectorUnlocked(
+            sector.id,
+            unlockedPlanetIds,
+            playerLevel,
+          );
+          const lockReason = getSectorLockReason(
+            sector.id,
+            unlockedPlanetIds,
+            playerLevel,
+          );
           return (
             <View
               style={[
                 styles.sectorHeader,
                 sectorUnlocked
                   ? styles.sectorHeaderUnlocked
-                  : styles.sectorHeaderLocked
+                  : styles.sectorHeaderLocked,
               ]}
             >
               <Text style={styles.sectorIcon}>{sector.icon}</Text>
@@ -279,15 +303,13 @@ export function PlanetsScreen({
                     styles.sectorName,
                     sectorUnlocked
                       ? { color: '#00d4ff' }
-                      : { color: 'rgba(255,255,255,0.5)' }
+                      : { color: 'rgba(255,255,255,0.5)' },
                   ]}
                 >
                   СЕКТОР {sector.id} · {sector.name.toUpperCase()}
                 </Text>
                 {lockReason && (
-                  <Text style={styles.sectorLockHint}>
-                    {lockReason}
-                  </Text>
+                  <Text style={styles.sectorLockHint}>{lockReason}</Text>
                 )}
               </View>
               {!sectorUnlocked && <Text style={styles.lockIcon}>🔒</Text>}
@@ -295,7 +317,11 @@ export function PlanetsScreen({
           );
         }}
         renderItem={({ item: p, section: { sector } }) => {
-          const sectorUnlocked = isSectorUnlocked(sector.id, unlockedPlanetIds, playerLevel);
+          const sectorUnlocked = isSectorUnlocked(
+            sector.id,
+            unlockedPlanetIds,
+            playerLevel,
+          );
           const unlocked = unlockedSet.has(p.id);
           const active = p.id === selectedPlanetId;
           const isBattling = battle?.planetId === p.id;
@@ -318,7 +344,7 @@ export function PlanetsScreen({
                 isBattling ? styles.cardBattling : null,
                 !unlocked && !isBattling ? styles.cardLocked : null,
                 unlocked && !active ? styles.cardUnlocked : null,
-                pressed ? { opacity: 0.92 } : null
+                pressed ? { opacity: 0.92 } : null,
               ]}
             >
               {showBadge && <View style={styles.planetBadge} />}
@@ -328,7 +354,7 @@ export function PlanetsScreen({
                   styles.cardIcon,
                   grayed || (!unlocked && !isBattling)
                     ? { opacity: 0.5 }
-                    : null
+                    : null,
                 ]}
                 resizeMode="contain"
               />
@@ -338,14 +364,14 @@ export function PlanetsScreen({
                     styles.cardName,
                     unlocked
                       ? { color: p.color }
-                      : { color: 'rgba(255,255,255,0.5)' }
+                      : { color: 'rgba(255,255,255,0.5)' },
                   ]}
                 >
                   {p.name}
                 </Text>
                 <Text style={styles.cardMeta}>
                   {unlocked
-                    ? `${p.resource} · ×${p.bonus}`
+                    ? `${p.resource}`
                     : isBattling
                       ? `⚔️ Бой с ${alien?.name ?? 'противником'}`
                       : !sectorUnlocked
@@ -374,14 +400,14 @@ const styles = StyleSheet.create({
     color: 'rgba(0,212,255,0.5)',
     letterSpacing: 2,
     fontWeight: '800',
-    marginBottom: 14
+    marginBottom: 14,
   },
   back: {
     fontSize: 12,
     color: 'rgba(0,212,255,0.5)',
     letterSpacing: 2,
     fontWeight: '800',
-    marginBottom: 12
+    marginBottom: 12,
   },
   // Sector header
   sectorHeader: {
@@ -393,15 +419,15 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 8,
     marginTop: 4,
-    borderWidth: 1
+    borderWidth: 1,
   },
   sectorHeaderUnlocked: {
     borderColor: 'rgba(0,212,255,0.15)',
-    backgroundColor: 'rgba(0,212,255,0.03)'
+    backgroundColor: 'rgba(0,212,255,0.03)',
   },
   sectorHeaderLocked: {
     borderColor: 'rgba(255,255,255,0.05)',
-    backgroundColor: 'rgba(255,255,255,0.01)'
+    backgroundColor: 'rgba(255,255,255,0.01)',
   },
   sectorIcon: { fontSize: 16 },
   sectorName: { fontSize: 9, fontWeight: '900', letterSpacing: 1.5 },
@@ -413,17 +439,23 @@ const styles = StyleSheet.create({
     padding: 12,
     marginTop: 12,
     borderWidth: 1,
-    backgroundColor: 'rgba(255,255,255,0.02)'
+    backgroundColor: 'rgba(255,255,255,0.02)',
   },
   dossierTitle: {
     fontSize: 12,
     color: 'rgba(0,212,255,0.5)',
     letterSpacing: 2,
     fontWeight: '900',
-    marginBottom: 6
+    marginBottom: 6,
   },
   dossierText: { fontSize: 12, color: 'rgba(200,220,255,0.7)', lineHeight: 18 },
-  metalsRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 4 },
+  metalsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 4,
+  },
   metalChip: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   metalChipIcon: { width: 16, height: 16 },
   metalChipText: { fontSize: 12, color: 'rgba(200,220,255,0.7)' },
@@ -431,19 +463,19 @@ const styles = StyleSheet.create({
     marginTop: 6,
     fontSize: 10,
     color: 'rgba(255,100,100,0.6)',
-    fontWeight: '700'
+    fontWeight: '700',
   },
   planetName: {
     fontSize: 14,
     fontWeight: '900',
     letterSpacing: 2,
-    marginTop: 8
+    marginTop: 8,
   },
   meta: {
     marginTop: 3,
     fontSize: 11,
     color: 'rgba(255,255,255,0.65)',
-    fontWeight: '700'
+    fontWeight: '700',
   },
   // Planet cards
   card: {
@@ -454,23 +486,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     borderRadius: 12,
     borderWidth: 1,
-    marginBottom: 8
+    marginBottom: 8,
   },
   cardActive: {
     borderColor: 'rgba(120,255,120,0.25)',
-    backgroundColor: 'rgba(120,255,120,0.06)'
+    backgroundColor: 'rgba(120,255,120,0.06)',
   },
   cardBattling: {
     borderColor: 'rgba(255,80,80,0.35)',
-    backgroundColor: 'rgba(255,40,40,0.06)'
+    backgroundColor: 'rgba(255,40,40,0.06)',
   },
   cardUnlocked: {
     backgroundColor: 'rgba(255,255,255,0.02)',
-    borderColor: 'rgba(255,255,255,0.06)'
+    borderColor: 'rgba(255,255,255,0.06)',
   },
   cardLocked: {
     backgroundColor: 'rgba(255,255,255,0.01)',
-    borderColor: 'rgba(255,255,255,0.03)'
+    borderColor: 'rgba(255,255,255,0.03)',
   },
   planetBadge: {
     position: 'absolute',
@@ -479,7 +511,7 @@ const styles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 4,
-    backgroundColor: '#ff3b30'
+    backgroundColor: '#ff3b30',
   },
   cardIcon: { width: 36, height: 36, marginRight: 2 },
   detailImage: { width: 90, height: 90 },
@@ -487,20 +519,20 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '900',
     letterSpacing: 1,
-    marginBottom: 2
+    marginBottom: 2,
   },
   cardMeta: { fontSize: 10, color: 'rgba(255,255,255,0.55)' },
   activeLabel: {
     fontSize: 10,
     color: 'rgba(120,255,120,0.65)',
     letterSpacing: 1,
-    fontWeight: '900'
+    fontWeight: '900',
   },
   battleLabel: {
     fontSize: 10,
     color: 'rgba(255,80,80,0.75)',
     letterSpacing: 1,
-    fontWeight: '900'
+    fontWeight: '900',
   },
   chooseBtn: {
     marginTop: 16,
@@ -510,13 +542,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(120,255,120,0.4)',
     backgroundColor: 'rgba(120,255,120,0.09)',
-    alignItems: 'center'
+    alignItems: 'center',
   },
   chooseBtnText: {
     color: '#7fff00',
     fontWeight: '900',
     letterSpacing: 2,
-    fontSize: 11
+    fontSize: 11,
   },
   attackBtn: {
     marginTop: 16,
@@ -526,13 +558,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,80,80,0.45)',
     backgroundColor: 'rgba(255,40,40,0.09)',
-    alignItems: 'center'
+    alignItems: 'center',
   },
   attackBtnText: {
     color: '#ff5555',
     fontWeight: '900',
     letterSpacing: 2,
-    fontSize: 11
+    fontSize: 11,
   },
   attackingBox: {
     marginTop: 16,
@@ -543,13 +575,13 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,80,80,0.3)',
     backgroundColor: 'rgba(255,40,40,0.05)',
     alignItems: 'center',
-    gap: 4
+    gap: 4,
   },
   attackingText: {
     color: '#ff6666',
     fontWeight: '900',
     letterSpacing: 2,
-    fontSize: 11
+    fontSize: 11,
   },
-  attackingHint: { fontSize: 10, color: 'rgba(255,255,255,0.6)' }
+  attackingHint: { fontSize: 10, color: 'rgba(255,255,255,0.6)' },
 });

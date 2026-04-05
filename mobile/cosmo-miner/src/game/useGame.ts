@@ -8,6 +8,7 @@ import {
 import { CLERK_MESSAGES, type ClerkTrigger } from './CLERK_MESSAGES';
 import {
   ACHIEVEMENTS,
+  ACHIEVEMENT_CLAIM_CREDITS,
   type AchievementDefinition,
   type AchievementId,
 } from './ACHIEVEMENTS';
@@ -999,15 +1000,9 @@ export function useGame(initial?: GameStateInit) {
       if (prev.achievements.claimedIds.includes(id)) return prev;
       const def = ACHIEVEMENTS.find((a) => a.id === id);
       if (!def) return prev;
-      const creditReward =
-        ('creditReward' in def
-          ? (def as { creditReward?: number }).creditReward
-          : undefined) ?? 0;
       return {
         ...prev,
-        energy: prev.energy + def.reward,
-        totalEarned: prev.totalEarned + def.reward,
-        credits: prev.credits + creditReward,
+        credits: prev.credits + ACHIEVEMENT_CLAIM_CREDITS,
         achievements: {
           ...prev.achievements,
           claimedIds: [...prev.achievements.claimedIds, id],
