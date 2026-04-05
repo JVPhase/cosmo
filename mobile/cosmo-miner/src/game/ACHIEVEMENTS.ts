@@ -1,10 +1,12 @@
+/** Credits granted when the player claims any achievement. */
+export const ACHIEVEMENT_CLAIM_CREDITS = 5;
+
 export const ACHIEVEMENTS = [
   {
     id: 1,
     name: "Первый рабочий день",
     icon: "📋",
     target: { type: "totalAtLeast", value: 10 },
-    reward: 20,
     lore: "Вы добыли первые 10 единиц. Трудовой договор вступил в силу. Раздел 47.б вы точно не читали.",
   },
   {
@@ -12,7 +14,6 @@ export const ACHIEVEMENTS = [
     name: "Квартальный план",
     icon: "📊",
     target: { type: "totalAtLeast", value: 1000 },
-    reward: 2_000,
     lore: "1000 единиц! Вы выполнили квартальный план. За третий квартал 2386 года. Но кто считает?",
   },
   {
@@ -20,7 +21,6 @@ export const ACHIEVEMENTS = [
     name: "Передовик производства",
     icon: "🏆",
     target: { type: "totalAtLeast", value: 10000 },
-    reward: 20_000,
     lore: "Портрет повесили на доску почёта. Рядом с портретом КЛЕРК-а в его первый день.",
   },
   {
@@ -28,7 +28,6 @@ export const ACHIEVEMENTS = [
     name: "Автоматизация труда",
     icon: "🤖",
     target: { type: "passiveAtLeast", value: 10 },
-    reward: 5_000,
     lore: "Дроны добывают 10+/сек. Отдел труда подал жалобу. Роботы жалобу отклонили.",
   },
   {
@@ -36,8 +35,6 @@ export const ACHIEVEMENTS = [
     name: "Галактический исследователь",
     icon: "🌌",
     target: { type: "planetsAtLeast", value: 3 },
-    reward: 10_000,
-    creditReward: 20,
     lore: "3 планеты! Ваше личное дело занимает 3 папки. Архивариус Зофф начинает вас не любить.",
   },
   {
@@ -45,7 +42,6 @@ export const ACHIEVEMENTS = [
     name: "Кофе-пауза запрещена",
     icon: "☕",
     target: { type: "clicksAtLeast", value: 500 },
-    reward: 1_000,
     lore: "500 кликов! По регламенту вам положен перерыв. По факту — нет. Регламент противоречит себе.",
   },
   {
@@ -53,8 +49,6 @@ export const ACHIEVEMENTS = [
     name: "Звёздный олигарх",
     icon: "💰",
     target: { type: "totalAtLeast", value: 100000 },
-    reward: 200_000,
-    creditReward: 30,
     lore: "100 000 единиц! Вы богаче министра. Он об этом не знает. Лучше не говорите.",
   },
   {
@@ -62,7 +56,6 @@ export const ACHIEVEMENTS = [
     name: "Я — система",
     icon: "📁",
     target: { type: "upgCountAtLeast", value: 5 },
-    reward: 3_000,
     lore: "5 апгрейдов. Каждый потребовал заявку в 3 экземплярах. КЛЕРК-7 гордится. По-своему.",
   },
   {
@@ -70,7 +63,6 @@ export const ACHIEVEMENTS = [
     name: "Пробный кнопкожим",
     icon: "🖱️",
     target: { type: "clicksAtLeast", value: 100 },
-    reward: 150,
     lore: "100 кликов. Пробный период завершён. Трудоустройство оформлено в трёх экземплярах. Один — вам. Два — в архив.",
   },
   {
@@ -78,7 +70,6 @@ export const ACHIEVEMENTS = [
     name: "Трудовой подвиг",
     icon: "🤲",
     target: { type: "clicksAtLeast", value: 2000 },
-    reward: 5_000,
     lore: "2000 кликов. Медицинский отдел рекомендует обследование запястья. Вы отклонили направление.",
   },
   {
@@ -86,7 +77,6 @@ export const ACHIEVEMENTS = [
     name: "Стратегический ресурс",
     icon: "💪",
     target: { type: "clicksAtLeast", value: 10000 },
-    reward: 30_000,
     lore: "10 000 кликов! Кинетическая энергия ваших пальцев внесена в реестр стратегических активов Галактики.",
   },
   {
@@ -94,7 +84,6 @@ export const ACHIEVEMENTS = [
     name: "Миллионер поневоле",
     icon: "🤑",
     target: { type: "totalAtLeast", value: 500000 },
-    reward: 1_000_000,
     lore: "500 000 единиц! Налоговая инспекция Галактики-7 отправила письмо. Письмо потерялось. Вам повезло.",
   },
   {
@@ -102,7 +91,6 @@ export const ACHIEVEMENTS = [
     name: "Астероидный барон",
     icon: "👑",
     target: { type: "totalAtLeast", value: 1000000 },
-    reward: 2_500_000,
     lore: "Миллион единиц! Вам присвоен класс «Ресурсный магнат». Погоны и мантию заказывать отдельно.",
   },
   {
@@ -110,7 +98,6 @@ export const ACHIEVEMENTS = [
     name: "Монополия на вакуум",
     icon: "🌠",
     target: { type: "totalAtLeast", value: 10000000 },
-    reward: 20_000_000,
     lore: "10 миллионов! Вы добыли больше, чем весь Торговый Союз Туманности Краба за последние три века.",
   },
   {
@@ -118,7 +105,6 @@ export const ACHIEVEMENTS = [
     name: "Полный комплект",
     icon: "📦",
     target: { type: "upgCountAtLeast", value: 7 },
-    reward: 50_000,
     lore: "Все 7 апгрейдов! Акт приёмки-передачи подписан. Гарантийное письмо ожидайте в течение 6–8 световых лет.",
   },
   {
@@ -126,7 +112,6 @@ export const ACHIEVEMENTS = [
     name: "Пассивный агрессор",
     icon: "😤",
     target: { type: "passiveAtLeast", value: 50 },
-    reward: 25_000,
     lore: "50+ единиц в секунду без единого клика. Профсоюз обвиняет вас в подрыве занятости. Дроны согласны с профсоюзом.",
   },
   {
@@ -134,7 +119,6 @@ export const ACHIEVEMENTS = [
     name: "Завод имени вас",
     icon: "🏭",
     target: { type: "passiveAtLeast", value: 200 },
-    reward: 150_000,
     lore: "200 единиц в секунду! Вашу пассивную доходность вынесли на обложку учебника. Как отрицательный пример.",
   },
   {
@@ -142,8 +126,6 @@ export const ACHIEVEMENTS = [
     name: "Коллектор вселенной",
     icon: "🪐",
     target: { type: "planetsAtLeast", value: 5 },
-    reward: 500_000,
-    creditReward: 50,
     lore: "Все 5 планет! Галактическая кадастровая служба прислала форму П-99 в семи экземплярах. Поздравляем.",
   },
 
@@ -153,7 +135,6 @@ export const ACHIEVEMENTS = [
     name: "Трежерхантер",
     icon: "💎",
     target: { type: "totalAtLeast", value: 1e9 },
-    reward: 2e9,
     lore: "Миллиард единиц! Реестр Галактики переполнен. Ваши активы выведены в отдельный раздел — 'Аномальные'.",
   },
   {
@@ -161,7 +142,6 @@ export const ACHIEVEMENTS = [
     name: "Абсолютный добытчик",
     icon: "⛏️",
     target: { type: "totalAtLeast", value: 1e12 },
-    reward: 5e12,
     lore: "Триллион! Планета Учёта-6 переименована в вашу честь. Жители против. Их мнение занесено в протокол.",
   },
   {
@@ -169,7 +149,6 @@ export const ACHIEVEMENTS = [
     name: "Превзошёл систему",
     icon: "🌌",
     target: { type: "totalAtLeast", value: 1e15 },
-    reward: 1e16,
     lore: "Квадриллион. Система учёта ресурсов Галактики выдала критическую ошибку. Ваш счёт не умещается в поле.",
   },
   {
@@ -177,7 +156,6 @@ export const ACHIEVEMENTS = [
     name: "Бог Добычи",
     icon: "👁️",
     target: { type: "totalAtLeast", value: 1e18 },
-    reward: 1e19,
     lore: "Квинтиллион. Понятие 'много' официально упразднено. Есть только вы и ваши цифры.",
   },
 
@@ -187,7 +165,6 @@ export const ACHIEVEMENTS = [
     name: "Маньяк добычи",
     icon: "🖱️",
     target: { type: "clicksAtLeast", value: 50_000 },
-    reward: 200_000,
     lore: "50 000 кликов. Хирург-ортопед выставил счёт. Вы оспорили его в межгалактическом арбитраже.",
   },
   {
@@ -195,7 +172,6 @@ export const ACHIEVEMENTS = [
     name: "Ста-тысячник",
     icon: "💯",
     target: { type: "clicksAtLeast", value: 100_000 },
-    reward: 750_000,
     lore: "100 000 кликов. Ваш указательный палец внесён в реестр стратегических биологических активов.",
   },
   {
@@ -203,7 +179,6 @@ export const ACHIEVEMENTS = [
     name: "Бесконечный палец",
     icon: "☝️",
     target: { type: "clicksAtLeast", value: 500_000 },
-    reward: 5_000_000,
     lore: "500 000 кликов. Физики засомневались в ограничении скорости света. Ваш палец — нет.",
   },
   {
@@ -211,7 +186,6 @@ export const ACHIEVEMENTS = [
     name: "Квантовый кликер",
     icon: "⚛️",
     target: { type: "clicksAtLeast", value: 1_000_000 },
-    reward: 20_000_000,
     lore: "Миллион кликов. Наблюдатели из другого измерения прислали поздравительную телеграмму. На квантовой бумаге.",
   },
 
@@ -221,8 +195,6 @@ export const ACHIEVEMENTS = [
     name: "Покоритель кластера",
     icon: "🌍",
     target: { type: "planetsAtLeast", value: 10 },
-    reward: 5_000_000,
-    creditReward: 80,
     lore: "10 планет! Картографическое бюро выдало вам пятую степень наглости и первую — величия.",
   },
   {
@@ -230,7 +202,6 @@ export const ACHIEVEMENTS = [
     name: "Властелин секторов",
     icon: "🗺️",
     target: { type: "planetsAtLeast", value: 25 },
-    reward: 50_000_000,
     lore: "25 планет. Совет Секторов объявил вас персоной нон грата. Это автоматически делает вас персоной грата у всех остальных.",
   },
   {
@@ -238,7 +209,6 @@ export const ACHIEVEMENTS = [
     name: "Завоеватель зон",
     icon: "🏴",
     target: { type: "planetsAtLeast", value: 50 },
-    reward: 1_000_000_000,
     lore: "50 планет! Зональная инспекция расширила ваше личное дело до отдельного архивного шкафа.",
   },
   {
@@ -246,7 +216,6 @@ export const ACHIEVEMENTS = [
     name: "Тотальный контроль",
     icon: "🌐",
     target: { type: "planetsAtLeast", value: 100 },
-    reward: 50_000_000_000,
     lore: "Сотня планет. Межгалактический кадастр перешёл на новый формат нумерации специально для вас.",
   },
   {
@@ -254,7 +223,6 @@ export const ACHIEVEMENTS = [
     name: "Империя без границ",
     icon: "🌠",
     target: { type: "planetsAtLeast", value: 250 },
-    reward: 5e12,
     lore: "250 планет. Понятие 'граница' исключено из вашего словаря юридическим отделом МММРДР.",
   },
   {
@@ -262,7 +230,6 @@ export const ACHIEVEMENTS = [
     name: "Абсолютная аннексия",
     icon: "💀",
     target: { type: "planetsAtLeast", value: 500 },
-    reward: 1e15,
     lore: "500 планет. Все они ваши. Реестр сдался. Вселенная подписала акт капитуляции в трёх экземплярах.",
   },
 
@@ -272,7 +239,6 @@ export const ACHIEVEMENTS = [
     name: "Индустриальный бог",
     icon: "⚙️",
     target: { type: "passiveAtLeast", value: 1_000 },
-    reward: 1_000_000,
     lore: "1000 единиц в секунду! Ваши дроны подали заявку на профсоюзное представительство. Вы её отклонили.",
   },
   {
@@ -280,7 +246,6 @@ export const ACHIEVEMENTS = [
     name: "Автономный кластер",
     icon: "🤖",
     target: { type: "passiveAtLeast", value: 10_000 },
-    reward: 15_000_000,
     lore: "10 000 в секунду. Ваша добывающая сеть выдаёт больше, чем малая звёздная система. Та обиделась.",
   },
   {
@@ -288,7 +253,6 @@ export const ACHIEVEMENTS = [
     name: "Бесконечный конвейер",
     icon: "🏗️",
     target: { type: "passiveAtLeast", value: 100_000 },
-    reward: 500_000_000,
     lore: "100 000 в секунду. Отдел энергетики Галактики попросил вас поделиться. Вы перенаправили запрос в архив.",
   },
   {
@@ -296,7 +260,6 @@ export const ACHIEVEMENTS = [
     name: "Мировой завод",
     icon: "🌋",
     target: { type: "passiveAtLeast", value: 1_000_000 },
-    reward: 1e10,
     lore: "Миллион в секунду пассивно. Концепция 'пассивного' дохода была официально переименована в 'ваш доход'.",
   },
 
@@ -306,7 +269,6 @@ export const ACHIEVEMENTS = [
     name: "Технический оптимист",
     icon: "🔧",
     target: { type: "upgCountAtLeast", value: 10 },
-    reward: 500_000,
     lore: "10 апгрейдов! Технический отдел МММРДР вручил вам почётный паяльник. Он сломался при вручении.",
   },
   {
@@ -314,7 +276,6 @@ export const ACHIEVEMENTS = [
     name: "Мастер апгрейда",
     icon: "🛠️",
     target: { type: "upgCountAtLeast", value: 14 },
-    reward: 5_000_000,
     lore: "14 апгрейдов — максимум! Инженерный отдел заявил, что дальше некуда. Вы занесли это в протокол как вызов.",
   },
 
@@ -324,7 +285,6 @@ export const ACHIEVEMENTS = [
     name: "Первая кровь",
     icon: "⚔️",
     target: { type: "battlesWonAtLeast", value: 1 },
-    reward: 1_000,
     lore: "Первая победа в бою. Противник занесён в базу как 'Объект Д-1: устранён'. Его мнения никто не спросил.",
   },
   {
@@ -332,8 +292,6 @@ export const ACHIEVEMENTS = [
     name: "Бывалый вояка",
     icon: "🛡️",
     target: { type: "battlesWonAtLeast", value: 10 },
-    reward: 20_000,
-    creditReward: 40,
     lore: "10 побед! Военный архив МММРДР присвоил вашему личному делу класс 'Тревожный'.",
   },
   {
@@ -341,8 +299,6 @@ export const ACHIEVEMENTS = [
     name: "Ветеран пустоты",
     icon: "🌑",
     target: { type: "battlesWonAtLeast", value: 50 },
-    reward: 500_000,
-    creditReward: 100,
     lore: "50 сражений позади. Вакуум стал вашим домом. Отдел регистрации подтвердил: налог на домовладение не предусмотрен.",
   },
   {
@@ -350,7 +306,6 @@ export const ACHIEVEMENTS = [
     name: "Легенда войны",
     icon: "🏆",
     target: { type: "battlesWonAtLeast", value: 200 },
-    reward: 20_000_000,
     lore: "200 побед. Противники перестали сопротивляться из уважения. Потом снова начали — приказ сверху.",
   },
   {
@@ -358,7 +313,6 @@ export const ACHIEVEMENTS = [
     name: "Зарубка на броне",
     icon: "💥",
     target: { type: "battlesWonAtLeast", value: 1_000 },
-    reward: 1_000_000_000,
     lore: "Тысяча побед. Ваш корабль перестал помещаться в ангар — не из-за размера, а из-за наград на борту.",
   },
   {
@@ -366,7 +320,6 @@ export const ACHIEVEMENTS = [
     name: "Без царапин",
     icon: "✨",
     target: { type: "battleCondition", conditionKey: "winWithHighTimer" },
-    reward: 100_000,
     lore: "Победа при более 90% таймера. Противник не успел ничего сделать. Формально — это оскорбление его достоинства.",
   },
   {
@@ -374,7 +327,6 @@ export const ACHIEVEMENTS = [
     name: "Последняя секунда",
     icon: "⏱️",
     target: { type: "battleCondition", conditionKey: "winInLastSeconds" },
-    reward: 250_000,
     lore: "Победа за последние 3 секунды. Отдел статистики зафиксировал: ваше сердцебиение превысило норму на 800%.",
   },
   {
@@ -382,7 +334,6 @@ export const ACHIEVEMENTS = [
     name: "Ультимативный",
     icon: "⚡",
     target: { type: "battleCondition", conditionKey: "fiveUltsInBattle" },
-    reward: 500_000,
     lore: "5 ульт за одну битву. Модуль попросил отпуск. Вы отказали. Он продолжил работать из принципа.",
   },
   {
@@ -390,8 +341,6 @@ export const ACHIEVEMENTS = [
     name: "Перфекционист",
     icon: "🎯",
     target: { type: "battleWinStreakAtLeast", value: 10 },
-    reward: 5_000_000,
-    creditReward: 120,
     lore: "10 побед подряд без поражений. Противники начали подозревать сговор. Сговора не было — только превосходство.",
   },
   {
@@ -399,7 +348,6 @@ export const ACHIEVEMENTS = [
     name: "Непобедимый",
     icon: "👑",
     target: { type: "battleWinStreakAtLeast", value: 50 },
-    reward: 100_000_000,
     lore: "50 побед без единого поражения. Понятие 'поражение' исключено из вашего военного словаря приказом № 50.",
   },
 
@@ -409,7 +357,6 @@ export const ACHIEVEMENTS = [
     name: "Первое открытие",
     icon: "🔬",
     target: { type: "researchCountAtLeast", value: 1 },
-    reward: 5_000,
     lore: "Первое исследование завершено. Научный отдел выдал сертификат. Шрифт Times New Roman, 11 пт, одинарный интервал.",
   },
   {
@@ -417,7 +364,6 @@ export const ACHIEVEMENTS = [
     name: "Любитель науки",
     icon: "📚",
     target: { type: "researchCountAtLeast", value: 5 },
-    reward: 100_000,
     lore: "5 исследований. Вас включили в реестр 'Граждан с научными наклонностями'. Страховка подорожала.",
   },
   {
@@ -425,8 +371,6 @@ export const ACHIEVEMENTS = [
     name: "Кандидат наук",
     icon: "🎓",
     target: { type: "researchCountAtLeast", value: 15 },
-    reward: 2_000_000,
-    creditReward: 75,
     lore: "15 исследований. Диссертационный совет Галактики-3 признал ваш вклад. Диплом выслан почтой. Потерялся.",
   },
   {
@@ -434,7 +378,6 @@ export const ACHIEVEMENTS = [
     name: "Доктор наук Пустоты",
     icon: "🧪",
     target: { type: "researchCountAtLeast", value: 30 },
-    reward: 50_000_000,
     lore: "30 исследований. Вам присвоена учёная степень по вакуумной экономике. Кафедры такой не существует. Теперь существует.",
   },
   {
@@ -442,7 +385,6 @@ export const ACHIEVEMENTS = [
     name: "Академик Вселенной",
     icon: "🔭",
     target: { type: "researchCountAtLeast", value: 50 },
-    reward: 2_000_000_000,
     lore: "50 исследований. Академия Галактических Наук выслала приглашение. И сразу же отозвала — конкуренты жалуются.",
   },
   {
@@ -450,7 +392,6 @@ export const ACHIEVEMENTS = [
     name: "Всё изучено",
     icon: "🌐",
     target: { type: "researchCountAtLeast", value: 60 },
-    reward: 1e11,
     lore: "Все 60 исследований завершены. Научный прогресс остановился. Вселенная ждёт следующего патча.",
   },
 
@@ -460,7 +401,6 @@ export const ACHIEVEMENTS = [
     name: "Карьерный старт",
     icon: "📋",
     target: { type: "playerLevelAtLeast", value: 5 },
-    reward: 10_000,
     lore: "Уровень 5! Вам наконец выдали постоянный пропуск. Фото не понравилось отделу кадров. Пропуск переделали.",
   },
   {
@@ -468,7 +408,6 @@ export const ACHIEVEMENTS = [
     name: "Растущий чиновник",
     icon: "📈",
     target: { type: "playerLevelAtLeast", value: 10 },
-    reward: 500_000,
     lore: "Уровень 10. Ваше имя теперь произносится с паузой перед ним. Отдел протокола утвердил длину паузы.",
   },
   {
@@ -476,8 +415,6 @@ export const ACHIEVEMENTS = [
     name: "Высший эшелон",
     icon: "🏛️",
     target: { type: "playerLevelAtLeast", value: 20 },
-    reward: 25_000_000,
-    creditReward: 150,
     lore: "Уровень 20. Вы достигли предела прежней системы рангов. Она переписана под вас. Без вашего ведома.",
   },
   {
@@ -485,7 +422,6 @@ export const ACHIEVEMENTS = [
     name: "Элита Галактики",
     icon: "🌟",
     target: { type: "playerLevelAtLeast", value: 40 },
-    reward: 2_500_000_000,
     lore: "Уровень 40. Понятие 'элита' официально сужено до одного человека. Остальные переведены в категорию 'сочувствующие'.",
   },
   {
@@ -493,7 +429,6 @@ export const ACHIEVEMENTS = [
     name: "Архитектор Реальности",
     icon: "🔮",
     target: { type: "playerLevelAtLeast", value: 60 },
-    reward: 500_000_000_000,
     lore: "Уровень 60. Отдел физики реальности подал протест. Вы его проигнорировали. Реальность смолчала.",
   },
   {
@@ -501,7 +436,6 @@ export const ACHIEVEMENTS = [
     name: "Вершина",
     icon: "💫",
     target: { type: "playerLevelAtLeast", value: 100 },
-    reward: 1e14,
     lore: "Уровень 100. Конец карьерной лестницы. Вы снесли её и построили лифт. Только для себя.",
   },
 
@@ -511,7 +445,6 @@ export const ACHIEVEMENTS = [
     name: "Первый кристалл",
     icon: "💠",
     target: { type: "metalAtLeast", metalId: "voidCrystal", value: 1 },
-    reward: 50_000,
     lore: "Первый VoidCrystal! Отдел химии Галактики попросил образец для анализа. Вы отказали. Химики расстроились.",
   },
   {
@@ -519,7 +452,6 @@ export const ACHIEVEMENTS = [
     name: "Коллектор пустоты",
     icon: "🔷",
     target: { type: "metalAtLeast", metalId: "voidCrystal", value: 100 },
-    reward: 5_000_000,
     lore: "100 VoidCrystal! Кристаллическая решётка пустоты дрожит от уважения. Или от температуры. Сложно сказать.",
   },
   {
@@ -527,7 +459,6 @@ export const ACHIEVEMENTS = [
     name: "Хозяин эха",
     icon: "🔶",
     target: { type: "metalAtLeast", metalId: "echoShard", value: 100 },
-    reward: 5_000_000,
     lore: "100 EchoShard! Резонансный отдел МММРДР зафиксировал ваш голос в 14 измерениях одновременно.",
   },
   {
@@ -535,7 +466,6 @@ export const ACHIEVEMENTS = [
     name: "Иридиевый магнат",
     icon: "🥈",
     target: { type: "metalAtLeast", metalId: "iridium", value: 500 },
-    reward: 20_000_000,
     lore: "500 Iridium. Межзвёздная биржа металлов объявила вас монополистом. Это звучало как обвинение. Вы приняли как комплимент.",
   },
   {
@@ -543,8 +473,6 @@ export const ACHIEVEMENTS = [
     name: "Металлический гений",
     icon: "🏅",
     target: { type: "allMetalsAtLeast", value: 500 },
-    reward: 1_000_000_000,
-    creditReward: 200,
     lore: "500+ каждого редкого металла. Хранилище расширено до размеров малой луны. Арендная плата пересчитана.",
   },
 
@@ -554,7 +482,6 @@ export const ACHIEVEMENTS = [
     name: "Покоритель Кластера",
     icon: "🌍",
     target: { type: "planetsAtLeast", value: 50 },
-    reward: 10_000_000,
     lore: "Зона 1 завершена! Внутренний Кластер пал. Административный совет сектора уволен в полном составе.",
   },
   {
@@ -562,7 +489,6 @@ export const ACHIEVEMENTS = [
     name: "Страж Дальнего Края",
     icon: "🌌",
     target: { type: "planetsAtLeast", value: 100 },
-    reward: 500_000_000,
     lore: "Зона 2 завершена! Дальний Кластер покорён. Тамошние щиты оказались декоративными. Производитель в шоке.",
   },
   {
@@ -570,7 +496,6 @@ export const ACHIEVEMENTS = [
     name: "Мастер Иллюзий",
     icon: "🌀",
     target: { type: "planetsAtLeast", value: 150 },
-    reward: 25_000_000_000,
     lore: "Зона 3 завершена! Иллюзии рассеяны. Вы видели сквозь ложь пустоты. Отдел психологии озабочен.",
   },
   {
@@ -578,7 +503,6 @@ export const ACHIEVEMENTS = [
     name: "Конец пути",
     icon: "💀",
     target: { type: "planetsAtLeast", value: 500 },
-    reward: 1e18,
     lore: "Сектор 100 захвачен. Все 500 планет — ваши. Вселенная молча закрыла файл. Файл называлcя 'Последний'.",
   },
 ] as const;

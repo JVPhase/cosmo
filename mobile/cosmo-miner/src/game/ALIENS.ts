@@ -341,10 +341,36 @@ function generateAliens(): AlienRace[] {
   return result;
 }
 
-export const ALIENS: readonly AlienRace[] = [
+function zoneIndexForPlanetId(planetId: number): number {
+  const sectorId = Math.floor((planetId - 1) / 5) + 1;
+  return Math.floor((sectorId - 1) / 10);
+}
+
+/** Removes HP dips at sector/zone boundaries (raw formula resets 4^pi each sector). */
+function applyMonotonicEnemyStats(aliens: AlienRace[]): AlienRace[] {
+  let prevMaxHP = 0;
+  return aliens.map((a) => {
+    const rawMaxHP = a.maxHP;
+    const rawXP = a.xpReward;
+    const maxHP = Math.max(rawMaxHP, prevMaxHP);
+    const xpReward =
+      maxHP > rawMaxHP && rawMaxHP > 0
+        ? Math.round(rawXP * (maxHP / rawMaxHP))
+        : rawXP;
+    const zoneIndex = zoneIndexForPlanetId(a.planetId);
+    const attackEnergyCost = Math.round(
+      maxHP *
+        (FORMULA_CONSTANTS.ENERGY_BASE + zoneIndex * FORMULA_CONSTANTS.ENERGY_STEP),
+    );
+    prevMaxHP = maxHP;
+    return { ...a, maxHP, xpReward, attackEnergyCost };
+  });
+}
+
+export const ALIENS: readonly AlienRace[] = applyMonotonicEnemyStats([
   ...ALIENS_HARDCODED,
   ...generateAliens(),
-];
+]);
 
 export const BATTLE_DURATION_MS = 60_000;
 

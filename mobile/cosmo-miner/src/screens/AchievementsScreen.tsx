@@ -2,9 +2,9 @@ import React, { useMemo } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import {
   ACHIEVEMENTS,
+  ACHIEVEMENT_CLAIM_CREDITS,
   type AchievementId
 } from '../game/ACHIEVEMENTS';
-import { formatNum } from '../game/formatNum';
 import type { AchievementsState } from '../game/types';
 
 export type AchievementsScreenProps = {
@@ -114,7 +114,9 @@ export function AchievementsScreen({ achievements, onClaim }: AchievementsScreen
                 </Text>
                 {unlocked && (
                   <Text style={[styles.reward, { color: claimable ? '#00d4ff' : 'rgba(0,212,255,0.35)' }]}>
-                    {claimable ? `Забрать: +${formatNum(def.reward)} ⚡` : `Получено: +${formatNum(def.reward)} ⚡`}
+                    {claimable
+                      ? `Забрать: +${ACHIEVEMENT_CLAIM_CREDITS} 💳`
+                      : `Получено: +${ACHIEVEMENT_CLAIM_CREDITS} 💳`}
                   </Text>
                 )}
               </View>
