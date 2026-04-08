@@ -1,5 +1,11 @@
+import { getCachedRemoteConfig } from './remoteConfig';
+
 /** Credits granted when the player claims any achievement. */
 export const ACHIEVEMENT_CLAIM_CREDITS = 5;
+
+export function getAchievementClaimCredits(): number {
+  return getCachedRemoteConfig()?.achievements?.claimCredits ?? ACHIEVEMENT_CLAIM_CREDITS;
+}
 
 export const ACHIEVEMENTS = [
   {
@@ -512,8 +518,24 @@ export type AchievementId = AchievementDefinition["id"];
 
 export type AchievementTargetType = AchievementDefinition["target"]["type"];
 
-export function getAchievementById(id: AchievementId): AchievementDefinition {
-  const a = ACHIEVEMENTS.find((x) => x.id === id);
+// Mutable version for remote overlay
+type AchievementResolved = Omit<AchievementDefinition, 'target'> & {
+  target: AchievementDefinition['target'];
+};
+
+export function getAchievements(): AchievementResolved[] {
+  const remoteData = getCachedRemoteConfig()?.achievements?.data;
+  const base = ACHIEVEMENTS as unknown as AchievementResolved[];
+  if (!remoteData) return base;
+  return base.map((local) => {
+    const r = remoteData.find((x) => x.id === local.id);
+    if (!r) return local;
+    return { ...local, target: r.target as AchievementDefinition['target'] };
+  });
+}
+
+export function getAchievementById(id: AchievementId): AchievementResolved {
+  const a = getAchievements().find((x) => x.id === id);
   if (!a) throw new Error(`Unknown achievement id: ${id}`);
   return a;
 }

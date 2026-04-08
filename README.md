@@ -91,7 +91,7 @@
   - `damage = floor(computeBaseShipDamage(fleet) * damageResearchMultiplier)`,
   - `computeBaseShipDamage = floor((1 + cannonDamage) * ship.damageMultiplier)`,
   - `cannonDamage = sum(damagePerLevel * cannonLevel)` для выбранного корабля.
-- Длительность боя: `60_000 ms + battleTimerBonus`.
+- Длительность боя: базовые `60_000 ms`.
 - Дроп металлов:
   - шанс удачного ролла: `min(1, baseChance + metalDropBonus)`,
   - количество за удачный ролл: `max(1, floor(log10(max(1, planetBonus))))`,
@@ -139,7 +139,7 @@
      - хватает `Энергиума™` на стоимость атаки `ALIENS[].attackEnergyCost` (энергия списывается при старте).
    - Параметры боя:
      - у противника `HP = alien.maxHP`,
-     - длительность: базовые `60 секунд` + бонусы `battleTimerBonus` из исследований.
+     - длительность: базовые `60 секунд`.
    - Атаки:
      - на каждое нажатие атаки вы наносите `totalDamage/клик`,
      - `totalDamage` вычисляется от суммарного урона пушек (по уровням) и `damageResearchMultiplier` из исследований ветки `battle`.
@@ -371,7 +371,6 @@
    - Их эффекты суммируются:
      - `clickMultiplier` и `passiveMultiplier` добавляются к бонусам кликов/пассивной добычи (используются вместе с множителем планеты `planet.bonus`).
      - `metalDropBonus` добавляется к шансам выпадения металлов при дропе.
-     - `battleTimerBonus` увеличивает длительность боя.
      - `damageMultiplier` усиливает урон в сражениях.
    - Полный список узлов (таблица):
 
@@ -382,11 +381,9 @@
   | `mining_metal_1`   | `Геологический сканер`   | 5             | 6000    | `metalDropBonus` +0.08       | нет                                 |
   | `mining_click_2`   | `Турбо-экстрактор`       | 8             | 25000   | `clickMultiplier` +0.6       | `mining_passive_1`                  |
   | `mining_passive_2` | `Нейронный автопилот`    | 12            | 100000  | `passiveMultiplier` +0.8     | `mining_metal_1`, `mining_click_2`  |
-  | `battle_timer_1`   | `Усиленный реактор`      | 4             | 16000   | `battleTimerBonus` +15000 ms | нет                                 |
   | `battle_damage_1`  | `Тактика берсерка`       | 6             | 70000   | `damageMultiplier` +0.3      | нет                                 |
-  | `battle_damage_2`  | `Орбитальная артиллерия` | 8             | 240000  | `damageMultiplier` +0.6      | `battle_timer_1`, `battle_damage_1` |
-  | `battle_timer_2`   | `Поле замедления`        | 11            | 800000  | `battleTimerBonus` +30000 ms | `battle_damage_2`                   |
-  | `battle_damage_3`  | `Тёмная материя`         | 15            | 3000000 | `damageMultiplier` +1.0      | `battle_timer_2`                    |
+  | `battle_damage_2`  | `Орбитальная артиллерия` | 8             | 240000  | `damageMultiplier` +0.6      | `battle_damage_1`                   |
+  | `battle_damage_3`  | `Тёмная материя`         | 13            | 3000000 | `damageMultiplier` +1.0      | `battle_damage_2`                   |
 
 3. Вооружение и строительство:
    - Корабли и пушки требуют металлы; на корабль можно крафтить уровни пушек, а сам корабль может ломаться после неудачи/таймаута боя.
@@ -455,3 +452,73 @@
   | 16 | 😤 | Пассивный агрессор | `basePassiveRate >= 50` | 50+ в секунду без клика. |
   | 17 | 🏭 | Завод имени вас | `basePassiveRate >= 200` | 200/сек — пассивная доходность. |
   | 18 | 🪐 | Коллектор вселенной | `unlockedPlanetIds >= 5` | Освоены все 5 планет. |
+
+## Telegram Mini App
+
+Mine Cosmo работает как Telegram Mini App поверх того же клиента `mobile/cosmo-miner`.
+Telegram — это runtime/build target + commerce-слой (Telegram Stars), а не отдельное приложение.
+
+### Архитектура
+
+```
+mobile/cosmo-miner/
+  src/telegram/
+    runtime.ts   — isTelegramRuntime(), bootstrapTelegram()
+    auth.ts      — telegramAuthIfNeeded() — POST /telegram/auth → JWT
+    StarsShopTab.tsx — вкладка Stars в ShopScreen
+```
+
+- Native (iOS/Android) — Telegram-адаптер отключён через Platform.OS guards, ничего не ломается.
+- Web build (`expo export --platform web`) — Telegram Mini App runtime активен.
+
+### Запуск web build
+
+```bash
+cd mobile/cosmo-miner
+npx expo export --platform web   # или: npx expo start --web
+```
+
+Артефакт сборки появляется в `mobile/cosmo-miner/dist/`.
+Разместите его на HTTPS-хосте (Vercel, Netlify, nginx и т.п.).
+
+### Env vars
+
+| Переменная | Где | Назначение |
+|---|---|---|
+| `EXPO_PUBLIC_API_URL` | mobile/.env | URL сервера, например `https://api.example.com` |
+| `TELEGRAM_BOT_TOKEN` | server/.env | Токен бота из BotFather |
+| `TELEGRAM_WEBHOOK_SECRET` | server/.env | Секрет для верификации Telegram webhook |
+| `DATABASE_URL` | server/.env | PostgreSQL connection string |
+
+### Checklist: переключение BotFather URL (ручные шаги)
+
+1. Откройте @BotFather в Telegram.
+2. `/mybots` → выберите своего бота → **Bot Settings** → **Menu Button** (или **Configure Mini App**).
+3. Установите Web App URL = URL вашего `expo web` build, например:
+   `https://cosmo-miner.vercel.app`
+4. Сохраните.
+5. Для webhook: убедитесь, что зарегистрирован webhook на `/telegram/webhook` вашего сервера:
+   ```
+   POST https://api.telegram.org/bot<TOKEN>/setWebhook
+   {
+     "url": "https://api.example.com/telegram/webhook",
+     "secret_token": "<TELEGRAM_WEBHOOK_SECRET>"
+   }
+   ```
+6. Откройте бота → **Menu** (или кнопка запуска Mini App) — должен открыться web build.
+
+### Stars Shop: поддерживаемые SKU
+
+| Тип | Пример ID | Доставка |
+|---|---|---|
+| `currency_pack` | `credits_100` | Кредиты → UserSave.data.credits (instant) |
+| `metal_pack` | `metal_iron` | Металлы → UserSave + локальный game state |
+| `booster` | `booster_mining_1h` | Inventory → локальный game state |
+| `loot_box` | `loot_box_basic` | Сервер роллит металлы → UserSave + локальный game state |
+| `premium_unlock` | `premium_sector_skip` | Сервер применяет к UserSave + локальный game state |
+
+### Добавление нового SKU
+
+1. Добавьте запись в `SHOP_ITEMS` в `server/prisma/seed.ts`.
+2. Запустите `cd server && npm run db:seed`.
+3. Если тип новый (не из таблицы выше): добавьте ветку в `fulfillment.ts` и в `App.tsx` `onStarsPurchaseApplied`.

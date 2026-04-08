@@ -1,5 +1,6 @@
 import type { MetalsState } from "./METALS";
 import type { ShipId } from "./SHIPS";
+import { getCachedRemoteConfig, type RemoteExpedition } from './remoteConfig';
 
 export type ExpeditionId = "patrol" | "asteroid_belt" | "deep_space" | "classified";
 
@@ -58,8 +59,25 @@ export type ActiveExpedition = {
   completesAt: number; // Date.now() + durationMs
 };
 
+/** Возвращает список экспедиций с числовыми полями из remote-конфига (или локальные значения). */
+export function getExpeditions(): ExpeditionDefinition[] {
+  const remoteExps = getCachedRemoteConfig()?.expeditions as RemoteExpedition[] | undefined;
+  const base = EXPEDITIONS as unknown as ExpeditionDefinition[];
+  if (!remoteExps) return base;
+  return base.map((local) => {
+    const r = remoteExps.find((x) => x.id === local.id);
+    if (!r) return local;
+    return {
+      ...local,
+      durationMs: r.durationMs,
+      metalRewards: r.metalRewards as Partial<MetalsState>,
+      xpReward: r.xpReward,
+    };
+  });
+}
+
 export function getExpeditionById(id: ExpeditionId): ExpeditionDefinition {
-  const e = EXPEDITIONS.find((x) => x.id === id);
+  const e = getExpeditions().find((x) => x.id === id);
   if (!e) throw new Error(`Unknown expedition id: ${id}`);
   return e;
 }

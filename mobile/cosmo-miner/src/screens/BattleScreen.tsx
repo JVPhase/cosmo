@@ -12,7 +12,7 @@ import {
   View,
   type GestureResponderEvent
 } from 'react-native';
-import { ALIENS } from '../game/ALIENS';
+import { getAliens } from '../game/ALIENS';
 import { getMaxUltsPerBattle, type ModuleDefinition } from '../game/MODULES';
 import { PLANETS } from '../game/PLANETS';
 import { formatNum } from '../game/formatNum';
@@ -21,14 +21,14 @@ import { AnimatedHitEffects } from '../ui/AnimatedHitEffects';
 import { SkillCheckRing } from '../ui/SkillCheckRing';
 import { StarField } from '../ui/StarField';
 
-const BattleTimer = React.memo(function BattleTimer({ expiresAt }: { expiresAt: number }) {
-  const [now, setNow] = useState(Date.now);
+function BattleTimer({ expiresAt }: { expiresAt: number }) {
+  const [, setTick] = useState(0);
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 100);
+    const id = setInterval(() => setTick((tick) => tick + 1), 100);
     return () => clearInterval(id);
   }, []);
 
-  const ms = Math.max(0, expiresAt - now);
+  const ms = Math.max(0, expiresAt - Date.now());
   const secs = Math.floor(ms / 1000);
   const centis = Math.floor((ms % 1000) / 10);
   const label = `${secs}.${centis.toString().padStart(2, '0')}`;
@@ -40,7 +40,7 @@ const BattleTimer = React.memo(function BattleTimer({ expiresAt }: { expiresAt: 
       <Text style={[styles.timerValue, { color }]}>{label}</Text>
     </View>
   );
-});
+}
 
 export type BattleScreenProps = {
   battle: BattleState | null;
@@ -132,7 +132,7 @@ export function BattleScreen({
   }, [battleId]);
 
   const alien = useMemo(
-    () => (battle ? ALIENS.find((a) => a.planetId === battle.planetId) ?? null : null),
+    () => (battle ? getAliens().find((a) => a.planetId === battle.planetId) ?? null : null),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [battle?.planetId]
   );
@@ -905,4 +905,3 @@ const styles = StyleSheet.create({
     backgroundColor: '#00d4ff',
   },
 });
-

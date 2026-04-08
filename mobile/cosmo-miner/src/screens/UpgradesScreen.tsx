@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
-import { computeUpgradeCost, UPGRADES, type UpgradeId } from "../game/UPGRADES";
+import { computeUpgradeCost, getUpgrades, type UpgradeId } from "../game/UPGRADES";
 import { formatNum } from "../game/formatNum";
 import type { UpgradesState } from "../game/types";
 
@@ -18,19 +18,19 @@ const MULT_OPTIONS: Array<{ label: string; value: number }> = [
   { label: 'max', value: Infinity },
 ];
 
-const CLICK_UPGRADES = UPGRADES.filter((u) => u.clickBonus > 0);
-const PASSIVE_UPGRADES = UPGRADES.filter((u) => u.passiveBonus > 0);
-
 export function UpgradesScreen({ energy, upgrades, onBuyUpgrade }: UpgradesScreenProps) {
   const [tab, setTab] = useState<Tab>('click');
   const [mult, setMult] = useState<number>(1);
 
-  const visibleUpgrades = (list: typeof CLICK_UPGRADES) => {
-    const firstUnboughtIdx = list.findIndex((u) => (upgrades[u.id] ?? 0) === 0);
+  const clickUpgrades = getUpgrades().filter((u) => u.clickBonus > 0);
+  const passiveUpgrades = getUpgrades().filter((u) => u.passiveBonus > 0);
+
+  const visibleUpgrades = (list: typeof clickUpgrades) => {
+    const firstUnboughtIdx = list.findIndex((u) => (upgrades[u.id as UpgradeId] ?? 0) === 0);
     return firstUnboughtIdx === -1 ? list : list.slice(0, firstUnboughtIdx + 1);
   };
 
-  const data = visibleUpgrades(tab === 'click' ? CLICK_UPGRADES : PASSIVE_UPGRADES);
+  const data = visibleUpgrades(tab === 'click' ? clickUpgrades : passiveUpgrades);
 
   return (
     <View style={styles.screen}>
@@ -75,7 +75,7 @@ export function UpgradesScreen({ energy, upgrades, onBuyUpgrade }: UpgradesScree
         contentContainerStyle={styles.content}
         ListFooterComponent={<Text style={styles.energyFooter}>Энергий: {formatNum(energy)}</Text>}
         renderItem={({ item: upg }) => {
-          const level = upgrades[upg.id] ?? 0;
+          const level = upgrades[upg.id as UpgradeId] ?? 0;
           const baseBonus = upg.clickBonus > 0 ? upg.clickBonus : upg.passiveBonus;
           const unit = upg.clickBonus > 0 ? '⚡/клик' : '⚡/сек';
           const currentScale = level > 0 ? Math.pow(1.6, level) : 0;
@@ -108,7 +108,7 @@ export function UpgradesScreen({ energy, upgrades, onBuyUpgrade }: UpgradesScree
 
           return (
             <Pressable
-              onPress={() => onBuyUpgrade(upg.id, mult)}
+              onPress={() => onBuyUpgrade(upg.id as UpgradeId, mult)}
               disabled={!canBuy}
               style={({ pressed }) => [
                 styles.card,

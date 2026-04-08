@@ -13,11 +13,11 @@ import { METALS, type MetalId } from '../../game/METALS';
 import {
   computeModuleUpgradeCost,
   getMaxUltsPerBattle,
-  MAX_MODULE_LEVEL,
-  MODULES,
+  getMaxModuleLevel,
+  getModules,
   type ModuleId,
 } from '../../game/MODULES';
-import { SHIPS, type ShipId } from '../../game/SHIPS';
+import { getShips, type ShipId } from '../../game/SHIPS';
 import type {
   ActiveExpedition,
   BattleState,
@@ -45,6 +45,7 @@ export type FleetTabProps = {
   onCraftModule: (moduleId: ModuleId) => void;
   onUpgradeModule: (moduleId: ModuleId) => void;
   onEquipModule: (shipId: ShipId, moduleId: ModuleId | null) => void;
+  onOpenMetalInfo: (metalId: MetalId) => void;
 };
 
 export function FleetTab({
@@ -65,6 +66,7 @@ export function FleetTab({
   onCraftModule,
   onUpgradeModule,
   onEquipModule,
+  onOpenMetalInfo,
 }: FleetTabProps) {
   const [expandedShipId, setExpandedShipId] = useState<ShipId | null>(
     fleet.selectedShipId,
@@ -80,7 +82,7 @@ export function FleetTab({
   const ownedMap = new Map(fleet.ownedShips.map((s) => [s.shipId, s]));
   const expeditionShipIds = new Set(expeditions.map((e) => e.shipId));
   const expeditionsUnlocked = unlockedPlanetIds.length > 1;
-  const visibleShips = SHIPS.filter(
+  const visibleShips = getShips().filter(
     (s) => ownedMap.has(s.id) || playerLevel >= s.unlockLevel,
   );
 
@@ -101,15 +103,21 @@ export function FleetTab({
 
       <View style={styles.inventoryRow}>
         {METALS.filter((m) => discoveredMetals.includes(m.id)).map((m) => (
-          <View key={m.id} style={styles.metalBox}>
+          <Pressable
+            key={m.id}
+            onPress={() => onOpenMetalInfo(m.id)}
+            style={({ pressed }) => [
+              styles.metalBox,
+              pressed ? { opacity: 0.85 } : null,
+            ]}
+          >
             <Image
               source={m.image}
               style={styles.metalImage}
               resizeMode="contain"
             />
-            <Text style={styles.metalName}>{m.name}</Text>
             <Text style={styles.metalCount}>{formatNum(metals[m.id] ?? 0)}</Text>
-          </View>
+          </Pressable>
         ))}
       </View>
 
@@ -129,7 +137,7 @@ export function FleetTab({
         Object.keys(moduleLevels).length > 0) && (
         <>
           <Text style={styles.sectionTitle}>⚡ МОДУЛИ</Text>
-          {MODULES.map((mod) => {
+          {getModules().map((mod) => {
             const level = moduleLevels[mod.id] ?? 0;
             const isCrafted = level > 0;
             const canAffordCraft =
@@ -139,7 +147,7 @@ export function FleetTab({
             );
             const maxUlts = getMaxUltsPerBattle(level);
             const upgradeCost =
-              isCrafted && level < MAX_MODULE_LEVEL
+              isCrafted && level < getMaxModuleLevel()
                 ? computeModuleUpgradeCost(level)
                 : null;
             const canAffordUpgrade =
@@ -168,7 +176,7 @@ export function FleetTab({
                       </Text>
                       {isCrafted && (
                         <Text style={styles.moduleLevelBadge}>
-                          Lv.{level}/{MAX_MODULE_LEVEL}
+                          Lv.{level}/{getMaxModuleLevel()}
                         </Text>
                       )}
                     </View>
@@ -186,7 +194,7 @@ export function FleetTab({
                     {equippedOnShip && (
                       <Text style={styles.moduleEquippedOn}>
                         Экипирован:{' '}
-                        {SHIPS.find((s) => s.id === equippedOnShip.shipId)
+                        {getShips().find((s) => s.id === equippedOnShip.shipId)
                           ?.name ?? equippedOnShip.shipId}
                       </Text>
                     )}
@@ -266,7 +274,7 @@ export function FleetTab({
                           </Pressable>
                         </View>
                       )}
-                      {level >= MAX_MODULE_LEVEL && (
+                      {level >= getMaxModuleLevel() && (
                         <Text style={styles.moduleMaxText}>MAX</Text>
                       )}
                       <View style={styles.moduleEquipRow}>
@@ -274,7 +282,7 @@ export function FleetTab({
                           .filter((s) => !s.broken)
                           .map((s) => {
                             const isEquipped = s.equippedModuleId === mod.id;
-                            const shipDef = SHIPS.find((sh) => sh.id === s.shipId);
+                            const shipDef = getShips().find((sh) => sh.id === s.shipId);
                             return (
                               <Pressable
                                 key={s.shipId}
@@ -390,12 +398,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.03)',
   },
   metalImage: { width: 32, height: 32 },
-  metalName: {
-    fontSize: 8,
-    color: 'rgba(255,255,255,0.65)',
-    marginTop: 3,
-    fontWeight: '700',
-  },
   metalCount: {
     fontSize: 16,
     color: '#ffd700',

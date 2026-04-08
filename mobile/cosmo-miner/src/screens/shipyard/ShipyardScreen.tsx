@@ -35,6 +35,7 @@ export type ShipyardScreenProps = {
   onCraftModule: (moduleId: ModuleId) => void;
   onUpgradeModule: (moduleId: ModuleId) => void;
   onEquipModule: (shipId: ShipId, moduleId: ModuleId | null) => void;
+  onOpenMetalInfo: (metalId: MetalId) => void;
 };
 
 type SubTab = 'fleet' | 'expeditions';
@@ -60,6 +61,7 @@ export function ShipyardScreen(props: ShipyardScreenProps) {
     onCraftModule,
     onUpgradeModule,
     onEquipModule,
+    onOpenMetalInfo,
   } = props;
 
   const [activeTab, setActiveTab] = useState<SubTab>('fleet');
@@ -132,6 +134,7 @@ export function ShipyardScreen(props: ShipyardScreenProps) {
           onCraftModule={onCraftModule}
           onUpgradeModule={onUpgradeModule}
           onEquipModule={onEquipModule}
+          onOpenMetalInfo={onOpenMetalInfo}
         />
       ) : (
         <ExpeditionsTab

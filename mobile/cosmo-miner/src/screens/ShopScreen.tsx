@@ -22,6 +22,8 @@ import {
   type IAPProduct,
 } from '../services/iap';
 import { getCachedRemoteConfig } from '../game/remoteConfig';
+import { isTelegramRuntime } from '../telegram/runtime';
+import { StarsShopTab, type StarsPurchasedItem } from '../telegram/StarsShopTab';
 
 export type ShopScreenProps = {
   credits: number;
@@ -37,9 +39,11 @@ export type ShopScreenProps = {
     },
   ) => void;
   onAddCredits: (amount: number) => void;
+  /** Called after a successful Telegram Stars purchase to apply the effect to game state. */
+  onStarsPurchaseApplied?: (item: StarsPurchasedItem) => void;
 };
 
-type ShopTab = ShopCategory | 'credits';
+type ShopTab = ShopCategory | 'credits' | 'stars';
 const ALL_TABS: { id: ShopTab; label: string }[] = [
   { id: 'credits', label: '💳 КРЕДИТЫ' },
   { id: 'boosters', label: '⚡ БУСТЕРЫ' },
@@ -47,6 +51,7 @@ const ALL_TABS: { id: ShopTab; label: string }[] = [
   { id: 'lootboxes', label: '📦 КОНТЕЙН.' },
   { id: 'converter', label: '🔄 КОНВЕРТЕР' },
 ];
+const STARS_TAB = { id: 'stars' as ShopTab, label: '⭐ STARS' };
 
 const METAL_ORDER: MetalId[] = [
   'iron',
@@ -365,12 +370,13 @@ export function ShopScreen({
   metals,
   onBuyShopItem,
   onAddCredits,
+  onStarsPurchaseApplied,
 }: ShopScreenProps) {
   const monetizationEnabled =
     getCachedRemoteConfig()?.monetizationEnabled ?? false;
-  const TABS = monetizationEnabled
-    ? ALL_TABS
-    : ALL_TABS.filter((t) => t.id !== 'credits');
+  const inTelegram = isTelegramRuntime();
+  const baseTabs = monetizationEnabled ? ALL_TABS : ALL_TABS.filter((t) => t.id !== 'credits');
+  const TABS = inTelegram ? [...baseTabs, STARS_TAB] : baseTabs;
   const [tab, setTab] = useState<ShopTab>(
     monetizationEnabled ? 'credits' : 'boosters',
   );
@@ -460,8 +466,13 @@ export function ShopScreen({
         </ScrollView>
       )}
 
+      {/* Telegram Stars tab */}
+      {tab === 'stars' && (
+        <StarsShopTab onPurchaseApplied={onStarsPurchaseApplied ?? (() => {})} />
+      )}
+
       {/* Regular item list */}
-      {tab !== 'credits' && tab !== 'converter' && (
+      {tab !== 'credits' && tab !== 'converter' && tab !== 'stars' && (
         <FlatList
           data={shopItems}
           keyExtractor={(item) => item.id}

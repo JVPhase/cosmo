@@ -1,6 +1,9 @@
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { SafeAreaProvider, SafeAreaView as RNSAView } from 'react-native-safe-area-context';
+import {
+  SafeAreaProvider,
+  SafeAreaView as RNSAView,
+} from 'react-native-safe-area-context';
 import {
   Alert,
   Modal,
@@ -10,7 +13,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  View
+  View,
 } from 'react-native';
 import {
   clearAnalytics,
@@ -19,7 +22,7 @@ import {
   getAnalyticsSizeKb,
   initAnalytics,
   logError,
-  logEvent
+  logEvent,
 } from './src/game/analytics';
 import { AchievementsScreen } from './src/screens/AchievementsScreen';
 import { StoryLogScreen } from './src/screens/StoryLogScreen';
@@ -45,26 +48,35 @@ import {
   loadGame,
   loadIntroSeen,
   saveGame,
-  saveIntroSeen
+  saveIntroSeen,
 } from './src/game/storage';
-import { ALIENS } from './src/game/ALIENS';
+import { getAliens } from './src/game/ALIENS';
 import { STORY_LOG } from './src/game/STORY_LOG';
 import { isSectorUnlocked } from './src/game/SECTORS';
-import { loadRemoteConfigFromCache, fetchAndCacheRemoteConfig } from './src/game/remoteConfig';
+import {
+  loadRemoteConfigFromCache,
+  fetchAndCacheRemoteConfig,
+} from './src/game/remoteConfig';
 import {
   fetchCloudSave,
   getAccessToken,
   getCloudRev,
   pushCloudSave,
 } from './src/game/cloudSave';
-import { PLANETS } from './src/game/PLANETS';
-import { SHIPS } from './src/game/SHIPS';
-import { CANNONS, computeCannonCost } from './src/game/CANNONS';
-import { computeUpgradeCost, UPGRADES } from './src/game/UPGRADES';
-import { RESEARCH } from './src/game/RESEARCH';
+import { bootstrapTelegram } from './src/telegram/runtime';
+import { telegramAuthIfNeeded } from './src/telegram/auth';
+import { getPlanets } from './src/game/PLANETS';
+import { getShips } from './src/game/SHIPS';
+import { getCannons, computeCannonCost } from './src/game/CANNONS';
+import {
+  computeUpgradeCost,
+  getUpgrades,
+  UpgradeId,
+} from './src/game/UPGRADES';
+import { getResearchNodes } from './src/game/RESEARCH';
+import type { BoostStat, ShopItemId } from './src/game/SHOP';
 import type { GameStateInit } from './src/game/types';
 
-const MIN_ATTACK_ENERGY = Math.min(...ALIENS.map((a) => a.attackEnergyCost));
 const ironMetal = METALS.find((m) => m.id === 'iron')!;
 
 type TabId = 'game' | 'upgrades' | 'planets' | 'shipyard' | 'battle' | 'shop';
@@ -75,14 +87,14 @@ const TABS: Array<{ id: TabId; icon: string; label: string }> = [
   { id: 'planets', icon: '🌍', label: 'ПЛАН.' },
   { id: 'shipyard', icon: '🛠️', label: 'ВЕРФЬ' },
   { id: 'battle', icon: '⚔️', label: 'БОЙ' },
-  { id: 'shop', icon: '🛒', label: 'МАГАЗ.' }
+  { id: 'shop', icon: '🛒', label: 'МАГАЗ.' },
 ];
 
 function GameApp({
   initial,
   tab,
   onSetTab,
-  onReset
+  onReset,
 }: {
   initial: GameStateInit;
   tab: TabId;
@@ -90,6 +102,9 @@ function GameApp({
   onReset: (showIntro?: boolean) => void;
 }) {
   const game = useGame(initial);
+  const minAttackEnergy = Math.min(
+    ...getAliens().map((a) => a.attackEnergyCost),
+  );
   const screenGreetedRef = useRef<Set<string>>(new Set());
   const [researchOpen, setResearchOpen] = useState(false);
   const [achievementsOpen, setAchievementsOpen] = useState(false);
@@ -98,7 +113,7 @@ function GameApp({
   const [seenStoryCount, setSeenStoryCount] = useState(0);
   const [clickPowerInfoOpen, setClickPowerInfoOpen] = useState(false);
   const [passiveRateInfoOpen, setPassiveRateInfoOpen] = useState(false);
-const [metalInfoOpenId, setMetalInfoOpenId] = useState<MetalId | null>(null);
+  const [metalInfoOpenId, setMetalInfoOpenId] = useState<MetalId | null>(null);
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const [resetShowIntro, setResetShowIntro] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
@@ -110,9 +125,13 @@ const [metalInfoOpenId, setMetalInfoOpenId] = useState<MetalId | null>(null);
   }, []);
 
   useEffect(() => {
-    getAnalyticsSizeKb().then(setAnalyticsSizeKb).catch(() => {});
+    getAnalyticsSizeKb()
+      .then(setAnalyticsSizeKb)
+      .catch(() => {});
     const interval = setInterval(() => {
-      getAnalyticsSizeKb().then(setAnalyticsSizeKb).catch(() => {});
+      getAnalyticsSizeKb()
+        .then(setAnalyticsSizeKb)
+        .catch(() => {});
     }, 15_000);
     return () => clearInterval(interval);
   }, []);
@@ -120,7 +139,9 @@ const [metalInfoOpenId, setMetalInfoOpenId] = useState<MetalId | null>(null);
   const handleExportAnalytics = useCallback(async () => {
     try {
       await exportAnalytics();
-      getAnalyticsSizeKb().then(setAnalyticsSizeKb).catch(() => {});
+      getAnalyticsSizeKb()
+        .then(setAnalyticsSizeKb)
+        .catch(() => {});
     } catch (e: any) {
       Alert.alert('Ошибка', e?.message ?? 'Не удалось экспортировать лог');
     }
@@ -135,8 +156,8 @@ const [metalInfoOpenId, setMetalInfoOpenId] = useState<MetalId | null>(null);
         onPress: async () => {
           await clearAnalytics();
           setAnalyticsSizeKb(0);
-        }
-      }
+        },
+      },
     ]);
   }, []);
   const [editorFields, setEditorFields] = useState({
@@ -144,12 +165,12 @@ const [metalInfoOpenId, setMetalInfoOpenId] = useState<MetalId | null>(null);
     iron: '0',
     titan: '0',
     iridium: '0',
-    playerXP: '0'
+    playerXP: '0',
   });
   const [editorToggles, setEditorToggles] = useState({
     unlockUpgrades: false,
     unlockShipyard: false,
-    unlockPlanets: false
+    unlockPlanets: false,
   });
 
   // Show CLERK-7 onboarding hint the first time each screen is opened
@@ -180,12 +201,12 @@ const [metalInfoOpenId, setMetalInfoOpenId] = useState<MetalId | null>(null);
       iron: String(game.metals.iron),
       titan: String(game.metals.titan),
       iridium: String(game.metals.iridium),
-      playerXP: String(game.playerXP)
+      playerXP: String(game.playerXP),
     });
     setEditorToggles({
       unlockUpgrades: upgradesUnlocked,
       unlockShipyard: shipyardUnlocked,
-      unlockPlanets: planetsUnlocked
+      unlockPlanets: planetsUnlocked,
     });
     setEditorOpen(true);
   };
@@ -207,7 +228,7 @@ const [metalInfoOpenId, setMetalInfoOpenId] = useState<MetalId | null>(null);
         upgrades: editorToggles.unlockUpgrades,
         shipyard: editorToggles.unlockShipyard,
         planets: editorToggles.unlockPlanets,
-      }
+      },
     });
     setEditorOpen(false);
   };
@@ -300,23 +321,32 @@ const [metalInfoOpenId, setMetalInfoOpenId] = useState<MetalId | null>(null);
           onMine={game.mineClick}
           planet={game.planet}
           clerkMessage={game.clerkMessage}
-          onCloseClerk={() => { logEvent('toast_close', { toast: 'clerk' }); game.closeClerk(); }}
+          onCloseClerk={() => {
+            logEvent('toast_close', { toast: 'clerk' });
+            game.closeClerk();
+          }}
           achievementToast={
             game.achievementToast
               ? {
                   id: game.achievementToast.id,
                   name: game.achievementToast.name,
                   icon: game.achievementToast.icon,
-                  lore: game.achievementToast.lore
+                  lore: game.achievementToast.lore,
                 }
               : null
           }
-          onCloseAchievementToast={() => { logEvent('toast_close', { toast: 'achievement' }); game.closeAchievementToast(); }}
+          onCloseAchievementToast={() => {
+            logEvent('toast_close', { toast: 'achievement' });
+            game.closeAchievementToast();
+          }}
           playerLevel={game.playerLevel}
           playerXP={game.playerXP}
           levelUpToast={game.levelUpToast}
-          onCloseLevelUpToast={() => { logEvent('toast_close', { toast: 'level_up' }); game.closeLevelUpToast(); }}
-          hasAffordableResearch={RESEARCH.some(
+          onCloseLevelUpToast={() => {
+            logEvent('toast_close', { toast: 'level_up' });
+            game.closeLevelUpToast();
+          }}
+          hasAffordableResearch={getResearchNodes().some(
             (n) =>
               !game.research[n.id] &&
               game.playerLevel >= n.requiredLevel &&
@@ -324,7 +354,7 @@ const [metalInfoOpenId, setMetalInfoOpenId] = useState<MetalId | null>(null);
               game.energy >= n.energyCost &&
               (n.branch === 'mining' ||
                 (n.branch === 'battle' && battleUnlocked) ||
-                (n.branch === 'expedition' && shipyardUnlocked))
+                (n.branch === 'expedition' && shipyardUnlocked)),
           )}
           onOpenResearch={() => {
             if (!screenGreetedRef.current.has('research')) {
@@ -334,28 +364,59 @@ const [metalInfoOpenId, setMetalInfoOpenId] = useState<MetalId | null>(null);
             logEvent('modal_open', { modal: 'research' });
             setResearchOpen(true);
           }}
-          onOpenAchievements={() => { logEvent('modal_open', { modal: 'achievements' }); setAchievementsOpen(true); }}
+          onOpenAchievements={() => {
+            logEvent('modal_open', { modal: 'achievements' });
+            setAchievementsOpen(true);
+          }}
           achievementsUnlocked={game.achievementsUnlocked}
           hasUnclaimedAchievements={game.hasUnclaimedAchievements}
-          onOpenClickPowerInfo={() => { logEvent('modal_open', { modal: 'click_power_info' }); setClickPowerInfoOpen(true); }}
-          onOpenPassiveRateInfo={() => { logEvent('modal_open', { modal: 'passive_rate_info' }); setPassiveRateInfoOpen(true); }}
-onOpenMetalInfo={(metalId) => { logEvent('modal_open', { modal: 'metal_info', metalId }); setMetalInfoOpenId(metalId); }}
+          onOpenClickPowerInfo={() => {
+            logEvent('modal_open', { modal: 'click_power_info' });
+            setClickPowerInfoOpen(true);
+          }}
+          onOpenPassiveRateInfo={() => {
+            logEvent('modal_open', { modal: 'passive_rate_info' });
+            setPassiveRateInfoOpen(true);
+          }}
+          onOpenMetalInfo={(metalId) => {
+            logEvent('modal_open', { modal: 'metal_info', metalId });
+            setMetalInfoOpenId(metalId);
+          }}
           onOpenStoryLog={() => {
-            const ctx = { unlockedPlanetIds: game.unlockedPlanetIds, chosenCharacterId: game.chosenCharacterId, metalDealDone: game.metalDealDone };
-            setSeenStoryCount(STORY_LOG.filter((e) => e.isUnlocked(ctx)).length);
+            const ctx = {
+              unlockedPlanetIds: game.unlockedPlanetIds,
+              chosenCharacterId: game.chosenCharacterId,
+              metalDealDone: game.metalDealDone,
+            };
+            setSeenStoryCount(
+              STORY_LOG.filter((e) => e.isUnlocked(ctx)).length,
+            );
             logEvent('modal_open', { modal: 'story_log' });
             setStoryLogOpen(true);
           }}
           hasNewStoryEntry={
             STORY_LOG.filter((e) =>
-              e.isUnlocked({ unlockedPlanetIds: game.unlockedPlanetIds, chosenCharacterId: game.chosenCharacterId, metalDealDone: game.metalDealDone })
+              e.isUnlocked({
+                unlockedPlanetIds: game.unlockedPlanetIds,
+                chosenCharacterId: game.chosenCharacterId,
+                metalDealDone: game.metalDealDone,
+              }),
             ).length > seenStoryCount
           }
           characterMessage={game.characterMessage}
-          onCloseCharacterMessage={() => { logEvent('toast_close', { toast: 'character_message' }); game.closeCharacterMessage(); }}
+          onCloseCharacterMessage={() => {
+            logEvent('toast_close', { toast: 'character_message' });
+            game.closeCharacterMessage();
+          }}
           chosenCharacter={game.chosenCharacter}
-          onOpenCharacterChannel={() => { logEvent('modal_open', { modal: 'character_channel' }); setChannelOpen(true); }}
-          characterChannelUnlocked={game.unlockedPlanetIds.includes(ALIENS[7].planetId as any) && !game.metalDealDone}
+          onOpenCharacterChannel={() => {
+            logEvent('modal_open', { modal: 'character_channel' });
+            setChannelOpen(true);
+          }}
+          characterChannelUnlocked={
+            game.unlockedPlanetIds.includes(getAliens()[7].planetId as any) &&
+            !game.metalDealDone
+          }
         />
       );
       break;
@@ -412,6 +473,10 @@ onOpenMetalInfo={(metalId) => { logEvent('modal_open', { modal: 'metal_info', me
           onCraftModule={game.craftModule}
           onUpgradeModule={game.upgradeModule}
           onEquipModule={game.equipModule}
+          onOpenMetalInfo={(metalId) => {
+            logEvent('modal_open', { modal: 'metal_info', metalId });
+            setMetalInfoOpenId(metalId);
+          }}
         />
       );
       break;
@@ -423,6 +488,52 @@ onOpenMetalInfo={(metalId) => { logEvent('modal_open', { modal: 'metal_info', me
           metals={game.metals}
           onBuyShopItem={game.buyShopItem}
           onAddCredits={game.addCredits}
+          onStarsPurchaseApplied={(item) => {
+            const meta = item.metadata;
+            const resMeta = item.purchaseResult?.metadata ?? {};
+
+            if (item.type === 'currency_pack') {
+              game.addCredits((meta.creditAmount as number) ?? 0);
+            } else if (item.type === 'metal_pack') {
+              const metalId = meta.metalId as MetalId;
+              const qty = (meta.quantity as number) ?? 0;
+              if (metalId && qty > 0) game.grantMetals({ [metalId]: qty });
+            } else if (item.type === 'booster') {
+              const stat = meta.effectType as BoostStat | undefined;
+              const durationMs = (meta.durationMs as number) ?? 3_600_000;
+              if (stat) {
+                game.activateBoost({
+                  shopItemId: item.id as ShopItemId,
+                  effect: {
+                    stat,
+                    multiplier:
+                      (meta.multiplier as number) ??
+                      (meta.bonus as number) ??
+                      1,
+                    durationMs,
+                  },
+                  expiresAt: Date.now() + durationMs,
+                });
+              }
+            } else if (item.type === 'loot_box') {
+              // Server rolled the metals; apply the authoritative result locally
+              const rolledMetals = resMeta.rolledMetals as
+                | Record<MetalId, number>
+                | undefined;
+              if (rolledMetals && Object.keys(rolledMetals).length > 0) {
+                game.grantMetals(rolledMetals);
+              }
+            } else if (item.type === 'premium_unlock') {
+              const effect = meta.effect as string | undefined;
+              if (effect === 'unlockNextSector') {
+                const planets = (resMeta.appliedPlanets as number[]) ?? [];
+                if (planets.length > 0) game.unlockPlanets(planets);
+              } else if (effect === 'resetResearch') {
+                const energyRefund = (resMeta.energyRefund as number) ?? 0;
+                game.resetResearch(energyRefund);
+              }
+            }
+          }}
         />
       );
       break;
@@ -434,13 +545,17 @@ onOpenMetalInfo={(metalId) => { logEvent('modal_open', { modal: 'metal_info', me
           defeatInfo={game.defeatInfo}
           equippedModule={(() => {
             const shipId = game.battle?.shipId ?? game.fleet.selectedShipId;
-            const owned = game.fleet.ownedShips.find((s) => s.shipId === shipId);
+            const owned = game.fleet.ownedShips.find(
+              (s) => s.shipId === shipId,
+            );
             const modId = owned?.equippedModuleId ?? null;
             return modId ? getModuleById(modId) : null;
           })()}
           equippedModuleLevel={(() => {
             const shipId = game.battle?.shipId ?? game.fleet.selectedShipId;
-            const owned = game.fleet.ownedShips.find((s) => s.shipId === shipId);
+            const owned = game.fleet.ownedShips.find(
+              (s) => s.shipId === shipId,
+            );
             const modId = owned?.equippedModuleId ?? null;
             return modId ? (game.moduleLevels[modId] ?? 0) : 0;
           })()}
@@ -449,7 +564,10 @@ onOpenMetalInfo={(metalId) => { logEvent('modal_open', { modal: 'metal_info', me
           onReflect={game.reflectBattle}
           onHeal={game.healBattle}
           onForfeit={game.forfeitBattle}
-          onGoToShipyard={() => { logEvent('defeat_go_shipyard', {}); onSetTab('shipyard'); }}
+          onGoToShipyard={() => {
+            logEvent('defeat_go_shipyard', {});
+            onSetTab('shipyard');
+          }}
           onClearDefeat={game.clearDefeatInfo}
           onAddBattleTime={game.addBattleTime}
         />
@@ -465,7 +583,10 @@ onOpenMetalInfo={(metalId) => { logEvent('modal_open', { modal: 'metal_info', me
       <ModalSheet
         visible={researchOpen}
         title="◈ ИССЛЕДОВАНИЯ · МММРДР ◈"
-        onClose={() => { logEvent('modal_close', { modal: 'research' }); setResearchOpen(false); }}
+        onClose={() => {
+          logEvent('modal_close', { modal: 'research' });
+          setResearchOpen(false);
+        }}
       >
         <ResearchScreen
           playerLevel={game.playerLevel}
@@ -481,7 +602,10 @@ onOpenMetalInfo={(metalId) => { logEvent('modal_open', { modal: 'metal_info', me
       <ModalSheet
         visible={storyLogOpen}
         title="◈ БОРТОВОЙ ЖУРНАЛ ◈"
-        onClose={() => { logEvent('modal_close', { modal: 'story_log' }); setStoryLogOpen(false); }}
+        onClose={() => {
+          logEvent('modal_close', { modal: 'story_log' });
+          setStoryLogOpen(false);
+        }}
       >
         <StoryLogScreen
           unlockedPlanetIds={game.unlockedPlanetIds}
@@ -493,7 +617,10 @@ onOpenMetalInfo={(metalId) => { logEvent('modal_open', { modal: 'metal_info', me
       <ModalSheet
         visible={achievementsOpen}
         title="◈ ЛИЧНОЕ ДЕЛО ◈"
-        onClose={() => { logEvent('modal_close', { modal: 'achievements' }); setAchievementsOpen(false); }}
+        onClose={() => {
+          logEvent('modal_close', { modal: 'achievements' });
+          setAchievementsOpen(false);
+        }}
       >
         <AchievementsScreen
           achievements={game.achievements}
@@ -504,7 +631,10 @@ onOpenMetalInfo={(metalId) => { logEvent('modal_open', { modal: 'metal_info', me
       <Popup
         visible={game.firstIronToast}
         title="◈ ПЕРВАЯ НАХОДКА · КЛЕРК-7 ◈"
-        onClose={() => { logEvent('toast_close', { toast: 'first_iron' }); game.closeFirstIronToast(); }}
+        onClose={() => {
+          logEvent('toast_close', { toast: 'first_iron' });
+          game.closeFirstIronToast();
+        }}
         image={ironMetal.image}
         text={
           'Зафиксирован первый образец Железа™! За эту выдающуюся находку вам полагается премия — после заполнения форм ЖЛ-1 по ЖЛ-83, нотариально заверенного снимка астероида и справки с предыдущего места работы. P.S. Этот металл может пригодиться. Возможно.'
@@ -515,33 +645,57 @@ onOpenMetalInfo={(metalId) => { logEvent('modal_open', { modal: 'metal_info', me
       <Popup
         visible={game.achievementsUnlockToast}
         title="◈ СИСТЕМА ДОСТИЖЕНИЙ · КЛЕРК-7 ◈"
-        onClose={() => { logEvent('toast_close', { toast: 'achievements_unlock' }); game.closeAchievementsUnlockToast(); }}
+        onClose={() => {
+          logEvent('toast_close', { toast: 'achievements_unlock' });
+          game.closeAchievementsUnlockToast();
+        }}
         text={
           'Хочу вас подбодрить. Серьёзно. Поэтому внедряю систему достижений — специально для вас.\n\nКаждое достижение будет официально зафиксировано в личном деле. Форма ДСТ-1 уже направлена в архив в трёх экземплярах.\n\nТак держать, сотрудник №4,829,441. Вы справляетесь. Почти.'
         }
         clerk
         headerEmoji="🏆"
         actionLabel="ОТКРЫТЬ ДОСТИЖЕНИЯ"
-        onAction={() => { logEvent('toast_action', { toast: 'achievements_unlock', action: 'open_achievements' }); setAchievementsOpen(true); }}
+        onAction={() => {
+          logEvent('toast_action', {
+            toast: 'achievements_unlock',
+            action: 'open_achievements',
+          });
+          setAchievementsOpen(true);
+        }}
       />
 
       <Popup
         visible={game.upgradesUnlockToast}
         title="◈ АПГРЕЙДЫ ДОСТУПНЫ · КЛЕРК-7 ◈"
-        onClose={() => { logEvent('toast_close', { toast: 'upgrades_unlock' }); game.closeUpgradesUnlockToast(); }}
+        onClose={() => {
+          logEvent('toast_close', { toast: 'upgrades_unlock' });
+          game.closeUpgradesUnlockToast();
+        }}
         text={
           'Поздравляю — у вас достаточно энергии для первого улучшения оборудования!\n\nАпгрейды повышают мощность добычи и пассивный доход. Настоятельно рекомендую вкладывать всё, что есть.\n\nФорма АПГ-1 «Заявка на улучшение» заполнена автоматически. Можете не благодарить.'
         }
         clerk
         headerEmoji="⚡"
         actionLabel="ОТКРЫТЬ АПГРЕЙДЫ"
-        onAction={() => { logEvent('toast_action', { toast: 'upgrades_unlock', action: 'open_upgrades' }); goToTab('upgrades'); }}
+        onAction={() => {
+          logEvent('toast_action', {
+            toast: 'upgrades_unlock',
+            action: 'open_upgrades',
+          });
+          goToTab('upgrades');
+        }}
       />
 
       <Popup
         visible={!!game.currentUnlockToast}
         title={game.currentUnlockToast?.title ?? ''}
-        onClose={() => { logEvent('toast_close', { toast: 'unlock', id: game.currentUnlockToast?.id }); game.dismissUnlockToast(); }}
+        onClose={() => {
+          logEvent('toast_close', {
+            toast: 'unlock',
+            id: game.currentUnlockToast?.id,
+          });
+          game.dismissUnlockToast();
+        }}
         image={game.currentUnlockToast?.image}
         images={game.currentUnlockToast?.images}
         text={game.currentUnlockToast?.text ?? ''}
@@ -552,54 +706,99 @@ onOpenMetalInfo={(metalId) => { logEvent('modal_open', { modal: 'metal_info', me
       <Popup
         visible={game.firstShipToast}
         title="◈ ПЕРВЫЙ КОРАБЛЬ · КЛЕРК-7 ◈"
-        onClose={() => { logEvent('toast_close', { toast: 'first_ship' }); game.closeFirstShipToast(); }}
-        image={SHIPS[0].image}
-        text={`Поздравляю с постройкой первого корабля!\n\nОднако для навигации необходимы данные из реестра МММРДР. Министерство готово их предоставить — как только вы выйдете на связь. Для этого потребуется ${MIN_ATTACK_ENERGY} единиц энергии. Форма НВГ-1 «Запрос навигационных данных» будет заполнена автоматически.`}
+        onClose={() => {
+          logEvent('toast_close', { toast: 'first_ship' });
+          game.closeFirstShipToast();
+        }}
+        image={getShips()[0].image}
+        text={`Поздравляю с постройкой первого корабля!\n\nОднако для навигации необходимы данные из реестра МММРДР. Министерство готово их предоставить — как только вы выйдете на связь. Для этого потребуется ${minAttackEnergy} единиц энергии. Форма НВГ-1 «Запрос навигационных данных» будет заполнена автоматически.`}
         clerk
         headerEmoji="🚀"
-        actionLabel={planetsUnlocked ? 'ПЕРЕЙТИ К ПЛАНЕТАМ' : `ДОБЫТЬ ${MIN_ATTACK_ENERGY} ЭНЕРГИИ`}
-        onAction={() => { logEvent('toast_action', { toast: 'first_ship', action: planetsUnlocked ? 'go_planets' : 'go_game' }); game.closeFirstShipToast(); goToTab(planetsUnlocked ? 'planets' : 'game'); }}
+        actionLabel={
+          planetsUnlocked
+            ? 'ПЕРЕЙТИ К ПЛАНЕТАМ'
+            : `ДОБЫТЬ ${minAttackEnergy} ЭНЕРГИИ`
+        }
+        onAction={() => {
+          logEvent('toast_action', {
+            toast: 'first_ship',
+            action: planetsUnlocked ? 'go_planets' : 'go_game',
+          });
+          game.closeFirstShipToast();
+          goToTab(planetsUnlocked ? 'planets' : 'game');
+        }}
       />
 
       <Popup
         visible={game.planetsUnlockToast}
         title="◈ ПЛАНЕТЫ ДОСТУПНЫ · КЛЕРК-7 ◈"
-        onClose={() => { logEvent('toast_close', { toast: 'planets_unlock' }); game.closePlanetsUnlockToast(); }}
+        onClose={() => {
+          logEvent('toast_close', { toast: 'planets_unlock' });
+          game.closePlanetsUnlockToast();
+        }}
         headerEmoji="🌍"
         text={
           'У вас достаточно энергии для атаки! Вкладка «ПЛАН.» разблокирована.\n\nЗдесь вы можете выбирать планеты и вступать в бой с инопланетными захватчиками. Победа откроет новые планеты с бонусами к добыче.\n\nМинистерство межпланетных отношений категорически не рекомендует вступать в контакт с пришельцами. Так что, возможно, сначала постройте корабль.'
         }
         clerk
         actionLabel="ОТКРЫТЬ ПЛАНЕТЫ"
-        onAction={() => { logEvent('toast_action', { toast: 'planets_unlock', action: 'open_planets' }); goToTab('planets'); }}
+        onAction={() => {
+          logEvent('toast_action', {
+            toast: 'planets_unlock',
+            action: 'open_planets',
+          });
+          goToTab('planets');
+        }}
       />
 
       <Popup
         visible={game.shipyardUnlockToast}
         title="◈ ВЕРФЬ РАЗБЛОКИРОВАНА · КЛЕРК-7 ◈"
-        onClose={() => { logEvent('toast_close', { toast: 'shipyard_unlock' }); game.closeShipyardUnlockToast(); }}
+        onClose={() => {
+          logEvent('toast_close', { toast: 'shipyard_unlock' });
+          game.closeShipyardUnlockToast();
+        }}
         headerEmoji="🛠️"
         text={
           'У вас достаточно железа для постройки первого корабля!\n\nПерейдите во вкладку «ВЕРФЬ» — там можно строить корабли, устанавливать пушки и отправлять флот в экспедиции за металлами.\n\nМинистерство судостроения уведомлено. Форма СТР-1 «Разрешение на строительство» находится на рассмотрении с 2374 года. Стройте пока никто не заметил.'
         }
         clerk
         actionLabel="ОТКРЫТЬ ВЕРФЬ"
-        onAction={() => { logEvent('toast_action', { toast: 'shipyard_unlock', action: 'open_shipyard' }); goToTab('shipyard'); }}
+        onAction={() => {
+          logEvent('toast_action', {
+            toast: 'shipyard_unlock',
+            action: 'open_shipyard',
+          });
+          goToTab('shipyard');
+        }}
       />
 
       <Popup
         visible={!!game.planetUnlockToast}
         title="◈ НОВАЯ ПЛАНЕТА · КЛЕРК-7 ◈"
-        onClose={() => { logEvent('toast_close', { toast: 'planet_unlock', planetId: game.planetUnlockToast?.id }); game.closePlanetUnlockToast(); }}
+        onClose={() => {
+          logEvent('toast_close', {
+            toast: 'planet_unlock',
+            planetId: game.planetUnlockToast?.id,
+          });
+          game.closePlanetUnlockToast();
+        }}
         image={game.planetUnlockToast?.image}
         text={
           game.planetUnlockToast
-            ? `Планета ${game.planetUnlockToast.name} разблокирована!\n\nБонус к добыче: ×${game.planetUnlockToast.bonus}.\n\n${game.planetUnlockToast.lore}`
+            ? `Планета ${game.planetUnlockToast.name} разблокирована!\n\n${game.planetUnlockToast.lore}`
             : ''
         }
         clerk
         actionLabel="НАЧАТЬ ДОБЫЧУ"
-        onAction={() => { logEvent('toast_action', { toast: 'planet_unlock', action: 'start_mining', planetId: game.planetUnlockToast?.id }); goToTab('game'); }}
+        onAction={() => {
+          logEvent('toast_action', {
+            toast: 'planet_unlock',
+            action: 'start_mining',
+            planetId: game.planetUnlockToast?.id,
+          });
+          goToTab('game');
+        }}
       />
 
       <CharacterSelectFlow
@@ -611,7 +810,10 @@ onOpenMetalInfo={(metalId) => { logEvent('modal_open', { modal: 'metal_info', me
         onAcceptMetalDeal={game.acceptMetalDeal}
         canAffordMetalDeal={game.canAffordMetalDeal}
         metalDealEnergyCost={game.metalDealEnergyCost}
-        onEarnEnergy={() => { game.closeCharacterFlow(); goToTab('game'); }}
+        onEarnEnergy={() => {
+          game.closeCharacterFlow();
+          goToTab('game');
+        }}
       />
 
       {game.chosenCharacter && (
@@ -622,15 +824,24 @@ onOpenMetalInfo={(metalId) => { logEvent('modal_open', { modal: 'metal_info', me
           planet10Unlocked={game.unlockedPlanetIds.includes(10 as any)}
           canAffordMetalDeal={game.canAffordMetalDeal}
           metalDealEnergyCost={game.metalDealEnergyCost}
-          onAcceptMetalDeal={() => { game.acceptMetalDeal(); setChannelOpen(false); }}
-          onEarnEnergy={() => { setChannelOpen(false); goToTab('game'); }}
+          onAcceptMetalDeal={() => {
+            game.acceptMetalDeal();
+            setChannelOpen(false);
+          }}
+          onEarnEnergy={() => {
+            setChannelOpen(false);
+            goToTab('game');
+          }}
         />
       )}
 
       <Popup
         visible={clickPowerInfoOpen}
         title="◈ МОЩНОСТЬ КЛИКА · КЛЕРК-7 ◈"
-        onClose={() => { logEvent('toast_close', { toast: 'click_power_info' }); setClickPowerInfoOpen(false); }}
+        onClose={() => {
+          logEvent('toast_close', { toast: 'click_power_info' });
+          setClickPowerInfoOpen(false);
+        }}
         headerEmoji="⛏️"
         text={`Мощность клика — количество энергии, добываемой за одно нажатие на планету.\n\nСейчас: +${game.clickPower < 1000 ? game.clickPower.toFixed(2) : formatNum(game.clickPower)} за клик.\n\nУвеличивается через улучшения во вкладке «АПГР.». Чем выше мощность — тем больше энергии и металлов вы получаете с каждого удара.`}
         clerk
@@ -639,13 +850,16 @@ onOpenMetalInfo={(metalId) => { logEvent('modal_open', { modal: 'metal_info', me
       <Popup
         visible={passiveRateInfoOpen}
         title="◈ ПАССИВНЫЙ ДОХОД · КЛЕРК-7 ◈"
-        onClose={() => { logEvent('toast_close', { toast: 'passive_rate_info' }); setPassiveRateInfoOpen(false); }}
+        onClose={() => {
+          logEvent('toast_close', { toast: 'passive_rate_info' });
+          setPassiveRateInfoOpen(false);
+        }}
         headerEmoji="⚡"
         text={`Пассивный доход — энергия, накапливаемая автоматически каждую секунду без кликов.\n\nСейчас: ${formatNum(game.passiveRate)}/сек.\n\nУвеличивается через улучшения с дроном во вкладке «АПГР.». Пока вы спите — дроны работают. По регламенту МММРДР, дроны не устают. Их чувства по этому поводу не изучались.`}
         clerk
       />
 
-{(() => {
+      {(() => {
         const METAL_INFO: Record<MetalId, { title: string; text: string }> = {
           iron: {
             title: '◈ ЖЕЛЕЗО™ · КЛЕРК-7 ◈',
@@ -668,13 +882,21 @@ onOpenMetalInfo={(metalId) => { logEvent('modal_open', { modal: 'metal_info', me
             text: 'Осколок Эха — фрагментарный материал, излучающий слабый резонансный сигнал. Встречается в глубинах Сектора 3.\n\nПо непроверенным данным, звук, исходящий от осколка — это отголоски сигналов, поглощённых Пустотой. МММРДР официально опровергает эту теорию, не приводя альтернативной.\n\nВывод: берите. Пригодится.',
           },
         };
-        const metal = metalInfoOpenId ? METALS.find((m) => m.id === metalInfoOpenId) : null;
+        const metal = metalInfoOpenId
+          ? METALS.find((m) => m.id === metalInfoOpenId)
+          : null;
         const info = metalInfoOpenId ? METAL_INFO[metalInfoOpenId] : null;
         return (
           <Popup
             visible={metalInfoOpenId !== null}
             title={info?.title ?? ''}
-            onClose={() => { logEvent('toast_close', { toast: 'metal_info', metalId: metalInfoOpenId }); setMetalInfoOpenId(null); }}
+            onClose={() => {
+              logEvent('toast_close', {
+                toast: 'metal_info',
+                metalId: metalInfoOpenId,
+              });
+              setMetalInfoOpenId(null);
+            }}
             image={metal?.image}
             text={info?.text ?? ''}
             clerk
@@ -694,116 +916,147 @@ onOpenMetalInfo={(metalId) => { logEvent('modal_open', { modal: 'metal_info', me
         if (visibleTabs.length < 2) return null;
         return (
           <RNSAView edges={['bottom']} style={styles.tabBarOuter}>
-          <View style={styles.tabBar}>
-            {visibleTabs.map((t) => {
-              const active = tab === t.id;
-              const hasBattle = t.id === 'battle' && !!game.battle;
-              const hasDefeat = t.id === 'battle' && !!game.defeatInfo;
-              const hasExpeditionDone =
-                t.id === 'shipyard' &&
-                game.expeditions.some(
-                  (e) => (game.expeditionRemainingMap[e.shipId] ?? 1) === 0
-                );
-              const hasAffordableUpgrade =
-                t.id === 'upgrades' &&
-                tab !== 'upgrades' &&
-                UPGRADES.some(
-                  (u) =>
-                    game.energy >=
-                    computeUpgradeCost(u, game.upgrades[u.id] ?? 0)
-                );
-              const hasAttackablePlanet =
-                t.id === 'planets' &&
-                tab !== 'planets' &&
-                ALIENS.some((alien) => {
-                  const planet = PLANETS.find((p) => p.id === alien.planetId);
-                  if (!planet) return false;
-                  return (
-                    !game.unlockedPlanetIds.includes(alien.planetId) &&
-                    isSectorUnlocked(planet.sectorId, game.unlockedPlanetIds, game.playerLevel) &&
-                    game.battle?.planetId !== alien.planetId &&
-                    game.energy >= alien.attackEnergyCost
+            <View style={styles.tabBar}>
+              {visibleTabs.map((t) => {
+                const active = tab === t.id;
+                const hasBattle = t.id === 'battle' && !!game.battle;
+                const hasDefeat = t.id === 'battle' && !!game.defeatInfo;
+                const hasExpeditionDone =
+                  t.id === 'shipyard' &&
+                  game.expeditions.some(
+                    (e) => (game.expeditionRemainingMap[e.shipId] ?? 1) === 0,
                   );
-                });
-              const hasAffordableShipyard =
-                t.id === 'shipyard' &&
-                tab !== 'shipyard' &&
-                (SHIPS.some(
-                  (ship) =>
-                    !game.fleet.ownedShips.some((o) => o.shipId === ship.id) &&
-                    Object.entries(ship.baseCost).every(
-                      ([m, qty]) =>
-                        (game.metals[m as keyof typeof game.metals] ?? 0) >=
-                        (qty ?? 0)
-                    )
-                ) ||
-                  (game.fleet.ownedShips.length > 0 &&
-                    CANNONS.some((cannon) =>
-                      game.fleet.ownedShips
-                        .filter((ship) => !game.expeditions.some((e) => e.shipId === ship.shipId))
-                        .some((ship) => {
-                          const cost = computeCannonCost(
-                            cannon,
-                            ship.cannons[cannon.id] ?? 0
-                          );
-                          return Object.entries(cost).every(
-                            ([m, qty]) =>
-                              (game.metals[m as keyof typeof game.metals] ?? 0) >=
-                              (qty ?? 0)
-                          );
-                        })
-                    )));
+                const hasAffordableUpgrade =
+                  t.id === 'upgrades' &&
+                  tab !== 'upgrades' &&
+                  getUpgrades().some(
+                    (u) =>
+                      game.energy >=
+                      computeUpgradeCost(
+                        u,
+                        game.upgrades[u.id as UpgradeId] ?? 0,
+                      ),
+                  );
+                const hasAttackablePlanet =
+                  t.id === 'planets' &&
+                  tab !== 'planets' &&
+                  getAliens().some((alien) => {
+                    const planet = getPlanets().find(
+                      (p) => p.id === alien.planetId,
+                    );
+                    if (!planet) return false;
+                    return (
+                      !game.unlockedPlanetIds.includes(alien.planetId) &&
+                      isSectorUnlocked(
+                        planet.sectorId,
+                        game.unlockedPlanetIds,
+                        game.playerLevel,
+                      ) &&
+                      game.battle?.planetId !== alien.planetId &&
+                      game.energy >= alien.attackEnergyCost
+                    );
+                  });
+                const hasAffordableShipyard =
+                  t.id === 'shipyard' &&
+                  tab !== 'shipyard' &&
+                  (getShips().some(
+                    (ship) =>
+                      !game.fleet.ownedShips.some(
+                        (o) => o.shipId === ship.id,
+                      ) &&
+                      Object.entries(ship.baseCost).every(
+                        ([m, qty]) =>
+                          (game.metals[m as keyof typeof game.metals] ?? 0) >=
+                          (qty ?? 0),
+                      ),
+                  ) ||
+                    (game.fleet.ownedShips.length > 0 &&
+                      getCannons().some((cannon) =>
+                        game.fleet.ownedShips
+                          .filter(
+                            (ship) =>
+                              !game.expeditions.some(
+                                (e) => e.shipId === ship.shipId,
+                              ),
+                          )
+                          .some((ship) => {
+                            const cost = computeCannonCost(
+                              cannon,
+                              ship.cannons[cannon.id] ?? 0,
+                            );
+                            return Object.entries(cost).every(
+                              ([m, qty]) =>
+                                (game.metals[m as keyof typeof game.metals] ??
+                                  0) >= (qty ?? 0),
+                            );
+                          }),
+                      )));
 
-              return (
-                <Pressable
-                  key={t.id}
-                  onPress={() => { logEvent('tab_switch', { tab: t.id, via: 'tab_bar' }); onSetTab(t.id); }}
-                  style={styles.tabBtn}
-                >
-                  <Text style={styles.tabIcon}>{t.icon}</Text>
-                  <Text
-                    style={[
-                      styles.tabLabel,
-                      active ? styles.tabLabelActive : null
-                    ]}
+                return (
+                  <Pressable
+                    key={t.id}
+                    onPress={() => {
+                      logEvent('tab_switch', { tab: t.id, via: 'tab_bar' });
+                      onSetTab(t.id);
+                    }}
+                    style={styles.tabBtn}
                   >
-                    {t.label}
-                  </Text>
-                  {active ? <View style={styles.tabActiveLine} /> : null}
-                  {hasBattle || hasDefeat ? (
-                    <View
+                    <Text style={styles.tabIcon}>{t.icon}</Text>
+                    <Text
                       style={[
-                        styles.tabBadge,
-                        hasDefeat ? { backgroundColor: '#ff9900' } : {}
+                        styles.tabLabel,
+                        active ? styles.tabLabelActive : null,
                       ]}
-                    />
-                  ) : null}
-                  {hasExpeditionDone || hasAffordableShipyard ? (
-                    <View
-                      style={[styles.tabBadge, { backgroundColor: '#ff3b3b' }]}
-                    />
-                  ) : null}
-                  {hasAffordableUpgrade ? (
-                    <View
-                      style={[styles.tabBadge, { backgroundColor: '#ff3b3b' }]}
-                    />
-                  ) : null}
-                  {hasAttackablePlanet ? (
-                    <View
-                      style={[styles.tabBadge, { backgroundColor: '#ff3b30' }]}
-                    />
-                  ) : null}
-                </Pressable>
-              );
-            })}
-          </View>
+                    >
+                      {t.label}
+                    </Text>
+                    {active ? <View style={styles.tabActiveLine} /> : null}
+                    {hasBattle || hasDefeat ? (
+                      <View
+                        style={[
+                          styles.tabBadge,
+                          hasDefeat ? { backgroundColor: '#ff9900' } : {},
+                        ]}
+                      />
+                    ) : null}
+                    {hasExpeditionDone || hasAffordableShipyard ? (
+                      <View
+                        style={[
+                          styles.tabBadge,
+                          { backgroundColor: '#ff3b3b' },
+                        ]}
+                      />
+                    ) : null}
+                    {hasAffordableUpgrade ? (
+                      <View
+                        style={[
+                          styles.tabBadge,
+                          { backgroundColor: '#ff3b3b' },
+                        ]}
+                      />
+                    ) : null}
+                    {hasAttackablePlanet ? (
+                      <View
+                        style={[
+                          styles.tabBadge,
+                          { backgroundColor: '#ff3b30' },
+                        ]}
+                      />
+                    ) : null}
+                  </Pressable>
+                );
+              })}
+            </View>
           </RNSAView>
         );
       })()}
 
       <View style={styles.sideButtons}>
         <Pressable
-          onPress={() => { logEvent('modal_open', { modal: 'reset_confirm' }); setResetConfirmOpen(true); }}
+          onPress={() => {
+            logEvent('modal_open', { modal: 'reset_confirm' });
+            setResetConfirmOpen(true);
+          }}
           style={styles.resetBtn}
         >
           <Text style={styles.resetIcon}>✕</Text>
@@ -813,11 +1066,23 @@ onOpenMetalInfo={(metalId) => { logEvent('modal_open', { modal: 'metal_info', me
           <Text style={styles.editorIcon}>✎</Text>
           <Text style={styles.editorLabel}>ПРОГ.</Text>
         </Pressable>
-        <Pressable onPress={() => { logEvent('modal_open', { modal: 'character_select' }); game.openCharacterSelectFlow(); }} style={styles.editorBtn}>
+        <Pressable
+          onPress={() => {
+            logEvent('modal_open', { modal: 'character_select' });
+            game.openCharacterSelectFlow();
+          }}
+          style={styles.editorBtn}
+        >
           <Text style={styles.editorIcon}>👤</Text>
           <Text style={styles.editorLabel}>ПЕРС.</Text>
         </Pressable>
-        <Pressable onPress={() => { logEvent('modal_open', { modal: 'metal_deal' }); game.openMetalDealFlow(); }} style={styles.editorBtn}>
+        <Pressable
+          onPress={() => {
+            logEvent('modal_open', { modal: 'metal_deal' });
+            game.openMetalDealFlow();
+          }}
+          style={styles.editorBtn}
+        >
           <Text style={styles.editorIcon}>🤝</Text>
           <Text style={styles.editorLabel}>СДЕЛКА</Text>
         </Pressable>
@@ -855,7 +1120,7 @@ onOpenMetalInfo={(metalId) => { logEvent('modal_open', { modal: 'metal_info', me
                   { key: 'playerXP', label: 'Опыт (XP)' },
                   { key: 'iron', label: 'Железо' },
                   { key: 'titan', label: 'Титан' },
-                  { key: 'iridium', label: 'Иридий' }
+                  { key: 'iridium', label: 'Иридий' },
                 ] as { key: keyof typeof editorFields; label: string }[]
               ).map(({ key, label }) => (
                 <View key={key} style={styles.editorRow}>
@@ -876,7 +1141,7 @@ onOpenMetalInfo={(metalId) => { logEvent('modal_open', { modal: 'metal_info', me
                 [
                   { key: 'unlockUpgrades', label: 'Апгрейды открыты' },
                   { key: 'unlockShipyard', label: 'Верфь открыта' },
-                  { key: 'unlockPlanets', label: 'Планеты открыты' }
+                  { key: 'unlockPlanets', label: 'Планеты открыты' },
                 ] as { key: keyof typeof editorToggles; label: string }[]
               ).map(({ key, label }) => (
                 <View key={key} style={styles.editorRow}>
@@ -889,13 +1154,13 @@ onOpenMetalInfo={(metalId) => { logEvent('modal_open', { modal: 'metal_info', me
                       styles.editorToggle,
                       editorToggles[key]
                         ? styles.editorToggleOn
-                        : styles.editorToggleOff
+                        : styles.editorToggleOff,
                     ]}
                   >
                     <Text
                       style={[
                         styles.editorToggleText,
-                        editorToggles[key] ? styles.editorToggleTextOn : null
+                        editorToggles[key] ? styles.editorToggleTextOn : null,
                       ]}
                     >
                       {editorToggles[key] ? 'ВКЛ' : 'ВЫКЛ'}
@@ -938,8 +1203,15 @@ onOpenMetalInfo={(metalId) => { logEvent('modal_open', { modal: 'metal_info', me
               style={styles.resetCheckboxRow}
               onPress={() => setResetShowIntro((v) => !v)}
             >
-              <View style={[styles.resetCheckbox, resetShowIntro && styles.resetCheckboxChecked]}>
-                {resetShowIntro ? <Text style={styles.resetCheckboxMark}>✓</Text> : null}
+              <View
+                style={[
+                  styles.resetCheckbox,
+                  resetShowIntro && styles.resetCheckboxChecked,
+                ]}
+              >
+                {resetShowIntro ? (
+                  <Text style={styles.resetCheckboxMark}>✓</Text>
+                ) : null}
               </View>
               <Text style={styles.resetCheckboxLabel}>Показать интро</Text>
             </Pressable>
@@ -977,7 +1249,9 @@ export default function App() {
   const [gameKey, setGameKey] = useState(0);
   const [offlineEarnings, setOfflineEarnings] = useState(0);
 
-  const sessionIdRef = useRef(Math.random().toString(36).slice(2) + Date.now().toString(36));
+  const sessionIdRef = useRef(
+    Math.random().toString(36).slice(2) + Date.now().toString(36),
+  );
   useEffect(() => {
     initAnalytics(sessionIdRef.current);
 
@@ -988,17 +1262,24 @@ export default function App() {
     });
 
     if (Platform.OS === 'web') {
+      bootstrapTelegram();
+
       const onUnhandled = (event: PromiseRejectionEvent) => {
         logError(event.reason, { type: 'unhandledrejection' });
       };
       window.addEventListener('unhandledrejection', onUnhandled);
-      return () => window.removeEventListener('unhandledrejection', onUnhandled);
+      return () =>
+        window.removeEventListener('unhandledrejection', onUnhandled);
     }
   }, []);
 
   useEffect(() => {
     let mounted = true;
     (async () => {
+      // In Telegram runtime: auth first so getAccessToken() returns a valid
+      // token for the cloud-sync step below. No-op on native and plain web.
+      await telegramAuthIfNeeded();
+
       const [loaded, seen, token] = await Promise.all([
         loadGame(),
         loadIntroSeen(),
@@ -1021,7 +1302,9 @@ export default function App() {
       }
 
       const resolvedState = cloudState ?? loaded?.state;
-      const resolvedSavedAt = cloudState ? cloudSavedAt : (loaded?.savedAt ?? 0);
+      const resolvedSavedAt = cloudState
+        ? cloudSavedAt
+        : (loaded?.savedAt ?? 0);
 
       if (resolvedState) {
         const state = resolvedState;
@@ -1029,13 +1312,20 @@ export default function App() {
         if (savedAt > 0) {
           const elapsedSeconds = (Date.now() - savedAt) / 1000;
           let basePassive = 0;
-          for (const upg of UPGRADES) {
-            const level = (state.upgrades as Record<string, number>)?.[String(upg.id)] ?? 0;
+          for (const upg of getUpgrades()) {
+            const level =
+              (state.upgrades as Record<string, number>)?.[String(upg.id)] ?? 0;
             if (upg.passiveBonus) basePassive += upg.passiveBonus * level;
           }
-          const planet = PLANETS.find((p) => p.id === (state.selectedPlanetId ?? PLANETS[0].id)) ?? PLANETS[0];
+          const planets = getPlanets();
+          const planet =
+            planets.find(
+              (p) => p.id === (state.selectedPlanetId ?? planets[0].id),
+            ) ?? planets[0];
           const passiveRate = basePassive * planet.bonus;
-          const earnings = Math.floor(passiveRate * Math.min(elapsedSeconds, 8 * 3600));
+          const earnings = Math.floor(
+            passiveRate * Math.min(elapsedSeconds, 8 * 3600),
+          );
           if (earnings > 0) {
             state.energy = (state.energy ?? 0) + earnings;
             state.totalEarned = (state.totalEarned ?? 0) + earnings;
@@ -1086,29 +1376,29 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-    <View style={styles.container}>
-      <GameApp
-        key={gameKey}
-        initial={initial}
-        tab={tab}
-        onSetTab={setTab}
-        onReset={handleReset}
-      />
-      <IntroOverlay
-        visible={!introSeen}
-        onDone={async () => {
-          setIntroSeen(true);
-          await saveIntroSeen(true);
-        }}
-      />
-      <Popup
-        visible={offlineEarnings > 0}
-        title="ОФЛАЙН-ДОБЫЧА"
-        headerEmoji="⚡"
-        text={`Пока вас не было, реакторы не простаивали.\n\nНакоплено: +${formatNum(offlineEarnings)} энергии.`}
-        onClose={() => setOfflineEarnings(0)}
-      />
-    </View>
+      <View style={styles.container}>
+        <GameApp
+          key={gameKey}
+          initial={initial}
+          tab={tab}
+          onSetTab={setTab}
+          onReset={handleReset}
+        />
+        <IntroOverlay
+          visible={!introSeen}
+          onDone={async () => {
+            setIntroSeen(true);
+            await saveIntroSeen(true);
+          }}
+        />
+        <Popup
+          visible={offlineEarnings > 0}
+          title="ОФЛАЙН-ДОБЫЧА"
+          headerEmoji="⚡"
+          text={`Пока вас не было, реакторы не простаивали.\n\nНакоплено: +${formatNum(offlineEarnings)} энергии.`}
+          onClose={() => setOfflineEarnings(0)}
+        />
+      </View>
     </SafeAreaProvider>
   );
 }
@@ -1121,7 +1411,7 @@ const styles = StyleSheet.create({
   tabBarOuter: {
     borderTopWidth: 1,
     borderTopColor: 'rgba(0,212,255,0.15)',
-    backgroundColor: 'rgba(0,10,30,0.95)'
+    backgroundColor: 'rgba(0,10,30,0.95)',
   },
   tabBar: {
     flexDirection: 'row',
@@ -1133,7 +1423,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 1,
-    position: 'relative'
+    position: 'relative',
   },
   tabIcon: { fontSize: 14 },
   tabLabel: {
@@ -1141,7 +1431,7 @@ const styles = StyleSheet.create({
     fontSize: 7,
     letterSpacing: 0.3,
     color: 'rgba(255,255,255,0.3)',
-    fontWeight: '800'
+    fontWeight: '800',
   },
   tabLabelActive: { color: '#00d4ff' },
   tabActiveLine: {
@@ -1150,7 +1440,7 @@ const styles = StyleSheet.create({
     right: 6,
     bottom: 5,
     height: 2,
-    backgroundColor: '#00d4ff'
+    backgroundColor: '#00d4ff',
   },
   resetBtn: { alignItems: 'center', gap: 2 },
   resetIcon: { fontSize: 12, color: 'rgba(255,80,80,0.55)' },
@@ -1158,14 +1448,14 @@ const styles = StyleSheet.create({
     fontSize: 6,
     color: 'rgba(255,80,80,0.45)',
     fontWeight: '800',
-    letterSpacing: 0.3
+    letterSpacing: 0.3,
   },
   resetOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,5,20,0.75)',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 24
+    padding: 24,
   },
   resetCard: {
     width: '100%',
@@ -1174,25 +1464,25 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,80,80,0.3)',
     borderRadius: 16,
     padding: 20,
-    gap: 12
+    gap: 12,
   },
   resetCardTitle: {
     fontSize: 10,
     fontWeight: '900',
     color: 'rgba(255,80,80,0.85)',
     letterSpacing: 2,
-    textAlign: 'center'
+    textAlign: 'center',
   },
   resetCardText: {
     fontSize: 13,
     color: 'rgba(200,230,255,0.85)',
     lineHeight: 20,
-    textAlign: 'center'
+    textAlign: 'center',
   },
   resetCardButtons: {
     flexDirection: 'row',
     gap: 10,
-    marginTop: 4
+    marginTop: 4,
   },
   resetCardCancel: {
     flex: 1,
@@ -1200,12 +1490,12 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: 'rgba(0,212,255,0.3)',
-    alignItems: 'center'
+    alignItems: 'center',
   },
   resetCardCancelText: {
     color: 'rgba(0,212,255,0.8)',
     fontWeight: '700',
-    fontSize: 13
+    fontSize: 13,
   },
   resetCardConfirm: {
     flex: 1,
@@ -1214,12 +1504,12 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(180,30,30,0.6)',
     borderWidth: 1,
     borderColor: 'rgba(255,80,80,0.4)',
-    alignItems: 'center'
+    alignItems: 'center',
   },
   resetCardConfirmText: {
     color: 'rgba(255,120,120,0.95)',
     fontWeight: '700',
-    fontSize: 13
+    fontSize: 13,
   },
   resetCheckboxRow: {
     flexDirection: 'row',
@@ -1257,7 +1547,7 @@ const styles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 4,
-    backgroundColor: '#ff4444'
+    backgroundColor: '#ff4444',
   },
   sideButtons: {
     position: 'absolute',
@@ -1265,7 +1555,7 @@ const styles = StyleSheet.create({
     top: '50%',
     transform: [{ translateY: -38 }],
     alignItems: 'center',
-    gap: 8
+    gap: 8,
   },
   editorBtn: { alignItems: 'center', gap: 2 },
   editorIcon: { fontSize: 14, color: 'rgba(0,212,255,0.55)' },
@@ -1273,7 +1563,7 @@ const styles = StyleSheet.create({
     fontSize: 6,
     color: 'rgba(0,212,255,0.45)',
     fontWeight: '800',
-    letterSpacing: 0.3
+    letterSpacing: 0.3,
   },
   editorCard: {
     width: '100%',
@@ -1282,14 +1572,14 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(0,212,255,0.3)',
     borderRadius: 16,
     padding: 20,
-    gap: 14
+    gap: 14,
   },
   editorCardTitle: {
     fontSize: 10,
     fontWeight: '900',
     color: 'rgba(0,212,255,0.85)',
     letterSpacing: 2,
-    textAlign: 'center'
+    textAlign: 'center',
   },
   editorScroll: { maxHeight: 280 },
   editorRow: {
@@ -1298,12 +1588,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 6,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,212,255,0.08)'
+    borderBottomColor: 'rgba(0,212,255,0.08)',
   },
   editorFieldLabel: {
     fontSize: 12,
     color: 'rgba(200,230,255,0.85)',
-    fontWeight: '600'
+    fontWeight: '600',
   },
   editorInput: {
     width: 130,
@@ -1316,33 +1606,33 @@ const styles = StyleSheet.create({
     color: '#00d4ff',
     fontSize: 13,
     fontWeight: '700',
-    textAlign: 'right'
+    textAlign: 'right',
   },
   editorDivider: {
     height: 1,
     backgroundColor: 'rgba(0,212,255,0.12)',
-    marginVertical: 6
+    marginVertical: 6,
   },
   editorToggle: {
     width: 70,
     paddingVertical: 5,
     borderRadius: 8,
     borderWidth: 1,
-    alignItems: 'center'
+    alignItems: 'center',
   },
   editorToggleOn: {
     backgroundColor: 'rgba(0,212,255,0.15)',
-    borderColor: 'rgba(0,212,255,0.5)'
+    borderColor: 'rgba(0,212,255,0.5)',
   },
   editorToggleOff: {
     backgroundColor: 'rgba(255,255,255,0.03)',
-    borderColor: 'rgba(255,255,255,0.12)'
+    borderColor: 'rgba(255,255,255,0.12)',
   },
   editorToggleText: {
     fontSize: 10,
     fontWeight: '800',
     letterSpacing: 0.5,
-    color: 'rgba(255,255,255,0.3)'
+    color: 'rgba(255,255,255,0.3)',
   },
-  editorToggleTextOn: { color: '#00d4ff' }
+  editorToggleTextOn: { color: '#00d4ff' },
 });

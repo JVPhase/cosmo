@@ -1,7 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { METALS } from "./METALS";
 import { PLANETS, type PlanetId } from "./PLANETS";
-import { UPGRADES } from "./UPGRADES";
+import { getUpgrades } from "./UPGRADES";
 import type { GameState, GameStateInit } from "./types";
 
 const STORAGE_KEY = "cosmo_game_v1";
@@ -35,7 +35,7 @@ function isValidState(s: unknown): s is GameStateInit {
 
   if (typeof state.upgrades !== "object" || state.upgrades === null) return false;
   const upgrades = state.upgrades as Record<string, unknown>;
-  for (const upg of UPGRADES) {
+  for (const upg of getUpgrades()) {
     const v = upgrades[String(upg.id)];
     if (v !== undefined && typeof v !== "number") return false;
   }

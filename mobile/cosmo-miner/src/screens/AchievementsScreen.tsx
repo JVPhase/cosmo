@@ -1,8 +1,8 @@
 import React, { useMemo } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import {
-  ACHIEVEMENTS,
-  ACHIEVEMENT_CLAIM_CREDITS,
+  getAchievements,
+  getAchievementClaimCredits,
   type AchievementId
 } from '../game/ACHIEVEMENTS';
 import type { AchievementsState } from '../game/types';
@@ -32,7 +32,7 @@ export function AchievementsScreen({ achievements, onClaim }: AchievementsScreen
   );
 
   const sortedAchievements = useMemo(() => {
-    return [...ACHIEVEMENTS].sort((a, b) => {
+    return [...getAchievements()].sort((a, b) => {
       const aUnlocked = unlockedSet.has(a.id);
       const bUnlocked = unlockedSet.has(b.id);
       const aClaimed = claimedSet.has(a.id);
@@ -71,7 +71,7 @@ export function AchievementsScreen({ achievements, onClaim }: AchievementsScreen
         contentContainerStyle={styles.content}
         ListHeaderComponent={
           <Text style={styles.subtitle}>
-            {unlockedSet.size}/{ACHIEVEMENTS.length} страниц получено
+            {unlockedSet.size}/{getAchievements().length} страниц получено
           </Text>
         }
         renderItem={({ item: def }) => {
@@ -115,8 +115,8 @@ export function AchievementsScreen({ achievements, onClaim }: AchievementsScreen
                 {unlocked && (
                   <Text style={[styles.reward, { color: claimable ? '#00d4ff' : 'rgba(0,212,255,0.35)' }]}>
                     {claimable
-                      ? `Забрать: +${ACHIEVEMENT_CLAIM_CREDITS} 💳`
-                      : `Получено: +${ACHIEVEMENT_CLAIM_CREDITS} 💳`}
+                      ? `Забрать: +${getAchievementClaimCredits()} 💳`
+                      : `Получено: +${getAchievementClaimCredits()} 💳`}
                   </Text>
                 )}
               </View>

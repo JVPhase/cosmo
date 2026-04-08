@@ -1,4 +1,5 @@
 import { bn } from './formatNum';
+import { getCachedRemoteConfig } from './remoteConfig';
 
 export type PlanetDefinition = {
   id: number;
@@ -324,12 +325,86 @@ export const PLANETS: readonly PlanetDefinition[] = [
   ...generatePlanets(),
 ];
 
+let _planets: readonly PlanetDefinition[] | null = null;
+
+export function getPlanets(): readonly PlanetDefinition[] {
+  if (_planets) return _planets;
+  const remotePlanets = getCachedRemoteConfig()?.planets;
+  if (!remotePlanets) {
+    _planets = PLANETS;
+    return _planets;
+  }
+
+  const { overrides, zoneThemes } = remotePlanets;
+
+  // Overlay hardcoded planets (id 1–15): only cost and bonus
+  const overrideMap = new Map(overrides.map((o) => [o.id, o]));
+
+  // Rebuild generated planets if any zone theme changed
+  const themeMap = new Map(zoneThemes.map((t) => [t.zoneIndex, t]));
+  const anyThemeChanged = zoneThemes.some((t) => {
+    const zone = ZONE_PLANET_THEMES[t.zoneIndex];
+    return zone && (t.bonusBase !== zone.bonusBase || t.bonusSectorScale !== zone.bonusSectorScale);
+  });
+
+  let generatedPlanets: PlanetDefinition[];
+  if (anyThemeChanged) {
+    const result: PlanetDefinition[] = [];
+    for (let sectorId = 4; sectorId <= 100; sectorId++) {
+      const zoneIndex = Math.floor((sectorId - 1) / 10);
+      const localTheme = ZONE_PLANET_THEMES[zoneIndex];
+      const remoteTheme = themeMap.get(zoneIndex);
+      const bonusBase = remoteTheme?.bonusBase ?? localTheme.bonusBase;
+      const bonusSectorScale = remoteTheme?.bonusSectorScale ?? localTheme.bonusSectorScale;
+      const zoneStart = ZONE_SECTOR_START[zoneIndex];
+      const sectorInZone = sectorId - zoneStart + 1;
+      for (let pi = 0; pi < 5; pi++) {
+        const id = (sectorId - 1) * 5 + pi + 1;
+        const bonus = bonusBase
+          * Math.pow(bonusSectorScale, sectorId - zoneStart)
+          * Math.pow(4, pi);
+        result.push({
+          id,
+          sectorId,
+          name: generatedPlanetName(localTheme, sectorInZone, pi),
+          icon: localTheme.iconPool[pi % localTheme.iconPool.length],
+          image: PLANET_IMAGE_POOL[(id - 1) % PLANET_IMAGE_POOL.length],
+          unlocked: false,
+          cost: 0,
+          resource: localTheme.resourcePool[pi % localTheme.resourcePool.length],
+          color: localTheme.colorPool[pi % localTheme.colorPool.length],
+          bonus: Math.round(bonus),
+          lore: localTheme.lore,
+        });
+      }
+    }
+    generatedPlanets = result;
+  } else {
+    generatedPlanets = generatePlanets();
+  }
+
+  _planets = [
+    ...PLANETS_HARDCODED.map((p) => {
+      const o = overrideMap.get(p.id);
+      if (!o) return p;
+      return { ...p, cost: o.cost, bonus: o.bonus };
+    }),
+    ...generatedPlanets,
+  ];
+  return _planets;
+}
+
+/** Call this when remote config is refreshed so getPlanets() recomputes. */
+export function invalidatePlanetsCache(): void {
+  _planets = null;
+}
+
 export function getPlanetById(id: PlanetId): PlanetDefinition {
-  const p = PLANETS.find((x) => x.id === id);
+  const p = getPlanets().find((x) => x.id === id);
   if (!p) throw new Error(`Unknown planet id: ${id}`);
   return p;
 }
 
 export function getPlanetsBySector(sectorId: number): readonly PlanetDefinition[] {
-  return PLANETS.filter((p) => p.sectorId === sectorId);
+  return getPlanets().filter((p) => p.sectorId === sectorId);
 }

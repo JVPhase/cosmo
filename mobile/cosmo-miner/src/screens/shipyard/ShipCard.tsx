@@ -8,13 +8,13 @@ import {
 } from 'react-native';
 import { logEvent } from '../../game/analytics';
 import {
-  CANNONS,
+  getCannons,
   computeCannonCost,
   type CannonId,
 } from '../../game/CANNONS';
 import type { MetalId } from '../../game/METALS';
-import { MODULES } from '../../game/MODULES';
-import { SHIPS, type ShipDefinition, type ShipId } from '../../game/SHIPS';
+import { getModules } from '../../game/MODULES';
+import { type ShipDefinition, type ShipId } from '../../game/SHIPS';
 import type { MetalsState, OwnedShip } from '../../game/types';
 import {
   MetalCost,
@@ -64,12 +64,12 @@ export function ShipCard({
   const canRepair = isBroken && canAffordCost(metals, ship.repairCost) && !isBattleActive;
   const hasAffordableCannon =
     isOwned &&
-    CANNONS.some((c) =>
+    getCannons().some((c) =>
       canAffordCost(metals, computeCannonCost(c, owned!.cannons[c.id] ?? 0)),
     );
 
   const shipCannonDmg = owned
-    ? CANNONS.reduce((sum, c) => sum + c.damagePerLevel * (owned.cannons[c.id] ?? 0), 0)
+    ? getCannons().reduce((sum, c) => sum + c.damagePerLevel * (owned.cannons[c.id] ?? 0), 0)
     : 0;
   const totalShipDmg = Math.floor((1 + shipCannonDmg) * ship.damageMultiplier);
 
@@ -214,7 +214,7 @@ export function ShipCard({
       {isOwned && isExpanded && !isOnExpedition && owned?.equippedModuleId && (
         <View style={styles.equippedModuleBadge}>
           {(() => {
-            const mod = MODULES.find((m) => m.id === owned.equippedModuleId);
+            const mod = getModules().find((m) => m.id === owned.equippedModuleId);
             return mod ? (
               <Text style={styles.equippedModuleText}>
                 {mod.icon} {mod.name} · {mod.ultDescription}
@@ -227,7 +227,7 @@ export function ShipCard({
       {isOwned && isExpanded && !isOnExpedition && (
         <View style={styles.cannonsSection}>
           <Text style={styles.cannonsSectionTitle}>🔫 ВООРУЖЕНИЕ</Text>
-          {CANNONS.filter((c) =>
+          {getCannons().filter((c) =>
             costMetalsDiscovered(discoveredMetals, c.baseCost),
           ).map((cannon) => {
             const level = owned!.cannons[cannon.id] ?? 0;

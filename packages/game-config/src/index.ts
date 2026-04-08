@@ -10,4 +10,6 @@ export { CANNONS_DATA } from './cannons';
 export { PLANET_DROP_TABLE } from './metals';
 export { SHIPS_DATA } from './ships';
 export { ZONE_ALIEN_DATA, BATTLE_DURATION_MS } from './aliens';
+export { ACHIEVEMENT_CLAIM_CREDITS, ACHIEVEMENTS_DATA, type AchievementData, type AchievementTargetData } from './achievements';
+export { HARDCODED_PLANETS_DATA, PLANET_ZONE_THEMES_DATA, type PlanetOverrideData, type PlanetZoneThemeData } from './planets';
 export { bn, formatNum } from './formatNum';

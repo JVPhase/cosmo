@@ -1,4 +1,5 @@
-import type { PlanetId } from "./PLANETS";
+import { PLANETS, type PlanetId } from "./PLANETS";
+import { getCachedRemoteConfig } from './remoteConfig';
 
 export type MetalId = "iron" | "titan" | "iridium" | "voidCrystal" | "echoShard";
 
@@ -9,6 +10,8 @@ export type MetalDefinition = {
   image: number;
 };
 
+type MetalDrop = { metalId: MetalId; chance: number };
+
 export const METALS: readonly MetalDefinition[] = [
   { id: "iron", name: "Железо", icon: "🔩", image: require("../../assets/iron.png") },
   { id: "titan", name: "Титан", icon: "🔷", image: require("../../assets/titan.png") },
@@ -17,8 +20,55 @@ export const METALS: readonly MetalDefinition[] = [
   { id: "echoShard", name: "Осколок Эха", icon: "🔊", image: require("../../assets/echoshard.png") },
 ] as const;
 
+function clampDropChance(chance: number): number {
+  return Math.max(0.02, Math.min(0.35, Number(chance.toFixed(3))));
+}
+
+function generatedDropsForPlanet(planetId: number): MetalDrop[] {
+  const sectorId = Math.floor((planetId - 1) / 5) + 1;
+  const planetIndex = (planetId - 1) % 5;
+  const zoneIndex = Math.floor((sectorId - 1) / 10);
+
+  if (zoneIndex === 0) {
+    const sectorScale = (sectorId - 4) / 6; // sectors 4–10
+    return [
+      { metalId: "iron", chance: clampDropChance(0.24 + sectorScale * 0.04 + planetIndex * 0.005) },
+      { metalId: "titan", chance: clampDropChance(0.17 + sectorScale * 0.05 + planetIndex * 0.005) },
+      { metalId: "iridium", chance: clampDropChance(0.11 + sectorScale * 0.07 + planetIndex * 0.01) },
+    ];
+  }
+
+  const zoneScale = Math.min(0.12, zoneIndex * 0.015);
+  return [
+    { metalId: "voidCrystal", chance: clampDropChance(0.15 + zoneScale + planetIndex * 0.01) },
+    { metalId: "echoShard", chance: clampDropChance(0.12 + zoneScale + planetIndex * 0.01) },
+    { metalId: "iron", chance: clampDropChance(0.10 + zoneScale + planetIndex * 0.005) },
+    { metalId: "titan", chance: clampDropChance(0.10 + zoneScale + planetIndex * 0.005) },
+    { metalId: "iridium", chance: clampDropChance(0.10 + zoneScale * 0.9 + planetIndex * 0.005) },
+  ];
+}
+
+function generatePlanetDropTable(): Record<number, MetalDrop[]> {
+  const result: Record<number, MetalDrop[]> = {};
+  for (const planet of PLANETS) {
+    if (planet.id <= 15) continue;
+    result[planet.id] = generatedDropsForPlanet(planet.id);
+  }
+  return result;
+}
+
+function validatePlanetDropTable(table: Record<number, MetalDrop[]>): Record<PlanetId, MetalDrop[]> {
+  for (const planet of PLANETS) {
+    const drops = table[planet.id];
+    if (!drops?.length) {
+      throw new Error(`Planet ${planet.id} must have at least one metal drop`);
+    }
+  }
+  return table as Record<PlanetId, MetalDrop[]>;
+}
+
 // Drop table: which metals drop from each planet and at what chance per click
-export const PLANET_DROP_TABLE: Record<PlanetId, { metalId: MetalId; chance: number }[]> = {
+const PLANET_DROP_TABLE_HARDCODED: Record<number, MetalDrop[]> = {
   // Sector 1
   1: [{ metalId: "iron", chance: 0.15 }],
   2: [
@@ -104,6 +154,22 @@ export const PLANET_DROP_TABLE: Record<PlanetId, { metalId: MetalId; chance: num
   ],
 };
 
+export const PLANET_DROP_TABLE: Record<PlanetId, MetalDrop[]> = validatePlanetDropTable({
+  ...PLANET_DROP_TABLE_HARDCODED,
+  ...generatePlanetDropTable(),
+});
+
+/** Возвращает таблицу дропа металлов: remote-значения или локальные. */
+export function getPlanetDropTable(): Record<PlanetId, MetalDrop[]> {
+  const remote = getCachedRemoteConfig()?.metals?.planetDropTable;
+  if (!remote) return PLANET_DROP_TABLE;
+  const merged: Record<number, MetalDrop[]> = { ...PLANET_DROP_TABLE };
+  for (const [key, drops] of Object.entries(remote)) {
+    merged[Number(key)] = drops as MetalDrop[];
+  }
+  return merged as Record<PlanetId, MetalDrop[]>;
+}
+
 export type MetalsState = Record<MetalId, number>;
 
 export function createDefaultMetalsState(): MetalsState {
@@ -111,7 +177,7 @@ export function createDefaultMetalsState(): MetalsState {
 }
 
 export function rollMetalDrops(planetId: PlanetId, dropBonus = 0, planetBonus = 1): MetalsState {
-  const drops = PLANET_DROP_TABLE[planetId] ?? [];
+  const drops = getPlanetDropTable()[planetId] ?? [];
   const result = createDefaultMetalsState();
   const amount = Math.max(1, Math.floor(Math.log10(Math.max(1, planetBonus))));
   for (const drop of drops) {
