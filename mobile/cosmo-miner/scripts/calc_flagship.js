@@ -1,11 +1,10 @@
 #!/usr/bin/env node
 // calc_flagship.js
 // Usage:
-//   node calc_flagship.js <cps> [--no-research] [--no-timer-research]
+//   node calc_flagship.js <cps> [--no-research]
 //
 //   cps                    clicks per second (required)
 //   --no-research          disable all damage research bonuses (default: all maxed)
-//   --no-timer-research    disable battle timer research (use base 60s only)
 
 // ── Game data ────────────────────────────────────────────────────────────────
 
@@ -29,7 +28,6 @@ const FLAGSHIP_MULTIPLIER = 12;
 // Research bonuses (additive): battle_damage_1 +0.3, _2 +0.6, _3 +1.0
 const RESEARCH_DAMAGE_BONUS = 1.9; // total additive bonus when all damage research maxed
 const BASE_BATTLE_MS        = 60_000;
-const TIMER_RESEARCH_BONUS  = 45_000; // battle_timer_1 +15s + battle_timer_2 +30s
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -151,17 +149,16 @@ const args = process.argv.slice(2);
 const cpsArg = parseFloat(args.find(a => !a.startsWith("--")) || "");
 
 if (isNaN(cpsArg) || cpsArg <= 0) {
-  console.error("Использование: node calc_flagship.js <кликов_в_секунду> [--no-research] [--no-timer-research]");
+  console.error("Использование: node calc_flagship.js <кликов_в_секунду> [--no-research]");
   console.error("Пример: node calc_flagship.js 4");
   console.error("        node calc_flagship.js 4 --no-research");
   process.exit(1);
 }
 
-const noResearch      = args.includes("--no-research");
-const noTimerResearch = args.includes("--no-timer-research");
+const noResearch = args.includes("--no-research");
 
 const damageResearchMultiplier = noResearch ? 1.0 : (1 + RESEARCH_DAMAGE_BONUS);
-const battleMs = BASE_BATTLE_MS + (noTimerResearch ? 0 : TIMER_RESEARCH_BONUS);
+const battleMs = BASE_BATTLE_MS;
 
 const METALS = ["iron", "titan", "iridium"];
 const METAL_LABELS = { iron: "Железо", titan: "Титан", iridium: "Иридий" };
@@ -172,7 +169,7 @@ console.log("=".repeat(72));
 console.log(`  РАСЧЕТ ПРОКАЧКИ ПУШЕК ФЛАГМАНА — 2-Й СЕКТОР`);
 console.log("=".repeat(72));
 console.log(`  Кликов/сек:      ${cpsArg}`);
-console.log(`  Время боя:       ${battleMs / 1000}с (${noTimerResearch ? "без" : "с"} исследованием таймера)`);
+console.log(`  Время боя:       ${battleMs / 1000}с`);
 console.log(`  Множ. урона:     x${damageResearchMultiplier} (${noResearch ? "без" : "с"} исследованиями урона)`);
 console.log(`  Множ. флагмана:  x${FLAGSHIP_MULTIPLIER}`);
 console.log("=".repeat(72));

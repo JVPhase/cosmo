@@ -1,3 +1,5 @@
+import { getCachedRemoteConfig } from './remoteConfig';
+
 // Total XP required to reach each level (index 0 = level 1 start, index 99 = level 100 start)
 export const XP_THRESHOLDS = [
   0,           // level 1
@@ -217,29 +219,42 @@ export const PLAYER_TITLES: readonly string[] = [
   'Единственный. Неповторимый. Магнат.',
 ] as const;
 
+/** XP-пороги из remote-конфига (или локальные значения). */
+export function getXpThresholds(): readonly number[] {
+  return getCachedRemoteConfig()?.player?.xpThresholds ?? XP_THRESHOLDS;
+}
+
+/** Максимальный уровень из remote-конфига (или локальное значение). */
+export function getMaxLevel(): number {
+  return getCachedRemoteConfig()?.player?.maxLevel ?? MAX_LEVEL;
+}
+
 export function computePlayerLevel(xp: number): number {
+  const thresholds = getXpThresholds();
+  const maxLevel = getMaxLevel();
   let level = 1;
-  for (let i = 0; i < XP_THRESHOLDS.length; i++) {
-    if (xp >= XP_THRESHOLDS[i]) level = i + 1;
+  for (let i = 0; i < thresholds.length; i++) {
+    if (xp >= thresholds[i]) level = i + 1;
     else break;
   }
-  return Math.min(level, MAX_LEVEL);
+  return Math.min(level, maxLevel);
 }
 
 export function getPlayerTitle(level: number): string {
+  const maxLevel = getMaxLevel();
   return (
-    PLAYER_TITLES[Math.min(level, MAX_LEVEL) - 1] ??
+    PLAYER_TITLES[Math.min(level, maxLevel) - 1] ??
     PLAYER_TITLES[PLAYER_TITLES.length - 1]
   );
 }
 
 /** Total XP needed to reach the START of this level (i.e. the threshold for level n). */
 export function xpAtLevelStart(level: number): number {
-  return XP_THRESHOLDS[Math.max(0, level - 1)] ?? 0;
+  return getXpThresholds()[Math.max(0, level - 1)] ?? 0;
 }
 
 /** Total XP needed to reach the NEXT level, or null if already at max. */
 export function xpForNextLevel(level: number): number | null {
-  if (level >= MAX_LEVEL) return null;
-  return XP_THRESHOLDS[level] ?? null;
+  if (level >= getMaxLevel()) return null;
+  return getXpThresholds()[level] ?? null;
 }

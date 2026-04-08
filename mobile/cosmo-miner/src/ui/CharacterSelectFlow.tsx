@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { CHARACTERS, type CharacterId } from '../game/CHARACTERS';
-import { ALIENS } from '../game/ALIENS';
-import { MODULES } from '../game/MODULES';
+import { getAliens } from '../game/ALIENS';
+import { getModules } from '../game/MODULES';
 import { logEvent } from '../game/analytics';
 
 type Props = {
@@ -157,7 +157,7 @@ export function CharacterSelectFlow({
               <View style={styles.body}>
                 <Text style={styles.clerkEmoji}>🤖</Text>
                 <Text style={styles.text}>
-                  {`Сигнал нестабилен. Источник помех — ${ALIENS[8].name}.\n\nПока они активны, качество связи не превышает 12%. После победы над ними канал будет восстановлен, и ${chosen.name} сможет выйти на связь в полном объёме.\n\nФорма СВЗ-1 «Запрос на восстановление связи» подана автоматически. Ожидаемый срок рассмотрения: после победы.`}
+                  {`Сигнал нестабилен. Источник помех — ${getAliens()[8].name}.\n\nПока они активны, качество связи не превышает 12%. После победы над ними канал будет восстановлен, и ${chosen.name} сможет выйти на связь в полном объёме.\n\nФорма СВЗ-1 «Запрос на восстановление связи» подана автоматически. Ожидаемый срок рассмотрения: после победы.`}
                 </Text>
               </View>
               <Pressable
@@ -234,7 +234,7 @@ export function CharacterSelectFlow({
                 <Text style={styles.dealText}>{chosen.metalDealOffer}</Text>
                 <View style={styles.offerReward}>
                   <Text style={styles.offerRewardText}>
-                    ✨ ×{MODULES[0].cost.voidCrystal ?? 15} Кристалл Пустоты
+                    ✨ ×{getModules()[0].cost.voidCrystal ?? 15} Кристалл Пустоты
                   </Text>
                   <Text style={styles.offerRewardText}>🔊 ×15 Осколок Эха</Text>
                   <Text style={styles.offerCostText}>

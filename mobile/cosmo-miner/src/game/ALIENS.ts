@@ -1,6 +1,6 @@
 import type { ShipId } from './SHIPS';
 import { bn } from './formatNum';
-import { FORMULA_CONSTANTS } from '@cosmo/game-config';
+import { getCachedRemoteConfig, getFormulaConstants, type RemoteAlienZone } from './remoteConfig';
 
 export type AlienAbility =
   | { type: 'shield'; intervalMs: number; durationMs: number }
@@ -133,8 +133,14 @@ const ZONE_ALIEN_DATA: ZoneAlienData[] = [
 
 // ── Ability templates by zone ──
 function alienAbilityForZone(zoneIndex: number, sectorInZone: number): AlienAbility | undefined {
-  // Zone 1: no ability
-  if (zoneIndex === 0) return undefined;
+  // Zone 1 (generated sectors 4–10): mild shield so every sector after sector 1 has an ability
+  if (zoneIndex === 0) {
+    return {
+      type: 'shield',
+      intervalMs: Math.max(9_000, 14_000 - sectorInZone * 500),
+      durationMs: 2_000 + sectorInZone * 150,
+    };
+  }
   // Zone 2: shield (intervalMs decreases toward end of zone)
   if (zoneIndex === 1) {
     const intervalMs = 12_000 - sectorInZone * 600;  // 11.4s → 6s
@@ -157,7 +163,16 @@ function alienAbilityForZone(zoneIndex: number, sectorInZone: number): AlienAbil
   return { type: 'shield', intervalMs: Math.max(2_000, 6_000 - sectorInZone * 400), durationMs: 4_000 + sectorInZone * 300 };
 }
 
-const PLANET_SCALE = FORMULA_CONSTANTS.ZONE_PLANET_SCALE;
+/** Возвращает данные зон: remote-значения baseHP/baseXP/sectorScale поверх локальных (с namePool/iconPool/lore). */
+function getZoneData(): ZoneAlienData[] {
+  const remoteZones = getCachedRemoteConfig()?.aliens?.zoneData as RemoteAlienZone[] | undefined;
+  if (!remoteZones) return ZONE_ALIEN_DATA;
+  return ZONE_ALIEN_DATA.map((local, i) => {
+    const r = remoteZones[i];
+    if (!r) return local;
+    return { ...local, baseHP: r.baseHP, baseXP: r.baseXP, zoneStart: r.zoneStart, sectorScale: r.sectorScale };
+  });
+}
 
 /** Returns { maxHP, xpReward, attackEnergyCost } for a given planetId using the zone formula. */
 function statsFor(planetId: number) {
@@ -166,7 +181,8 @@ function statsFor(planetId: number) {
   const maxHP = computeEnemyHP(sectorId, pi);
   const xpReward = computeEnemyXP(sectorId, pi);
   const zoneIndex = Math.floor((sectorId - 1) / 10);
-  const attackEnergyCost = Math.round(maxHP * (FORMULA_CONSTANTS.ENERGY_BASE + zoneIndex * FORMULA_CONSTANTS.ENERGY_STEP));
+  const fc = getFormulaConstants();
+  const attackEnergyCost = Math.round(maxHP * (fc.ENERGY_BASE + zoneIndex * fc.ENERGY_STEP));
   return { maxHP, xpReward, attackEnergyCost };
 }
 
@@ -288,31 +304,34 @@ const ALIENS_HARDCODED: AlienRace[] = [
 /** HP formula from SCALING_PLAN §4: BASE_HP[zone] × SECTOR_SCALE^(sector − zoneStart) × 4^planetIndex */
 export function computeEnemyHP(sectorId: number, planetIndex: number): number {
   const zoneIndex = Math.floor((sectorId - 1) / 10);
-  const zd = ZONE_ALIEN_DATA[zoneIndex];
+  const zd = getZoneData()[zoneIndex];
+  const planetScale = getFormulaConstants().ZONE_PLANET_SCALE;
   return Math.round(
     zd.baseHP
     * Math.pow(zd.sectorScale, sectorId - zd.zoneStart)
-    * Math.pow(PLANET_SCALE, planetIndex)
+    * Math.pow(planetScale, planetIndex)
   );
 }
 
 /** XP formula mirrors HP formula using baseXP per zone. */
 export function computeEnemyXP(sectorId: number, planetIndex: number): number {
   const zoneIndex = Math.floor((sectorId - 1) / 10);
-  const zd = ZONE_ALIEN_DATA[zoneIndex];
+  const zd = getZoneData()[zoneIndex];
+  const planetScale = getFormulaConstants().ZONE_PLANET_SCALE;
   return Math.round(
     zd.baseXP
     * Math.pow(zd.sectorScale, sectorId - zd.zoneStart)
-    * Math.pow(PLANET_SCALE, planetIndex)
+    * Math.pow(planetScale, planetIndex)
   );
 }
 
 // ── Generate aliens for planets 16–500 (sectors 4–100, all 5 planets per sector) ──
 function generateAliens(): AlienRace[] {
   const result: AlienRace[] = [];
+  const zoneData = getZoneData();
   for (let sectorId = 4; sectorId <= 100; sectorId++) {
     const zoneIndex = Math.floor((sectorId - 1) / 10);
-    const zd = ZONE_ALIEN_DATA[zoneIndex];
+    const zd = zoneData[zoneIndex];
     const sectorInZone = sectorId - zd.zoneStart + 1;  // 1-indexed
 
     for (let pi = 0; pi < 5; pi++) {
@@ -320,7 +339,8 @@ function generateAliens(): AlienRace[] {
       const maxHP = computeEnemyHP(sectorId, pi);
       const xpReward = computeEnemyXP(sectorId, pi);
       // energyCost: HP × zone-scaled ratio (10 for zone1, +5 per zone)
-      const attackEnergyCost = Math.round(maxHP * (FORMULA_CONSTANTS.ENERGY_BASE + zoneIndex * FORMULA_CONSTANTS.ENERGY_STEP));
+      const fc = getFormulaConstants();
+      const attackEnergyCost = Math.round(maxHP * (fc.ENERGY_BASE + zoneIndex * fc.ENERGY_STEP));
       const nameIndex = (sectorInZone - 1) % zd.namePool.length;
       const ability = alienAbilityForZone(zoneIndex, sectorInZone);
 
@@ -358,21 +378,51 @@ function applyMonotonicEnemyStats(aliens: AlienRace[]): AlienRace[] {
         ? Math.round(rawXP * (maxHP / rawMaxHP))
         : rawXP;
     const zoneIndex = zoneIndexForPlanetId(a.planetId);
+    const fc = getFormulaConstants();
     const attackEnergyCost = Math.round(
-      maxHP *
-        (FORMULA_CONSTANTS.ENERGY_BASE + zoneIndex * FORMULA_CONSTANTS.ENERGY_STEP),
+      maxHP * (fc.ENERGY_BASE + zoneIndex * fc.ENERGY_STEP),
     );
     prevMaxHP = maxHP;
     return { ...a, maxHP, xpReward, attackEnergyCost };
   });
 }
 
-export const ALIENS: readonly AlienRace[] = applyMonotonicEnemyStats([
-  ...ALIENS_HARDCODED,
-  ...generateAliens(),
-]);
+function validateAlienAbilities(aliens: readonly AlienRace[]): readonly AlienRace[] {
+  for (const alien of aliens) {
+    const sectorId = Math.floor((alien.planetId - 1) / 5) + 1;
+    if (sectorId === 1) continue;
+    if (alien.ability?.type === 'shield' || alien.ability?.type === 'illusion') continue;
+    throw new Error(`Alien on planet ${alien.planetId} in sector ${sectorId} must have shield or illusion ability`);
+  }
+  return aliens;
+}
+
+let _aliens: readonly AlienRace[] | null = null;
+
+/** Возвращает всех пришельцев, используя remote-данные зон и формульные константы. */
+export function getAliens(): readonly AlienRace[] {
+  if (!_aliens) {
+    _aliens = validateAlienAbilities(
+      applyMonotonicEnemyStats([...ALIENS_HARDCODED, ...generateAliens()]),
+    );
+  }
+  return _aliens;
+}
+
+/** @deprecated Используйте getAliens() */
+export const ALIENS: readonly AlienRace[] = new Proxy([] as unknown as readonly AlienRace[], {
+  get(_target, prop) {
+    const arr = getAliens() as unknown as Record<string | symbol, unknown>;
+    return arr[prop];
+  },
+});
 
 export const BATTLE_DURATION_MS = 60_000;
+
+/** Возвращает длительность боя из remote-конфига (или локальное значение). */
+export function getBattleDurationMs(): number {
+  return getCachedRemoteConfig()?.aliens?.battleDurationMs ?? BATTLE_DURATION_MS;
+}
 
 export type BattleState = {
   planetId: number;

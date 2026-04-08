@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { CHARACTERS } from '../game/CHARACTERS';
-import { ALIENS } from '../game/ALIENS';
-import { MODULES } from '../game/MODULES';
+import { getAliens } from '../game/ALIENS';
+import { getModules } from '../game/MODULES';
 import { logEvent } from '../game/analytics';
 
 type Props = {
@@ -69,7 +69,7 @@ export function CharacterCommunicationChannel({
               <View style={styles.signalBox}>
                 <Text style={styles.signalLabel}>📡 СТАТУС КАНАЛА · СИГНАЛ 12%</Text>
                 <Text style={styles.signalText}>
-                  {`Канал нестабилен. Источник помех — ${ALIENS[8].name}.\n\nПока они активны, связь не восстановится. Победи их — и канал будет работать в полную силу.`}
+                  {`Канал нестабилен. Источник помех — ${getAliens()[8].name}.\n\nПока они активны, связь не восстановится. Победи их — и канал будет работать в полную силу.`}
                 </Text>
               </View>
               <Pressable
@@ -118,7 +118,7 @@ export function CharacterCommunicationChannel({
                 <Text style={styles.dealText}>{character.metalDealOffer}</Text>
                 <View style={styles.offerReward}>
                   <Text style={styles.offerRewardText}>
-                    ✨ ×{MODULES[0].cost.voidCrystal ?? 15} Кристалл Пустоты
+                    ✨ ×{getModules()[0].cost.voidCrystal ?? 15} Кристалл Пустоты
                   </Text>
                   <Text style={styles.offerRewardText}>🔊 ×15 Осколок Эха</Text>
                   <Text style={styles.offerCostText}>

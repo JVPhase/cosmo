@@ -8,10 +8,10 @@ import {
   Text,
   View,
 } from 'react-native';
-import { ALIENS } from '../game/ALIENS';
+import { getAliens } from '../game/ALIENS';
 import { formatNum } from '../game/formatNum';
 import { METALS, PLANET_DROP_TABLE } from '../game/METALS';
-import { PLANETS, type PlanetDefinition, type PlanetId } from '../game/PLANETS';
+import { getPlanets, type PlanetDefinition, type PlanetId } from '../game/PLANETS';
 import {
   SECTORS,
   getSectorLockReason,
@@ -45,24 +45,23 @@ export function PlanetsScreen({
     () => new Set(unlockedPlanetIds),
     [unlockedPlanetIds],
   );
-  // Show only unlocked sectors + the next locked sector (to avoid rendering all 100)
   const sections = useMemo(
     () =>
-      SECTORS.filter(
-        (s) =>
-          isSectorUnlocked(s.id, unlockedPlanetIds, playerLevel) ||
-          (s.id > 1 &&
-            isSectorUnlocked(s.id - 1, unlockedPlanetIds, playerLevel)),
-      ).map((sector) => ({
-        sector,
-        data: PLANETS.filter((p) => p.sectorId === sector.id),
-      })),
+      [...SECTORS]
+        .filter((sector) =>
+          isSectorUnlocked(sector.id, unlockedPlanetIds, playerLevel),
+        )
+        .reverse()
+        .map((sector) => ({
+          sector,
+          data: getPlanets().filter((p) => p.sectorId === sector.id).reverse(),
+        })),
     [unlockedPlanetIds, playerLevel],
   );
 
   if (selPlanet) {
     const unlocked = unlockedSet.has(selPlanet.id);
-    const alien = ALIENS.find((a) => a.planetId === selPlanet.id);
+    const alien = getAliens().find((a) => a.planetId === selPlanet.id);
     const alreadyBattling = battle?.planetId === selPlanet.id;
     const otherBattle = !!battle && battle.planetId !== selPlanet.id;
     const notEnoughEnergy =
@@ -325,7 +324,7 @@ export function PlanetsScreen({
           const unlocked = unlockedSet.has(p.id);
           const active = p.id === selectedPlanetId;
           const isBattling = battle?.planetId === p.id;
-          const alien = ALIENS.find((a) => a.planetId === p.id);
+          const alien = getAliens().find((a) => a.planetId === p.id);
           const grayed = !sectorUnlocked && !unlocked;
 
           const showBadge =

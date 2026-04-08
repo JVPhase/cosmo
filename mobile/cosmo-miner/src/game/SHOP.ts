@@ -1,5 +1,5 @@
 import type { MetalId } from "./METALS";
-import { FORMULA_CONSTANTS } from '@cosmo/game-config';
+import { getCachedRemoteConfig, getFormulaConstants } from './remoteConfig';
 
 export type BoostStat =
   | "clickMultiplier"
@@ -195,8 +195,19 @@ export const SHOP: readonly ShopItem[] = [
   },
 ] as const;
 
+/** Возвращает список товаров магазина с числовыми полями из remote-конфига (или локальные значения). */
+export function getShopItems(): ShopItem[] {
+  const remoteItems = getCachedRemoteConfig()?.shop?.items;
+  const base = SHOP as unknown as ShopItem[];
+  if (!remoteItems) return base;
+  return base.map((local) => {
+    const r = remoteItems.find((x) => x.id === local.id);
+    return r ? { ...local, creditCost: r.creditCost } : local;
+  });
+}
+
 export function getShopItemById(id: ShopItemId): ShopItem {
-  const item = SHOP.find((x) => x.id === id);
+  const item = getShopItems().find((x) => x.id === id);
   if (!item) throw new Error(`Unknown shop item id: ${id}`);
   return item;
 }
@@ -214,14 +225,14 @@ export const METAL_TIER: Record<MetalId, number> = {
 export function getConversionRate(from: MetalId, to: MetalId): number {
   const diff = METAL_TIER[to] - METAL_TIER[from];
   if (diff <= 0) return 0; // invalid direction
-  return Math.pow(FORMULA_CONSTANTS.METAL_CONVERSION_RATE, diff);
+  return Math.pow(getFormulaConstants().METAL_CONVERSION_RATE, diff);
 }
 
 /** Credit cost for a converter operation (scales by tier jump) */
 export function getConverterCreditCost(from: MetalId, to: MetalId): number {
   const diff = METAL_TIER[to] - METAL_TIER[from];
   if (diff <= 0) return 0;
-  return FORMULA_CONSTANTS.CONVERTER_FEE_PER_TIER * diff;
+  return getFormulaConstants().CONVERTER_FEE_PER_TIER * diff;
 }
 
 /** Roll loot box rewards, returns metals to add */

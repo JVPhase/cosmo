@@ -6,6 +6,7 @@ import { configRoutes } from './routes/config';
 import { authRoutes } from './routes/auth';
 import { oauthRoutes } from './routes/oauth';
 import { savesRoutes } from './routes/saves';
+import { telegramRoutes } from './routes/telegram';
 
 const app = Fastify({ logger: true });
 
@@ -21,6 +22,7 @@ async function main() {
   await app.register(authRoutes, { prefix: '/auth' });
   await app.register(oauthRoutes, { prefix: '/auth' });
   await app.register(savesRoutes, { prefix: '/saves' });
+  await app.register(telegramRoutes, { prefix: '/telegram' });
 
   const address = await app.listen({ port: 3000, host: '0.0.0.0' });
   app.log.info(`Cosmo server running at ${address}`);

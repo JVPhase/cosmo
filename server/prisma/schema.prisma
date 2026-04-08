@@ -9,20 +9,39 @@ datasource db {
 
 model User {
   id            String         @id @default(cuid())
-  email         String         @unique
-  passwordHash  String?        // null for OAuth-only accounts
+  // Nullable: Telegram-only users have no email; email+password accounts always set it
+  email         String?        @unique
+  passwordHash  String?
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   refreshTokens RefreshToken[]
   save          UserSave?
   oauthAccounts OAuthAccount[]
+  telegramUser  TelegramUser?
+  purchases     Purchase[]
+  inventory     Inventory[]
+}
+
+model TelegramUser {
+  id           String   @id @default(cuid())
+  telegramId   BigInt   @unique
+  firstName    String
+  lastName     String?
+  username     String?
+  photoUrl     String?
+  languageCode String?
+  isPremium    Boolean  @default(false)
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 model OAuthAccount {
   id             String   @id @default(cuid())
   userId         String
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  provider       String   // "google" | "apple"
+  provider       String // "google" | "apple"
   providerUserId String
   createdAt      DateTime @default(now())
 
@@ -48,4 +67,74 @@ model UserSave {
   data      Json
   rev       Int      @default(0)
   updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+}
+
+model GameConfig {
+  key       String   @id
+  data      Json
+  version   Int      @default(1)
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+}
+
+// ── Shop ──────────────────────────────────────────────────────────────────────
+
+// Canonical shop catalog. Items are seeded from @cosmo/game-config SHOP_DATA
+// plus any Stars-priced items defined here.
+model ShopItem {
+  id           String     @id // matches game-config item id, e.g. "booster_mining_1h"
+  type         String // "booster" | "metal_pack" | "loot_box" | "skin" | "bundle" | "premium_unlock"
+  name         String
+  description  String
+  priceStars   Int? // Telegram Stars price (null = not purchaseable with Stars)
+  priceCredits Int? // In-game credits price (null = not purchaseable with credits)
+  metadata     Json // Item-specific payload delivered on purchase
+  isActive     Boolean    @default(true)
+  sortOrder    Int        @default(0)
+  purchases    Purchase[]
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}
+
+// Tracks every purchase attempt and its lifecycle.
+model Purchase {
+  id                      String    @id @default(cuid())
+  userId                  String
+  shopItemId              String
+  paymentMethod           String // "stars" | "credits"
+  // Telegram's unique payment charge ID — used for idempotency
+  telegramPaymentChargeId String?   @unique
+  starsAmount             Int?
+  creditsAmount           Int?
+  // pending → completed | failed | refunded
+  status                  String    @default("pending")
+  fulfilledAt             DateTime?
+  // Any extra context (e.g. invoice nonce for Stars flow)
+  metadata                Json?
+  user                    User      @relation(fields: [userId], references: [id])
+  shopItem                ShopItem  @relation(fields: [shopItemId], references: [id])
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([telegramPaymentChargeId])
+}
+
+// Server-authoritative inventory for each user.
+// itemId matches game-config IDs (e.g. "booster_mining_1h", "metal_iron").
+model Inventory {
+  id        String    @id @default(cuid())
+  userId    String
+  itemType  String // "booster" | "metal_pack" | "loot_box" | "skin" | "premium_unlock"
+  itemId    String // matches ShopItem.id / game-config id
+  quantity  Int       @default(1)
+  // For time-limited items: expiry, effect metadata, consume state, etc.
+  metadata  Json?
+  user      User      @relation(fields: [userId], references: [id])
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([userId, itemId])
+  @@index([userId])
 }

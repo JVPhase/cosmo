@@ -1,4 +1,4 @@
-import { FORMULA_CONSTANTS } from '@cosmo/game-config';
+import { getCachedRemoteConfig, getFormulaConstants, type RemoteUpgrade } from './remoteConfig';
 
 export const UPGRADES = [
   // ── Активная добыча (клики) ──────────────────────────────────────────────
@@ -125,6 +125,28 @@ export const UPGRADES = [
 export type UpgradeDefinition = (typeof UPGRADES)[number];
 export type UpgradeId = UpgradeDefinition['id'];
 
+export type UpgradeResolved = {
+  id: number;
+  name: string;
+  icon: string;
+  baseCost: number;
+  clickBonus: number;
+  passiveBonus: number;
+  lore: string;
+};
+
+/** Возвращает список апгрейдов с числовыми полями из remote-конфига (или локальные значения). */
+export function getUpgrades(): UpgradeResolved[] {
+  const remoteUpgrades = getCachedRemoteConfig()?.upgrades as RemoteUpgrade[] | undefined;
+  const base = UPGRADES as unknown as UpgradeResolved[];
+  if (!remoteUpgrades) return base;
+  return base.map((local) => {
+    const r = remoteUpgrades.find((x) => x.id === local.id);
+    if (!r) return local;
+    return { ...local, baseCost: r.baseCost, clickBonus: r.clickBonus, passiveBonus: r.passiveBonus };
+  });
+}
+
 export function getUpgradeById(id: UpgradeId): UpgradeDefinition {
   const upg = UPGRADES.find((u) => u.id === id);
   if (!upg) throw new Error(`Unknown upgrade id: ${id}`);
@@ -132,10 +154,10 @@ export function getUpgradeById(id: UpgradeId): UpgradeDefinition {
 }
 
 export function computeUpgradeCost(
-  upg: UpgradeDefinition,
+  upg: { baseCost: number },
   level: number
 ): number {
   // Нелинейная прогрессия: polynomial × exponential
   // level 0 = baseCost, level 5 ≈ 200×, level 10 ≈ 5000×
-  return Math.floor(upg.baseCost * Math.pow(level + 1, 2) * Math.pow(FORMULA_CONSTANTS.UPGRADE_COST_EXP, level));
+  return Math.floor(upg.baseCost * Math.pow(level + 1, 2) * Math.pow(getFormulaConstants().UPGRADE_COST_EXP, level));
 }

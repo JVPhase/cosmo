@@ -7,15 +7,15 @@ import {
 } from './CHARACTERS';
 import { CLERK_MESSAGES, type ClerkTrigger } from './CLERK_MESSAGES';
 import {
-  ACHIEVEMENTS,
-  ACHIEVEMENT_CLAIM_CREDITS,
+  getAchievements,
+  getAchievementClaimCredits,
   type AchievementDefinition,
   type AchievementId,
 } from './ACHIEVEMENTS';
-import { ALIENS, type BattleState } from './ALIENS';
-import { CANNONS, computeCannonCost, type CannonId } from './CANNONS';
+import { getAliens, type BattleState } from './ALIENS';
+import { getCannons, computeCannonCost, type CannonId } from './CANNONS';
 import {
-  EXPEDITIONS,
+  getExpeditions,
   getExpeditionById,
   type ExpeditionId,
 } from './EXPEDITIONS';
@@ -28,19 +28,19 @@ import {
   subtractMetals,
   type MetalId,
 } from './METALS';
-import { PLANETS, type PlanetId, type PlanetDefinition } from './PLANETS';
+import { getPlanets, getPlanetById, type PlanetId, type PlanetDefinition } from './PLANETS';
 import { getPlanetIdsForSector } from './SECTORS';
 import { computePlayerLevel } from './PLAYER';
 import {
   computeModuleUpgradeCost,
   getModuleById,
+  getModules,
   MAX_MODULE_LEVEL,
-  MODULES,
   type ModuleId,
 } from './MODULES';
-import { RESEARCH, type ResearchId, type ResearchState } from './RESEARCH';
+import { getResearchNodes, type ResearchId, type ResearchState } from './RESEARCH';
 import {
-  SHIPS,
+  getShips,
   createDefaultCannons,
   createDefaultFleetState,
   getShipById,
@@ -50,8 +50,8 @@ import { computeStats } from './computeStats';
 import {
   computeUpgradeCost,
   getUpgradeById,
+  getUpgrades,
   type UpgradeId,
-  UPGRADES,
 } from './UPGRADES';
 import type {
   ActiveBoost,
@@ -118,12 +118,12 @@ function computeInitialShownUnlocks(initial?: GameStateInit): Set<string> {
     shown.add('sector3_metals');
   }
   const initialLevel = computePlayerLevel(initial?.playerXP ?? 0);
-  for (const ship of SHIPS) {
+  for (const ship of getShips()) {
     if (ship.unlockLevel > 1 && initialLevel >= ship.unlockLevel) {
       shown.add(`ship_${ship.id}`);
     }
   }
-  for (const node of RESEARCH) {
+  for (const node of getResearchNodes()) {
     if (initialLevel >= node.requiredLevel) {
       shown.add(`research_unlock_${node.id}`);
     }
@@ -133,18 +133,18 @@ function computeInitialShownUnlocks(initial?: GameStateInit): Set<string> {
 
 function createDefaultUpgradesState(): UpgradesState {
   const result = {} as UpgradesState;
-  for (const upg of UPGRADES) result[upg.id] = 0;
+  for (const upg of getUpgrades()) result[upg.id as UpgradeId] = 0;
   return result;
 }
 
 function computeBaseShipDamage(fleet: GameState['fleet']): number {
   if (!fleet.selectedShipId) return 0;
-  const shipDef = SHIPS.find((s) => s.id === fleet.selectedShipId);
+  const shipDef = getShips().find((s) => s.id === fleet.selectedShipId);
   const ownedShip = fleet.ownedShips.find(
     (s) => s.shipId === fleet.selectedShipId,
   );
   if (!shipDef || !ownedShip || ownedShip.broken) return 0;
-  const cannonDamage = CANNONS.reduce((sum, c) => {
+  const cannonDamage = getCannons().reduce((sum, c) => {
     const level = ownedShip.cannons[c.id] ?? 0;
     const scale = level > 0 ? Math.pow(1.6, level) : 0;
     return sum + c.damagePerLevel * scale;
@@ -152,7 +152,7 @@ function computeBaseShipDamage(fleet: GameState['fleet']): number {
   return Math.floor((1 + cannonDamage) * shipDef.damageMultiplier);
 }
 
-const BASE_PLANET_ID = PLANETS[0].id;
+const BASE_PLANET_ID = getPlanets()[0].id;
 export const TIMELY_CLAIM_WINDOW_MS = 10 * 60 * 1000; // 10 min timely claim window
 
 function mergeDiscovered(
@@ -215,7 +215,7 @@ export function useGame(initial?: GameStateInit) {
           (Object.keys(metals) as MetalId[]).filter((k) => metals[k] > 0),
         );
         for (const owned of initial?.fleet?.ownedShips ?? []) {
-          const ship = SHIPS.find((s) => s.id === owned.shipId);
+          const ship = getShips().find((s) => s.id === owned.shipId);
           if (ship)
             Object.keys(ship.baseCost).forEach((k) => set.add(k as MetalId));
         }
@@ -261,11 +261,11 @@ export function useGame(initial?: GameStateInit) {
           ((initial?.fleet?.ownedShips?.length ?? 0) > 0 ||
             hasEnoughMetals(
               { ...createDefaultMetalsState(), ...(initial?.metals ?? {}) },
-              SHIPS[0].baseCost,
+              getShips()[0].baseCost,
             )),
         upgrades:
           initial?.tabsUnlocked?.upgrades ??
-          ((initial?.totalEarned ?? 0) >= UPGRADES[0].baseCost ||
+          ((initial?.totalEarned ?? 0) >= getUpgrades()[0].baseCost ||
             Object.values(initial?.upgrades ?? {}).some(
               (v) => (v as number) > 0,
             )),
@@ -273,7 +273,7 @@ export function useGame(initial?: GameStateInit) {
           initial?.tabsUnlocked?.planets ??
           ((initial?.unlockedPlanetIds?.length ?? 0) > 1 ||
             (initial?.energy ?? 0) >=
-              Math.min(...ALIENS.map((a) => a.attackEnergyCost))),
+              Math.min(...getAliens().map((a) => a.attackEnergyCost))),
       },
       moduleLevels: initial?.moduleLevels ?? {},
       chosenCharacterId: initial?.chosenCharacterId ?? null,
@@ -340,7 +340,7 @@ export function useGame(initial?: GameStateInit) {
   const [clerkMessage, setClerkMessage] = useState<string | null>(null);
   const [characterMessage, setCharacterMessage] = useState<string | null>(null);
   const [achievementToast, setAchievementToast] =
-    useState<AchievementDefinition | null>(null);
+    useState<ReturnType<typeof getAchievements>[number] | null>(null);
   const [battleVictory, setBattleVictory] = useState<PlanetId | null>(null);
   const [planetUnlockToast, setPlanetUnlockToast] =
     useState<PlanetDefinition | null>(null);
@@ -367,7 +367,7 @@ export function useGame(initial?: GameStateInit) {
     (initial?.fleet?.ownedShips?.length ?? 0) > 0 ||
       hasEnoughMetals(
         { ...createDefaultMetalsState(), ...(initial?.metals ?? {}) },
-        SHIPS[0].baseCost,
+        getShips()[0].baseCost,
       ),
   );
   const shownSectorUnlocksRef = useRef(
@@ -393,7 +393,7 @@ export function useGame(initial?: GameStateInit) {
     initial?.tabsUnlocked?.planets ??
       ((initial?.unlockedPlanetIds?.length ?? 0) > 1 ||
         (initial?.energy ?? 0) >=
-          Math.min(...ALIENS.map((a) => a.attackEnergyCost))),
+          Math.min(...getAliens().map((a) => a.attackEnergyCost))),
   );
 
   // Character select flow — triggered after planet 9 unlocked
@@ -557,7 +557,7 @@ export function useGame(initial?: GameStateInit) {
   useEffect(() => {
     if (
       !state.tabsUnlocked.shipyard &&
-      hasEnoughMetals(state.metals, SHIPS[0].baseCost)
+      hasEnoughMetals(state.metals, getShips()[0].baseCost)
     ) {
       setState((prev) => ({
         ...prev,
@@ -569,7 +569,7 @@ export function useGame(initial?: GameStateInit) {
   useEffect(() => {
     if (
       !state.tabsUnlocked.upgrades &&
-      state.totalEarned >= UPGRADES[0].baseCost
+      state.totalEarned >= getUpgrades()[0].baseCost
     ) {
       setState((prev) => ({
         ...prev,
@@ -579,7 +579,7 @@ export function useGame(initial?: GameStateInit) {
   }, [state.totalEarned, state.tabsUnlocked.upgrades]);
 
   useEffect(() => {
-    const minCost = Math.min(...ALIENS.map((a) => a.attackEnergyCost));
+    const minCost = Math.min(...getAliens().map((a) => a.attackEnergyCost));
     if (
       !state.tabsUnlocked.planets &&
       state.tabsUnlocked.shipyard &&
@@ -601,7 +601,7 @@ export function useGame(initial?: GameStateInit) {
   useEffect(() => {
     if (
       !shipyardUnlockShownRef.current &&
-      hasEnoughMetals(state.metals, SHIPS[0].baseCost)
+      hasEnoughMetals(state.metals, getShips()[0].baseCost)
     ) {
       shipyardUnlockShownRef.current = true;
       setShipyardUnlockToast(true);
@@ -628,7 +628,7 @@ export function useGame(initial?: GameStateInit) {
   useEffect(() => {
     if (
       !upgradesUnlockShownRef.current &&
-      state.totalEarned >= UPGRADES[0].baseCost
+      state.totalEarned >= getUpgrades()[0].baseCost
     ) {
       upgradesUnlockShownRef.current = true;
       setUpgradesUnlockToast(true);
@@ -650,16 +650,16 @@ export function useGame(initial?: GameStateInit) {
         text: 'Зафиксирован образец Титана™! Материал группы IV-B, исключительная прочность.\n\nПо регламенту подлежит немедленной конфискации в пользу МММРДР. Форма КНФ-3 на рассмотрении с 2379 года. Пока — считайте его своим.',
         image: METALS.find((m) => m.id === 'titan')!.image,
       });
-      if (playerLevel >= SHIPS.find((s) => s.id === 'cruiser')!.unlockLevel)
+      if (playerLevel >= getShips().find((s) => s.id === 'cruiser')!.unlockLevel)
         enqueue('ship_cruiser', {
           title: '◈ НОВЫЙ КОРАБЛЬ · КЛЕРК-7 ◈',
           text: 'Доступен Крейсер «Гамма»! Множитель урона ×2.5.\n\nМинистерство обороны одобрило ещё в прошлом году. Министерство финансов — пока думает. Стройте, пока оба не передумали.',
-          image: SHIPS.find((s) => s.id === 'cruiser')!.image,
+          image: getShips().find((s) => s.id === 'cruiser')!.image,
         });
       enqueue('cannon_titan', {
         title: '◈ НОВОЕ ВООРУЖЕНИЕ · КЛЕРК-7 ◈',
         text: 'Титановая пушка разблокирована! +20 урона за уровень.\n\nКомиссия по вооружению одобрила её в 2381 году. Комиссия не пережила испытаний. Новую — на всякий случай не собирали. Стреляйте.',
-        image: CANNONS.find((c) => c.id === 'titan')!.image,
+        image: getCannons().find((c) => c.id === 'titan')!.image,
       });
     }
 
@@ -669,30 +669,30 @@ export function useGame(initial?: GameStateInit) {
         text: 'Обнаружен Иридий™ — редчайший металл сектора!\n\nМинистерство финансов уже отправило форму НДС-8 «Налог на удачу». Документ прибудет через 6-8 галактических недель. Пока — не расслабляйтесь.',
         image: METALS.find((m) => m.id === 'iridium')!.image,
       });
-      if (playerLevel >= SHIPS.find((s) => s.id === 'dreadnought')!.unlockLevel)
+      if (playerLevel >= getShips().find((s) => s.id === 'dreadnought')!.unlockLevel)
         enqueue('ship_dreadnought', {
           title: '◈ НОВЫЙ КОРАБЛЬ · КЛЕРК-7 ◈',
           text: 'Чертежи Дредноута «Отдел Б» разблокированы! Множитель ×5.\n\nНазван в честь отдела, которого официально не существует. Это единственный корабль в реестре, который отрицает собственное существование.',
-          image: SHIPS.find((s) => s.id === 'dreadnought')!.image,
+          image: getShips().find((s) => s.id === 'dreadnought')!.image,
         });
       enqueue('cannon_iridium', {
         title: '◈ НОВОЕ ВООРУЖЕНИЕ · КЛЕРК-7 ◈',
         text: 'Иридиевая пушка разблокирована! +60 урона за уровень.\n\nИридиевый сплав нестабилен при температуре ниже 4000К. Вы летите к звезде — так что всё в порядке. Относительно.',
-        image: CANNONS.find((c) => c.id === 'iridium')!.image,
+        image: getCannons().find((c) => c.id === 'iridium')!.image,
       });
     }
 
     if (iron > 0 && titan > 0 && iridium > 0) {
-      if (playerLevel >= SHIPS.find((s) => s.id === 'flagship')!.unlockLevel)
+      if (playerLevel >= getShips().find((s) => s.id === 'flagship')!.unlockLevel)
         enqueue('ship_flagship', {
           title: '◈ НОВЫЙ КОРАБЛЬ · КЛЕРК-7 ◈',
           text: 'Все компоненты есть — Флагман «Абсолют-77» доступен! Множитель ×12.\n\nФорма допуска — 47 страниц. Я заполнил 46. Страница 47 засекречена. Начните строительство и не задавайте лишних вопросов.',
-          image: SHIPS.find((s) => s.id === 'flagship')!.image,
+          image: getShips().find((s) => s.id === 'flagship')!.image,
         });
       enqueue('cannon_alloy', {
         title: '◈ НОВОЕ ВООРУЖЕНИЕ · КЛЕРК-7 ◈',
         text: 'Сплавная пушка разблокирована! +200 урона за уровень.\n\nЗасекречена в 14 галактиках. Разработана отделом, которого официально не существует. Похоже, «Отдел Б» снова отличился. Не спрашивайте — это безопаснее.',
-        image: CANNONS.find((c) => c.id === 'alloy')!.image,
+        image: getCannons().find((c) => c.id === 'alloy')!.image,
       });
     }
     const { voidCrystal, echoShard } = state.metals;
@@ -717,16 +717,16 @@ export function useGame(initial?: GameStateInit) {
   ]);
 
   const upgCount = useMemo(() => {
-    return UPGRADES.filter((u) => (state.upgrades[u.id] ?? 0) > 0).length;
+    return getUpgrades().filter((u) => (state.upgrades[u.id as UpgradeId] ?? 0) > 0).length;
   }, [state.upgrades]);
 
   // Achievements
   useEffect(() => {
     setState((prev) => {
       const alreadyUnlocked = new Set(prev.achievements.unlockedIds);
-      const newlyUnlocked: AchievementDefinition[] = [];
+      const newlyUnlocked: ReturnType<typeof getAchievements>[number][] = [];
       const researchCount = Object.values(prev.research).filter(Boolean).length;
-      for (const def of ACHIEVEMENTS) {
+      for (const def of getAchievements()) {
         if (alreadyUnlocked.has(def.id)) continue;
         const t = def.target;
         const ok =
@@ -804,7 +804,7 @@ export function useGame(initial?: GameStateInit) {
 
   // Ship and research unlock by player level
   useEffect(() => {
-    for (const ship of SHIPS) {
+    for (const ship of getShips()) {
       if (ship.unlockLevel <= 1) continue;
       if (playerLevel < ship.unlockLevel) continue;
       const toastId = `ship_${ship.id}`;
@@ -828,7 +828,7 @@ export function useGame(initial?: GameStateInit) {
         },
       ]);
     }
-    for (const node of RESEARCH) {
+    for (const node of getResearchNodes()) {
       if (playerLevel < node.requiredLevel) continue;
       const toastId = `research_unlock_${node.id}`;
       if (shownUnlocksRef.current.has(toastId)) continue;
@@ -896,10 +896,11 @@ export function useGame(initial?: GameStateInit) {
     }
   }, [state.unlockedPlanetIds, state.chosenCharacterId]);
 
-  // Battle timer — defeat when expiresAt passes
+  // Battle timer — schedule defeat exactly at expiresAt instead of polling.
   useEffect(() => {
     if (!state.battle) return;
-    const interval = setInterval(() => {
+    const delay = Math.max(0, state.battle.expiresAt - Date.now());
+    const timeout = setTimeout(() => {
       setState((prev) => {
         if (!prev.battle) return prev;
         if (Date.now() < prev.battle.expiresAt) return prev;
@@ -916,8 +917,8 @@ export function useGame(initial?: GameStateInit) {
           },
         };
       });
-    }, 500);
-    return () => clearInterval(interval);
+    }, delay);
+    return () => clearTimeout(timeout);
   }, [state.battle?.expiresAt]);
 
   // Detect victory / defeat transitions
@@ -934,7 +935,7 @@ export function useGame(initial?: GameStateInit) {
         });
         setBattleVictory(prev.planetId);
         showClerk('planet');
-        const planet = PLANETS.find((p) => p.id === prev.planetId);
+        const planet = getPlanets().find((p) => p.id === prev.planetId);
         if (planet) setPlanetUnlockToast(planet);
         if (prev.planetId === 9 && !characterFlowShownRef.current) {
           characterFlowShownRef.current = true;
@@ -949,7 +950,7 @@ export function useGame(initial?: GameStateInit) {
           planetId: prev.planetId,
           shipId: prev.shipId,
         });
-        const ship = SHIPS.find((s) => s.id === prev.shipId);
+        const ship = getShips().find((s) => s.id === prev.shipId);
         if (ship) setDefeatInfo({ shipName: ship.name });
       }
     }
@@ -998,11 +999,11 @@ export function useGame(initial?: GameStateInit) {
     setState((prev) => {
       if (!prev.achievements.unlockedIds.includes(id)) return prev;
       if (prev.achievements.claimedIds.includes(id)) return prev;
-      const def = ACHIEVEMENTS.find((a) => a.id === id);
+      const def = getAchievements().find((a) => a.id === id);
       if (!def) return prev;
       return {
         ...prev,
-        credits: prev.credits + ACHIEVEMENT_CLAIM_CREDITS,
+        credits: prev.credits + getAchievementClaimCredits(),
         achievements: {
           ...prev.achievements,
           claimedIds: [...prev.achievements.claimedIds, id],
@@ -1015,6 +1016,57 @@ export function useGame(initial?: GameStateInit) {
   const addCredits = useCallback((amount: number) => {
     if (amount <= 0) return;
     setState((prev) => ({ ...prev, credits: prev.credits + amount }));
+  }, []);
+
+  /** Grant metals directly (called after a Telegram Stars metal_pack purchase). */
+  const grantMetals = useCallback((patch: Partial<Record<MetalId, number>>) => {
+    const full = { ...createDefaultMetalsState(), ...patch };
+    setState((prev) => ({
+      ...prev,
+      metals: addMetals(prev.metals, full),
+      discoveredMetals: Array.from(
+        new Set([...prev.discoveredMetals, ...(Object.keys(patch) as MetalId[])]),
+      ),
+    }));
+  }, []);
+
+  /** Activate a booster directly (called after a Telegram Stars booster purchase). */
+  const activateBoost = useCallback((boost: Omit<ActiveBoost, 'instanceId'>) => {
+    setState((prev) => ({
+      ...prev,
+      activeBoosts: [
+        ...prev.activeBoosts,
+        { ...boost, instanceId: `stars_${Date.now()}` },
+      ],
+    }));
+  }, []);
+
+  /**
+   * Unlock planets directly (called after a Telegram Stars unlockNextSector purchase).
+   * planetIds: the server-authoritative list of planet IDs to grant.
+   */
+  const unlockPlanets = useCallback((planetIds: number[]) => {
+    if (planetIds.length === 0) return;
+    setState((prev) => ({
+      ...prev,
+      unlockedPlanetIds: Array.from(
+        new Set([...prev.unlockedPlanetIds, ...(planetIds as PlanetId[])]),
+      ),
+      tabsUnlocked: { ...prev.tabsUnlocked, planets: true },
+    }));
+  }, []);
+
+  /**
+   * Reset all research and refund the energy (called after a Telegram Stars
+   * resetResearch purchase). energyRefund is computed server-side.
+   */
+  const resetResearch = useCallback((energyRefund: number) => {
+    setState((prev) => ({
+      ...prev,
+      research: {} as Record<ResearchId, boolean>,
+      energy: prev.energy + energyRefund,
+      totalEarned: Math.max(prev.totalEarned, prev.energy + energyRefund),
+    }));
   }, []);
 
   /**
@@ -1156,7 +1208,7 @@ export function useGame(initial?: GameStateInit) {
   const buyResearch = useCallback((id: ResearchId) => {
     logEvent('buy_research', { id });
     setState((prev) => {
-      const node = RESEARCH.find((r) => r.id === id);
+      const node = getResearchNodes().find((r) => r.id === id);
       if (!node) return prev;
       if (prev.research[id]) return prev; // already researched
       const level = computePlayerLevel(prev.playerXP);
@@ -1177,7 +1229,7 @@ export function useGame(initial?: GameStateInit) {
     logEvent('craft_cannon', { shipId, cannonId });
     setState((prev) => {
       if (prev.battle) return prev;
-      const cannon = CANNONS.find((c) => c.id === cannonId);
+      const cannon = getCannons().find((c) => c.id === cannonId);
       if (!cannon) return prev;
       const ownedShip = prev.fleet.ownedShips.find((s) => s.shipId === shipId);
       if (!ownedShip) return prev;
@@ -1203,7 +1255,7 @@ export function useGame(initial?: GameStateInit) {
     logEvent('build_ship', { shipId });
     setState((prev) => {
       if (prev.battle) return prev;
-      const ship = SHIPS.find((s) => s.id === shipId);
+      const ship = getShips().find((s) => s.id === shipId);
       if (!ship) return prev;
       if (prev.fleet.ownedShips.some((s) => s.shipId === shipId)) return prev;
       if (!hasEnoughMetals(prev.metals, ship.baseCost)) return prev;
@@ -1233,7 +1285,7 @@ export function useGame(initial?: GameStateInit) {
     logEvent('repair_ship', { shipId });
     setState((prev) => {
       if (prev.battle) return prev;
-      const ship = SHIPS.find((s) => s.id === shipId);
+      const ship = getShips().find((s) => s.id === shipId);
       if (!ship) return prev;
       const owned = prev.fleet.ownedShips.find((s) => s.shipId === shipId);
       if (!owned || !owned.broken) return prev;
@@ -1268,7 +1320,7 @@ export function useGame(initial?: GameStateInit) {
       setState((prev) => {
         if (prev.battle) return prev;
         if (prev.unlockedPlanetIds.includes(planetId)) return prev;
-        const alien = ALIENS.find((a) => a.planetId === planetId);
+        const alien = getAliens().find((a) => a.planetId === planetId);
         if (!alien) return prev;
         const { selectedShipId } = prev.fleet;
         if (!selectedShipId) return prev;
@@ -1310,7 +1362,7 @@ export function useGame(initial?: GameStateInit) {
         if (damage <= 0) return prev;
         const newHP = Math.max(0, prev.battle.currentHP - damage);
         if (newHP === 0) {
-          const alien = ALIENS.find(
+          const alien = getAliens().find(
             (a) => a.planetId === prev.battle!.planetId,
           );
           const msRemaining = prev.battle.expiresAt - Date.now();
@@ -1389,7 +1441,7 @@ export function useGame(initial?: GameStateInit) {
           (s) => s.shipId === shipId,
         );
         if (!ownedShip || ownedShip.broken) return prev;
-        const def = EXPEDITIONS.find((e) => e.id === expeditionId);
+        const def = getExpeditions().find((e) => e.id === expeditionId);
         if (!def) return prev;
         // Deselect ship if it was the active battle ship
         const newSelectedShipId =
@@ -1534,7 +1586,7 @@ export function useGame(initial?: GameStateInit) {
 
   const METAL_DEAL_ENERGY_COST = 500000000;
   const METAL_DEAL_REWARD = {
-    voidCrystal: MODULES[0].cost.voidCrystal || 15,
+    voidCrystal: getModules()[0].cost.voidCrystal || 15,
     echoShard: 15,
   } as const;
 
@@ -1621,9 +1673,7 @@ export function useGame(initial?: GameStateInit) {
     timeRemaining,
     expeditionRemainingMap,
     now,
-    planet: PLANETS.find(
-      (p) => p.id === state.selectedPlanetId,
-    ) as PlanetDefinition,
+    planet: getPlanetById(state.selectedPlanetId) as PlanetDefinition,
     clerkMessage,
     characterMessage,
     closeCharacterMessage,
@@ -1703,6 +1753,10 @@ export function useGame(initial?: GameStateInit) {
     activeBoosts: state.activeBoosts,
     addCredits,
     buyShopItem,
+    grantMetals,
+    activateBoost,
+    unlockPlanets,
+    resetResearch,
     debugSetValues: useCallback(
       (patch: {
         energy?: number;

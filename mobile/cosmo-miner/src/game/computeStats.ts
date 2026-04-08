@@ -1,8 +1,8 @@
-import { BATTLE_DURATION_MS } from "./ALIENS";
-import { FORMULA_CONSTANTS } from '@cosmo/game-config';
-import { PLANETS, type PlanetDefinition, type PlanetId } from "./PLANETS";
+import { getBattleDurationMs } from "./ALIENS";
+import { getFormulaConstants } from './remoteConfig';
+import { getPlanetById, type PlanetDefinition, type PlanetId } from "./PLANETS";
 import { computeResearchEffects, type ResearchState } from "./RESEARCH";
-import { UPGRADES, type UpgradeId } from "./UPGRADES";
+import { getUpgrades, type UpgradeId } from "./UPGRADES";
 import type { MetalId } from "./METALS";
 import type { ActiveBoost, UpgradesState } from "./types";
 
@@ -57,8 +57,7 @@ export type DerivedStats = {
 };
 
 function getPlanetByIdLoose(id: PlanetId): PlanetDefinition {
-  const p = PLANETS.find((x) => x.id === id);
-  if (!p) throw new Error(`Unknown planet id: ${id}`);
+  const p = getPlanetById(id);
   return p;
 }
 
@@ -73,11 +72,12 @@ export function computeStats(args: {
   let baseClickPower = 1;
   let basePassiveRate = 0;
 
-  for (const upg of UPGRADES) {
-    const level = upgrades[upg.id] ?? 0;
+  const fc = getFormulaConstants();
+  for (const upg of getUpgrades()) {
+    const level = upgrades[upg.id as UpgradeId] ?? 0;
     // Экспоненциальная прогрессия: каждый уровень в 1.6× сильнее предыдущего
     // level 1 = 1.6×, level 2 = 2.56×, level 5 = 10.5×, level 10 = 109×
-    const scale = level > 0 ? Math.pow(FORMULA_CONSTANTS.UPGRADE_POWER_EXP, level) : 0;
+    const scale = level > 0 ? Math.pow(fc.UPGRADE_POWER_EXP, level) : 0;
     if (upg.clickBonus) baseClickPower += upg.clickBonus * scale;
     if (upg.passiveBonus) basePassiveRate += upg.passiveBonus * scale;
   }
@@ -95,7 +95,7 @@ export function computeStats(args: {
     planetBonus,
     metalDropBonus: fx.metalDropBonus + getBoostAdditive(activeBoosts, "metalDropBonus"),
     specificMetalDropBonus: fx.specificMetalDropBonus,
-    battleTimerMs: BATTLE_DURATION_MS + fx.battleTimerBonus,
+    battleTimerMs: getBattleDurationMs(),
     damageResearchMultiplier: (1 + fx.damageMultiplierBonus) * getBoostMultiplier(activeBoosts, "damageMultiplier"),
     battleRegenBlockMs: fx.battleRegenBlockMs,
     critChance: fx.critChance,

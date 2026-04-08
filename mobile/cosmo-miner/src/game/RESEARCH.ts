@@ -1,5 +1,6 @@
 import { bn } from './formatNum';
 import type { MetalId } from './METALS';
+import { getCachedRemoteConfig, type RemoteResearchNode } from './remoteConfig';
 
 // ── Branch 1: Mining ──────────────────────────────────────────────
 // ── Branch 2: Battle ─────────────────────────────────────────────
@@ -21,15 +22,11 @@ export type ResearchId =
   | 'mining_click_4'
   | 'mining_passive_4'
   // Battle
-  | 'battle_timer_1'
   | 'battle_damage_1'
   | 'battle_damage_2'
-  | 'battle_timer_2'
   | 'battle_damage_3'
-  | 'battle_timer_3'
   | 'battle_damage_4'
   | 'battle_regen_1'
-  | 'battle_timer_4'
   | 'battle_damage_5'
   | 'battle_crit_1'
   | 'battle_crit_2'
@@ -76,7 +73,6 @@ export type ResearchEffect =
   | { type: 'passiveMultiplier'; value: number }
   | { type: 'metalDropBonus'; value: number }           // flat bonus added to every drop roll
   // Battle
-  | { type: 'battleTimerBonus'; value: number }         // extra ms added to battle duration
   | { type: 'damageMultiplier'; value: number }         // additive bonus to total damage
   | { type: 'battleRegenBlock'; value: number }         // ms enemy regen is blocked after each hit
   | { type: 'critChance'; value: number }               // fraction, e.g. 0.1 = 10% crit chance
@@ -227,17 +223,6 @@ export const RESEARCH: readonly ResearchNode[] = [
   //  ВЕТКА 2: БОЁВКА (BATTLE)
   // ══════════════════════════════════════════
   {
-    id: 'battle_timer_1',
-    name: 'Усиленный реактор',
-    icon: '⚙️',
-    branch: 'battle',
-    requiredLevel: 4,
-    energyCost: 16_000,
-    requires: [],
-    effect: { type: 'battleTimerBonus', value: 15_000 },
-    lore: 'Реактор работает дольше. Техник Заров говорил «не надо». Заров уволен.',
-  },
-  {
     id: 'battle_damage_1',
     name: 'Тактика берсерка',
     icon: '⚔️',
@@ -255,20 +240,9 @@ export const RESEARCH: readonly ResearchNode[] = [
     branch: 'battle',
     requiredLevel: 8,
     energyCost: 240_000,
-    requires: ['battle_timer_1', 'battle_damage_1'],
+    requires: ['battle_damage_1'],
     effect: { type: 'damageMultiplier', value: 0.6 },
     lore: 'Запрещена Галактическим уставом ст.77. Наш сектор не ратифицировал устав.',
-  },
-  {
-    id: 'battle_timer_2',
-    name: 'Поле замедления',
-    icon: '⏳',
-    branch: 'battle',
-    requiredLevel: 11,
-    energyCost: 800_000,
-    requires: ['battle_damage_2'],
-    effect: { type: 'battleTimerBonus', value: 30_000 },
-    lore: 'Замедляет время вокруг врага. Лично. Министр одобрил. Физики протестуют.',
   },
   {
     id: 'battle_damage_3',
@@ -277,20 +251,9 @@ export const RESEARCH: readonly ResearchNode[] = [
     branch: 'battle',
     requiredLevel: 13,
     energyCost: bn('3M'),
-    requires: ['battle_timer_2'],
+    requires: ['battle_damage_2'],
     effect: { type: 'damageMultiplier', value: 1.0 },
     lore: 'Состоит из 87% необъяснимых явлений. Документация засекречена. Сами знаем.',
-  },
-  {
-    id: 'battle_timer_3',
-    name: 'Хронодеформатор',
-    icon: '🕰️',
-    branch: 'battle',
-    requiredLevel: 22,
-    energyCost: bn('20M'),
-    requires: ['battle_damage_3'],
-    effect: { type: 'battleTimerBonus', value: 45_000 },
-    lore: 'Деформирует локальное время боя. Лицензия на деформацию выдана Комитетом по Хронологии. Бессрочно.',
   },
   {
     id: 'battle_damage_4',
@@ -299,7 +262,7 @@ export const RESEARCH: readonly ResearchNode[] = [
     branch: 'battle',
     requiredLevel: 28,
     energyCost: bn('500M'),
-    requires: ['battle_timer_3'],
+    requires: ['battle_damage_3'],
     effect: { type: 'damageMultiplier', value: 1.5 },
     lore: 'Залп антиматерии. Сертификат безопасности: «вероятно безопасно». Форма АМЗ-9 подана задним числом.',
   },
@@ -315,24 +278,13 @@ export const RESEARCH: readonly ResearchNode[] = [
     lore: 'После каждого удара враг не регенерирует 10 секунд. Биология подала жалобу. Отклонена.',
   },
   {
-    id: 'battle_timer_4',
-    name: 'Абсолютный замедлитель',
-    icon: '⌛',
-    branch: 'battle',
-    requiredLevel: 45,
-    energyCost: bn('100B'),
-    requires: ['battle_regen_1'],
-    effect: { type: 'battleTimerBonus', value: 60_000 },
-    lore: 'Замедляет само течение сражения. Министерство заметит через минуту. Через вашу минуту — их час.',
-  },
-  {
     id: 'battle_damage_5',
     name: 'Сингулярное оружие',
     icon: '🌀',
     branch: 'battle',
     requiredLevel: 55,
     energyCost: bn('5KB'),
-    requires: ['battle_timer_4'],
+    requires: ['battle_regen_1'],
     effect: { type: 'damageMultiplier', value: 2.5 },
     lore: 'Концентрирует пространство-время в точку урона. Инструкция по применению сама себя не читает.',
   },
@@ -709,8 +661,21 @@ export const RESEARCH: readonly ResearchNode[] = [
 
 export type ResearchState = Partial<Record<ResearchId, boolean>>;
 
+/** Возвращает исследования с числовыми полями из remote-конфига (или локальные значения). */
+export function getResearchNodes(): ResearchNode[] {
+  const remoteNodes = getCachedRemoteConfig()?.research as RemoteResearchNode[] | undefined;
+  const base = RESEARCH as unknown as ResearchNode[];
+  if (!remoteNodes) return base;
+  return base.map((local) => {
+    const r = remoteNodes.find((x) => x.id === local.id);
+    if (!r) return local;
+    const effect = { ...local.effect, value: r.effect.value } as ResearchEffect;
+    return { ...local, requiredLevel: r.requiredLevel, energyCost: r.energyCost, effect };
+  });
+}
+
 export function getResearchById(id: ResearchId): ResearchNode {
-  const r = RESEARCH.find((x) => x.id === id);
+  const r = getResearchNodes().find((x) => x.id === id);
   if (!r) throw new Error(`Unknown research id: ${id}`);
   return r;
 }
@@ -721,7 +686,6 @@ export type ComputedResearchEffects = {
   passiveMultiplierBonus: number;
   metalDropBonus: number;
   // Battle
-  battleTimerBonus: number;
   damageMultiplierBonus: number;
   battleRegenBlockMs: number;
   critChance: number;
@@ -747,7 +711,6 @@ export function computeResearchEffects(
   let clickMultiplierBonus = 0;
   let passiveMultiplierBonus = 0;
   let metalDropBonus = 0;
-  let battleTimerBonus = 0;
   let damageMultiplierBonus = 0;
   let battleRegenBlockMs = 0;
   let critChance = 0;
@@ -762,14 +725,13 @@ export function computeResearchEffects(
   let xpMultiplierBonus = 0;
   let upgradeCostReduction = 0;
 
-  for (const node of RESEARCH) {
+  for (const node of getResearchNodes()) {
     if (!research[node.id]) continue;
     const { effect } = node;
     switch (effect.type) {
       case 'clickMultiplier':        clickMultiplierBonus += effect.value; break;
       case 'passiveMultiplier':      passiveMultiplierBonus += effect.value; break;
       case 'metalDropBonus':         metalDropBonus += effect.value; break;
-      case 'battleTimerBonus':       battleTimerBonus += effect.value; break;
       case 'damageMultiplier':       damageMultiplierBonus += effect.value; break;
       case 'battleRegenBlock':       battleRegenBlockMs = Math.max(battleRegenBlockMs, effect.value); break;
       case 'critChance':             critChance += effect.value; break;
@@ -793,7 +755,6 @@ export function computeResearchEffects(
     clickMultiplierBonus,
     passiveMultiplierBonus,
     metalDropBonus,
-    battleTimerBonus,
     damageMultiplierBonus,
     battleRegenBlockMs,
     critChance: Math.min(critChance, 1),   // cap at 100%

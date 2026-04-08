@@ -1,6 +1,7 @@
 import type { CannonId } from './CANNONS';
 import type { MetalsState } from './METALS';
 import type { ModuleId } from './MODULES';
+import { getCachedRemoteConfig, type RemoteShip } from './remoteConfig';
 
 export type ShipId = 'scout' | 'cruiser' | 'dreadnought' | 'flagship';
 
@@ -68,8 +69,27 @@ export const SHIPS: readonly ShipDefinition[] = [
   }
 ] as const;
 
+/** Возвращает список кораблей с числовыми полями из remote-конфига (или локальные значения). */
+export function getShips(): ShipDefinition[] {
+  const remoteShips = getCachedRemoteConfig()?.ships as RemoteShip[] | undefined;
+  const base = SHIPS as unknown as ShipDefinition[];
+  if (!remoteShips) return base;
+  return base.map((local) => {
+    const r = remoteShips.find((x) => x.id === local.id);
+    if (!r) return local;
+    return {
+      ...local,
+      damageMultiplier: r.damageMultiplier,
+      expeditionMultiplier: r.expeditionMultiplier,
+      unlockLevel: r.unlockLevel,
+      baseCost: r.baseCost as Partial<MetalsState>,
+      repairCost: r.repairCost as Partial<MetalsState>,
+    };
+  });
+}
+
 export function getShipById(id: ShipId): ShipDefinition {
-  const ship = SHIPS.find((s) => s.id === id);
+  const ship = getShips().find((s) => s.id === id);
   if (!ship) throw new Error(`Unknown ship id: ${id}`);
   return ship;
 }

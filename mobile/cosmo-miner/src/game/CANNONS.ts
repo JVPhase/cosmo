@@ -1,5 +1,5 @@
 import type { MetalId, MetalsState } from './METALS';
-import { FORMULA_CONSTANTS } from '@cosmo/game-config';
+import { getCachedRemoteConfig, getFormulaConstants, type RemoteCannon } from './remoteConfig';
 
 
 export type CannonId = 'standard' | 'titan' | 'iridium' | 'alloy';
@@ -53,11 +53,33 @@ export const CANNONS: readonly CannonDefinition[] = [
   }
 ] as const;
 
+export type CannonResolved = {
+  id: CannonId;
+  name: string;
+  icon: string;
+  image: number;
+  damagePerLevel: number;
+  baseCost: Partial<MetalsState>;
+  lore: string;
+};
+
+/** Возвращает список пушек с числовыми полями из remote-конфига (или локальные значения). */
+export function getCannons(): CannonResolved[] {
+  const remoteCannons = getCachedRemoteConfig()?.cannons as RemoteCannon[] | undefined;
+  const base = CANNONS as unknown as CannonResolved[];
+  if (!remoteCannons) return base;
+  return base.map((local) => {
+    const r = remoteCannons.find((x) => x.id === local.id);
+    if (!r) return local;
+    return { ...local, damagePerLevel: r.damagePerLevel, baseCost: r.baseCost as Partial<MetalsState> };
+  });
+}
+
 export function computeCannonCost(
-  cannon: CannonDefinition,
+  cannon: { baseCost: Partial<MetalsState> },
   currentLevel: number
 ): Partial<MetalsState> {
-  const factor = Math.pow(FORMULA_CONSTANTS.CANNON_COST_EXP, currentLevel);
+  const factor = Math.pow(getFormulaConstants().CANNON_COST_EXP, currentLevel);
   const result: Partial<MetalsState> = {};
   for (const [key, amount] of Object.entries(cannon.baseCost) as [
     MetalId,

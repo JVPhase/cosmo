@@ -8,9 +8,9 @@ import {
   View,
 } from 'react-native';
 import { logEvent } from '../../game/analytics';
-import { EXPEDITIONS, type ExpeditionId } from '../../game/EXPEDITIONS';
+import { getExpeditions, type ExpeditionId } from '../../game/EXPEDITIONS';
 import { METALS } from '../../game/METALS';
-import { SHIPS, type ShipId } from '../../game/SHIPS';
+import { getShips, type ShipId } from '../../game/SHIPS';
 import type { ActiveExpedition, BattleState, FleetState } from '../../game/types';
 import { TIMELY_CLAIM_WINDOW_MS } from '../../game/useGame';
 import { formatDuration } from './shipyardUtils';
@@ -43,7 +43,7 @@ export function ExpeditionsTab({
   );
   const expMetalMultiplier = sector2Unlocked ? 5 : 1;
   const selectedShipDef = expeditionShipId
-    ? SHIPS.find((s) => s.id === expeditionShipId)
+    ? getShips().find((s) => s.id === expeditionShipId)
     : null;
   const shipExpMultiplier = selectedShipDef?.expeditionMultiplier ?? 1;
 
@@ -57,8 +57,8 @@ export function ExpeditionsTab({
         <>
           <Text style={styles.sectionTitle}>АКТИВНЫЕ МИССИИ</Text>
           {expeditions.map((exp) => {
-            const def = EXPEDITIONS.find((e) => e.id === exp.expeditionId)!;
-            const ship = SHIPS.find((s) => s.id === exp.shipId)!;
+            const def = getExpeditions().find((e) => e.id === exp.expeditionId)!;
+            const ship = getShips().find((s) => s.id === exp.shipId)!;
             const remaining = expeditionRemainingMap[exp.shipId] ?? 0;
             const done = remaining === 0;
             const totalMs = def.durationMs;
@@ -176,7 +176,7 @@ export function ExpeditionsTab({
           data={availableShips}
           keyExtractor={(s) => s.shipId}
           renderItem={({ item: s }) => {
-            const def = SHIPS.find((x) => x.id === s.shipId)!;
+            const def = getShips().find((x) => x.id === s.shipId)!;
             const onExpedition = expeditionShipIds.has(s.shipId);
             const selected = expeditionShipId === s.shipId;
             return (
@@ -211,7 +211,7 @@ export function ExpeditionsTab({
 
   return (
     <FlatList
-      data={EXPEDITIONS}
+      data={getExpeditions()}
       keyExtractor={(def) => def.id}
       contentContainerStyle={styles.content}
       ListHeaderComponent={listHeader}

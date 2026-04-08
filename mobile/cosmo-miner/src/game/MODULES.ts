@@ -1,10 +1,16 @@
 import type { MetalsState } from "./METALS";
-import { FORMULA_CONSTANTS } from '@cosmo/game-config';
+import { getCachedRemoteConfig, getFormulaConstants, type RemoteModuleDef } from './remoteConfig';
 
 export const MAX_MODULE_LEVEL = 50;
 
+/** Возвращает максимальный уровень модуля из remote-конфига (или локальное значение). */
+export function getMaxModuleLevel(): number {
+  return getCachedRemoteConfig()?.modules?.maxLevel ?? MAX_MODULE_LEVEL;
+}
+
 export function computeModuleUpgradeCost(currentLevel: number): Partial<MetalsState> {
-  const amount = Math.floor(FORMULA_CONSTANTS.MODULE_COST_BASE * Math.pow(FORMULA_CONSTANTS.MODULE_COST_EXP, currentLevel - 1));
+  const fc = getFormulaConstants();
+  const amount = Math.floor(fc.MODULE_COST_BASE * Math.pow(fc.MODULE_COST_EXP, currentLevel - 1));
   return currentLevel % 2 === 1
     ? { voidCrystal: amount }
     : { echoShard: amount };
@@ -66,8 +72,20 @@ export const MODULES: readonly ModuleDefinition[] = [
   },
 ] as const;
 
+/** Возвращает список модулей с числовыми полями из remote-конфига (или локальные значения). */
+export function getModules(): ModuleDefinition[] {
+  const remoteDefs = getCachedRemoteConfig()?.modules?.definitions as RemoteModuleDef[] | undefined;
+  const base = MODULES as unknown as ModuleDefinition[];
+  if (!remoteDefs) return base;
+  return base.map((local) => {
+    const r = remoteDefs.find((x) => x.id === local.id);
+    if (!r) return local;
+    return { ...local, cost: r.cost as Partial<MetalsState>, ultDurationMs: r.ultDurationMs, hitsToCharge: r.hitsToCharge };
+  });
+}
+
 export function getModuleById(id: ModuleId): ModuleDefinition {
-  const mod = MODULES.find((m) => m.id === id);
+  const mod = getModules().find((m) => m.id === id);
   if (!mod) throw new Error(`Unknown module id: ${id}`);
   return mod;
 }

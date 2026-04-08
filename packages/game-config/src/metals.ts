@@ -1,4 +1,54 @@
-export const PLANET_DROP_TABLE: Record<number, { metalId: string; chance: number }[]> = {
+import { TOTAL_PLANETS } from './sectors';
+
+type MetalDrop = { metalId: string; chance: number };
+
+function clampDropChance(chance: number): number {
+  return Math.max(0.02, Math.min(0.35, Number(chance.toFixed(3))));
+}
+
+function generatedDropsForPlanet(planetId: number): MetalDrop[] {
+  const sectorId = Math.floor((planetId - 1) / 5) + 1;
+  const planetIndex = (planetId - 1) % 5;
+  const zoneIndex = Math.floor((sectorId - 1) / 10);
+
+  if (zoneIndex === 0) {
+    const sectorScale = (sectorId - 4) / 6; // sectors 4–10
+    return [
+      { metalId: 'iron', chance: clampDropChance(0.24 + sectorScale * 0.04 + planetIndex * 0.005) },
+      { metalId: 'titan', chance: clampDropChance(0.17 + sectorScale * 0.05 + planetIndex * 0.005) },
+      { metalId: 'iridium', chance: clampDropChance(0.11 + sectorScale * 0.07 + planetIndex * 0.01) },
+    ];
+  }
+
+  const zoneScale = Math.min(0.12, zoneIndex * 0.015);
+  return [
+    { metalId: 'voidCrystal', chance: clampDropChance(0.15 + zoneScale + planetIndex * 0.01) },
+    { metalId: 'echoShard', chance: clampDropChance(0.12 + zoneScale + planetIndex * 0.01) },
+    { metalId: 'iron', chance: clampDropChance(0.10 + zoneScale + planetIndex * 0.005) },
+    { metalId: 'titan', chance: clampDropChance(0.10 + zoneScale + planetIndex * 0.005) },
+    { metalId: 'iridium', chance: clampDropChance(0.10 + zoneScale * 0.9 + planetIndex * 0.005) },
+  ];
+}
+
+function generatePlanetDropTable(): Record<number, MetalDrop[]> {
+  const result: Record<number, MetalDrop[]> = {};
+  for (let planetId = 16; planetId <= TOTAL_PLANETS; planetId++) {
+    result[planetId] = generatedDropsForPlanet(planetId);
+  }
+  return result;
+}
+
+function validatePlanetDropTable(table: Record<number, MetalDrop[]>): Record<number, MetalDrop[]> {
+  for (let planetId = 1; planetId <= TOTAL_PLANETS; planetId++) {
+    const drops = table[planetId];
+    if (!drops?.length) {
+      throw new Error(`Planet ${planetId} must have at least one metal drop`);
+    }
+  }
+  return table;
+}
+
+const PLANET_DROP_TABLE_HARDCODED: Record<number, MetalDrop[]> = {
   // Sector 1
   1: [{ metalId: 'iron', chance: 0.15 }],
   2: [{ metalId: 'titan', chance: 0.12 }, { metalId: 'iron', chance: 0.06 }],
@@ -18,3 +68,8 @@ export const PLANET_DROP_TABLE: Record<number, { metalId: string; chance: number
   14: [{ metalId: 'voidCrystal', chance: 0.18 }, { metalId: 'echoShard', chance: 0.16 }, { metalId: 'iron', chance: 0.10 }, { metalId: 'titan', chance: 0.10 }, { metalId: 'iridium', chance: 0.10 }],
   15: [{ metalId: 'voidCrystal', chance: 0.20 }, { metalId: 'echoShard', chance: 0.18 }, { metalId: 'iron', chance: 0.10 }, { metalId: 'titan', chance: 0.10 }, { metalId: 'iridium', chance: 0.10 }],
 };
+
+export const PLANET_DROP_TABLE: Record<number, MetalDrop[]> = validatePlanetDropTable({
+  ...PLANET_DROP_TABLE_HARDCODED,
+  ...generatePlanetDropTable(),
+});

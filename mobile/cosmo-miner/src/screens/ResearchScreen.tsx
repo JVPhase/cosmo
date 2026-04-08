@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import {
-  RESEARCH,
+  getResearchNodes,
   type ResearchBranch,
   type ResearchId,
   type ResearchNode,
@@ -29,8 +29,6 @@ function formatEffect(node: ResearchNode): string {
       return `+${Math.round(effect.value * 100)}% к пассивному доходу`;
     case 'metalDropBonus':
       return `+${Math.round(effect.value * 100)}% к шансу металлов`;
-    case 'battleTimerBonus':
-      return `+${effect.value / 1000} сек к таймеру боя`;
     case 'damageMultiplier':
       return `+${Math.round(effect.value * 100)}% к урону в бою`;
     case 'battleRegenBlock':
@@ -118,7 +116,7 @@ function ResearchCard({
       : 'rgba(255,255,255,0.01)';
 
   const prereqNodes = node.requires
-    .map((id) => RESEARCH.find((r) => r.id === id))
+    .map((id) => getResearchNodes().find((r) => r.id === id))
     .filter(Boolean) as ResearchNode[];
 
   return (
@@ -237,10 +235,10 @@ export function ResearchScreen({
   const xpNeeded = xpNext !== null ? xpNext - xpStart : null;
   const xpPercent = xpNeeded ? Math.min(1, xpInLevel / xpNeeded) : 1;
 
-  const nodes = RESEARCH.filter((r) => r.branch === branch);
+  const nodes = getResearchNodes().filter((r) => r.branch === branch);
 
   const branchHasAvailable = (b: ResearchBranch) =>
-    RESEARCH.filter((r) => r.branch === b).some(
+    getResearchNodes().filter((r) => r.branch === b).some(
       (r) => getNodeState(r, playerLevel, energy, research) === 'available'
     );
 
