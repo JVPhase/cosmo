@@ -2,23 +2,13 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { METALS } from "./METALS";
 import { PLANETS, type PlanetId } from "./PLANETS";
 import { getUpgrades } from "./UPGRADES";
-import type { GameState, GameStateInit } from "./types";
+import type { GameState, GameStateInit, GameplaySaveEnvelopeV2 } from "./types";
+import { serializeGameplaySaveV2, deserializeGameplaySaveEnvelope } from "./saveContract";
 
-const STORAGE_KEY = "cosmo_game_v1";
+const STORAGE_KEY = "cosmo_game_v2";
 const INTRO_KEY = "cosmo_intro_seen_v1";
 
-type StoredGameV1 = {
-  version: 1;
-  state: GameStateInit;
-  savedAt?: number;
-};
-
-function isStoredGameV1(value: unknown): value is StoredGameV1 {
-  if (typeof value !== "object" || value === null) return false;
-  const v = value as { version?: unknown; state?: unknown; savedAt?: unknown };
-  if (v.savedAt !== undefined && typeof v.savedAt !== "number") return false;
-  return v.version === 1 && typeof v.state === "object" && v.state !== null;
-}
+// ── State validator ───────────────────────────────────────────────────────────
 
 function isValidState(s: unknown): s is GameStateInit {
   if (typeof s !== "object" || s === null) return false;
@@ -43,7 +33,6 @@ function isValidState(s: unknown): s is GameStateInit {
   if (typeof state.metals !== "object" || state.metals === null) return false;
   const metals = state.metals as Record<string, unknown>;
   for (const metal of METALS) {
-    // Allow missing keys — new metals default to 0 in useGame.ts
     if (metals[metal.id] !== undefined && typeof metals[metal.id] !== "number") return false;
   }
 
@@ -51,79 +40,86 @@ function isValidState(s: unknown): s is GameStateInit {
   const fleet = state.fleet as Record<string, unknown>;
   if (!Array.isArray(fleet.ownedShips)) return false;
 
-  // selectedPlanetId must be a valid planet id (now 1-10)
   const validPlanetIds = new Set(PLANETS.map((p) => p.id));
   if (!validPlanetIds.has(state.selectedPlanetId as PlanetId)) return false;
   if (!(state.unlockedPlanetIds as unknown[]).every((id) => validPlanetIds.has(id as PlanetId))) return false;
 
-  // chosenCharacterId must be a valid id or null
   const validCharIds = new Set(['lien', 'riva', 'graves', 'alex']);
   if (state.chosenCharacterId !== undefined && state.chosenCharacterId !== null && !validCharIds.has(state.chosenCharacterId as string)) return false;
 
-  // New fields are optional — defaults applied in useGame.ts if absent
   return true;
 }
 
-export async function loadGame(): Promise<{ state: GameStateInit; savedAt: number } | null> {
+// ── Load / Save ───────────────────────────────────────────────────────────────
+
+/**
+ * Loads the local save envelope.
+ * Returns null if no save exists or the save is corrupt (clears corrupt data).
+ */
+export async function loadGame(): Promise<{ state: GameStateInit; savedAt: number; appliedGrantSeq: number } | null> {
   try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEY);
+    // Try V2 key first
+    let raw = await AsyncStorage.getItem(STORAGE_KEY);
+
+    // Fall back to legacy V1 key for migration
+    if (!raw) {
+      raw = await AsyncStorage.getItem("cosmo_game_v1");
+    }
+
     if (!raw) return null;
+
     const parsed: unknown = JSON.parse(raw);
-    if (!isStoredGameV1(parsed)) {
-      await AsyncStorage.removeItem(STORAGE_KEY);
+    const result = deserializeGameplaySaveEnvelope(parsed);
+
+    if (!result.ok) {
+      await AsyncStorage.multiRemove([STORAGE_KEY, "cosmo_game_v1"]).catch(() => {});
       return null;
     }
-    if (!isValidState(parsed.state)) {
-      await AsyncStorage.removeItem(STORAGE_KEY);
+
+    const { state, savedAt, appliedGrantSeq } = result.envelope;
+
+    if (!isValidState(state)) {
+      await AsyncStorage.multiRemove([STORAGE_KEY, "cosmo_game_v1"]).catch(() => {});
       return null;
     }
-    const state = parsed.state as Record<string, unknown>;
+
     // Migrate: craftedModules[] → moduleLevels
-    if (Array.isArray(state.craftedModules) && !state.moduleLevels) {
+    const stateRecord = state as Record<string, unknown>;
+    if (Array.isArray(stateRecord.craftedModules) && !stateRecord.moduleLevels) {
       const levels: Record<string, number> = {};
-      for (const id of state.craftedModules as string[]) {
+      for (const id of stateRecord.craftedModules as string[]) {
         levels[id] = 1;
       }
-      state.moduleLevels = levels;
-      delete state.craftedModules;
+      stateRecord.moduleLevels = levels;
+      delete stateRecord.craftedModules;
     }
-    return { state: state as GameStateInit, savedAt: parsed.savedAt ?? 0 };
+
+    return { state: stateRecord as GameStateInit, savedAt, appliedGrantSeq };
   } catch {
-    await AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
+    await AsyncStorage.multiRemove([STORAGE_KEY, "cosmo_game_v1"]).catch(() => {});
     return null;
   }
 }
 
-export async function saveGame(state: GameState): Promise<void> {
-  const payload: StoredGameV1 = {
-    version: 1,
-    savedAt: Date.now(),
-    state: {
-      energy: state.energy,
-      totalEarned: state.totalEarned,
-      clicks: state.clicks,
-      upgrades: state.upgrades,
-      unlockedPlanetIds: state.unlockedPlanetIds,
-      selectedPlanetId: state.selectedPlanetId,
-      achievements: state.achievements,
-      metals: state.metals,
-      discoveredMetals: state.discoveredMetals,
-      fleet: state.fleet,
-      battle: state.battle,
-      playerXP: state.playerXP,
-      research: state.research,
-      expeditions: state.expeditions,
-      tabsUnlocked: state.tabsUnlocked,
-      moduleLevels: state.moduleLevels,
-      chosenCharacterId: state.chosenCharacterId,
-      metalDealDone: state.metalDealDone,
-    },
-  };
-  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+/**
+ * Saves the full game state as a V2 envelope locally.
+ * appliedGrantSeq tracks the last Grant seq applied by this client.
+ */
+export async function saveGame(state: GameState, appliedGrantSeq: number): Promise<void> {
+  const envelope: GameplaySaveEnvelopeV2 = serializeGameplaySaveV2(state, appliedGrantSeq);
+  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(envelope));
+}
+
+/**
+ * Saves a pre-built V2 envelope directly (used during bootstrap grant sync
+ * where we already have the envelope and don't want to re-serialize).
+ */
+export async function saveGameEnvelope(envelope: GameplaySaveEnvelopeV2): Promise<void> {
+  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(envelope));
 }
 
 export async function clearGame(): Promise<void> {
-  await AsyncStorage.removeItem(STORAGE_KEY);
+  await AsyncStorage.multiRemove([STORAGE_KEY, "cosmo_game_v1"]).catch(() => {});
 }
 
 export async function loadIntroSeen(): Promise<boolean> {

@@ -11,6 +11,17 @@
 
 План ниже сознательно ограничен `P0`: он не переводит всю игру в server-authoritative модель и не тащит большой платформенный рефакторинг. Задача этого этапа — стабилизировать контракты, убрать второго writer-а у gameplay-save и сделать безопасный канал доставки покупок в mobile.
 
+## Актуализация клиентской схемы
+
+На текущий момент Telegram Mini App больше не рассматривается как отдельный клиентский проект.
+
+Актуальная и целевая для `P0` схема такая:
+
+- Telegram Mini App собирается из `mobile/cosmo-miner` как web-target;
+- это нормальное и ожидаемое состояние, а не временный компромисс;
+- `P0` не должен возвращать отдельный `telegram/cosmo-tg`;
+- все Telegram-specific UI, auth и purchase-flow изменения в рамках `P0` вносятся в unified mobile/web client.
+
 ## Выбранное решение
 
 ### Решение по save
@@ -94,6 +105,7 @@
 - server-authoritative wallet;
 - consumption-инвентарь как полноценный домен;
 - полный рефакторинг Telegram inventory UI;
+- выделение Telegram Mini App обратно в отдельный клиент;
 - миграция всего gameplay loop на сервер.
 
 ## Целевое состояние
@@ -287,6 +299,12 @@ body: { upToSeq: 21 }
 
 ## План по mobile
 
+В этом разделе `mobile` означает единый клиент `mobile/cosmo-miner`, который обслуживает:
+
+- native mobile runtime;
+- web runtime;
+- Telegram Mini App runtime на web.
+
 ### 1. Убрать двойную сериализацию save
 
 Сейчас локальный save и cloud autosave формируются по-разному. Это надо убрать.
@@ -355,7 +373,7 @@ body: { upToSeq: 21 }
 - сериализовать `GameplaySaveEnvelopeV2`;
 - сохранять локально и пушить в cloud.
 
-## План по Telegram Mini App
+## План по Telegram Mini App в mobile/web
 
 ### 1. Немедленный safety fix
 
@@ -383,10 +401,10 @@ body: { upToSeq: 21 }
 
 ### 3. Copy и комментарии
 
-Нужно привести тексты в соответствие реальности:
+Нужно привести тексты и комментарии в соответствие реальности в unified mobile/web клиенте:
 
-- `HomeScreen` не обещает sync до его появления;
-- комментарии в store/API не утверждают, что inventory уже синкается в mobile.
+- Telegram web UI внутри `mobile/cosmo-miner` не обещает sync до его появления;
+- комментарии в `mobile/cosmo-miner/src/telegram/*` и связанных UI-модулях не утверждают, что inventory уже синкается в mobile.
 
 ## План по серверу
 
@@ -445,11 +463,12 @@ body: { upToSeq: 21 }
 2. Перевести local save и cloud save на `v2`.
 3. Добавить bootstrap/apply/ack grants.
 4. Перевести autosave на full snapshot.
+5. Выпустить это в unified `mobile/web` клиент, не ломая Telegram runtime.
 
 ### Фаза 3. Telegram catalog reopen
 
 1. Включить только `grant_sync` SKU.
-2. Проверить end-to-end delivery.
+2. Проверить end-to-end delivery в Telegram Mini App, собранном из `mobile` для web.
 3. Оставить unsupported entitlements скрытыми.
 
 ### Фаза 4. Cleanup
@@ -538,14 +557,14 @@ Rollback mobile:
 - `mobile/cosmo-miner/src/game/storage.ts`
 - `mobile/cosmo-miner/src/game/cloudSave.ts`
 - `mobile/cosmo-miner/src/game/types.ts`
+- `mobile/cosmo-miner/src/screens/ShopScreen.tsx`
+- `mobile/cosmo-miner/src/telegram/StarsShopTab.tsx`
+- `mobile/cosmo-miner/src/telegram/auth.ts`
+- `mobile/cosmo-miner/src/telegram/runtime.ts`
 - новый модуль serializer/contract
 - новый модуль grant apply/sync
 
-### Telegram
-
-- `telegram/cosmo-tg/src/screens/HomeScreen.tsx`
-- `telegram/cosmo-tg/src/store/gameStore.ts`
-- при необходимости `telegram/cosmo-tg/src/components/ShopItemCard.tsx`
+Отдельного блока `Telegram` здесь больше нет, потому что Telegram Mini App живет внутри `mobile/cosmo-miner` как web-runtime.
 
 ## Что я бы сделал первым
 
@@ -569,3 +588,5 @@ Rollback mobile:
 - один безопасный канал доставки server-side покупок в mobile.
 
 Пока этого нет, любые новые SKU, новые клиенты и новые фичи синка будут увеличивать риск потери состояния. После выполнения этого плана дальнейший `P1` уже можно будет делать без постоянной борьбы с расхождением между mobile, Telegram и сервером.
+
+Важно: в рамках этого плана “Telegram” не означает отдельный frontend-репозиторий или отдельное приложение. Это один из runtime-режимов unified клиента `mobile/cosmo-miner`, собранного для web.

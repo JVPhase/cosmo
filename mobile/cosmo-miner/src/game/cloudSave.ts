@@ -2,11 +2,10 @@
  * Cloud save API client.
  *
  * Tokens are stored in AsyncStorage for now (MVP).
- * For production, replace with expo-secure-store to keep them in
- * the device keychain and out of plain AsyncStorage.
+ * For production, replace with expo-secure-store.
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { GameStateInit } from './types';
+import type { GameplaySaveEnvelopeV2 } from './types';
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
 const ACCESS_TOKEN_KEY = 'cosmo_access_token_v1';
@@ -41,7 +40,7 @@ async function storeCloudRev(rev: number): Promise<void> {
 
 // ─── Authenticated fetch ──────────────────────────────────────────────────────
 
-async function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {
+export async function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {
   const token = await getAccessToken();
   return fetch(`${BASE_URL}${path}`, {
     ...init,
@@ -99,10 +98,8 @@ export async function refreshAccessToken(): Promise<boolean> {
 
 // ─── Saves ────────────────────────────────────────────────────────────────────
 
-export type StoredGameV1 = { version: 1; state: GameStateInit; savedAt?: number };
-
 export type CloudSaveEnvelope = {
-  data: StoredGameV1;
+  data: GameplaySaveEnvelopeV2;
   rev: number;
   updatedAt: string;
 } | null;
@@ -119,19 +116,37 @@ export async function fetchCloudSave(): Promise<CloudSaveEnvelope> {
   }
 }
 
+/**
+ * Push a V2 envelope to the server.
+ * Pass `rev` for optimistic concurrency (server returns 409 if stale).
+ * Omit `rev` to force-overwrite.
+ *
+ * Returns updated { rev, updatedAt } on success.
+ * Throws with `err.status === 409` on conflict.
+ */
+export async function pushCloudSave(
+  envelope: GameplaySaveEnvelopeV2,
+  rev?: number,
+): Promise<{ rev: number; updatedAt: string }> {
+  const res = await apiFetch('/saves', {
+    method: 'PUT',
+    body: JSON.stringify({ data: envelope, ...(rev !== undefined ? { rev } : {}) }),
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    const err = Object.assign(
+      new Error((json as { error?: string }).error ?? `HTTP ${res.status}`),
+      { status: res.status, body: json },
+    );
+    throw err;
+  }
+  const result = json as { rev: number; updatedAt: string };
+  await storeCloudRev(result.rev);
+  return result;
+}
+
 // ─── OAuth ───────────────────────────────────────────────────────────────────
 
-/**
- * Exchange a provider ID token for our own JWT pair.
- *
- * Usage — Google (via @react-native-google-signin/google-signin):
- *   const { idToken } = await GoogleSignin.signIn();
- *   const auth = await cloudOAuth('google', idToken!);
- *
- * Usage — Apple (via expo-apple-authentication):
- *   const cred = await AppleAuthentication.signInAsync({ ... });
- *   const auth = await cloudOAuth('apple', cred.identityToken!);
- */
 export async function cloudOAuth(
   provider: 'google' | 'apple',
   idToken: string,
@@ -145,31 +160,44 @@ export async function cloudOAuth(
   return json as AuthResult;
 }
 
+// ─── Grant sync ───────────────────────────────────────────────────────────────
+
+export interface GrantDto {
+  id: string;
+  seq: number;
+  kind: string;
+  payload: Record<string, unknown>;
+  createdAt: string;
+}
+
 /**
- * Push current save to the server.
- * Pass `rev` for optimistic concurrency (server returns 409 if stale).
- * Omit `rev` to force-overwrite.
- *
- * Returns updated { rev, updatedAt } on success, null on network error.
- * Throws with `err.status === 409` on conflict so the caller can handle it.
+ * Fetches pending grants after the given seq cursor.
+ * Returns empty array on network error (safe to retry).
  */
-export async function pushCloudSave(
-  payload: StoredGameV1,
-  rev?: number,
-): Promise<{ rev: number; updatedAt: string }> {
-  const res = await apiFetch('/saves', {
-    method: 'PUT',
-    body: JSON.stringify({ data: payload, ...(rev !== undefined ? { rev } : {}) }),
-  });
-  const json = await res.json();
-  if (!res.ok) {
-    const err = Object.assign(new Error((json as { error?: string }).error ?? `HTTP ${res.status}`), {
-      status: res.status,
-      body: json,
-    });
-    throw err;
+export async function fetchPendingGrants(afterSeq: number): Promise<GrantDto[]> {
+  try {
+    const res = await apiFetch(`/sync/grants?afterSeq=${afterSeq}`);
+    if (!res.ok) return [];
+    const body = await res.json() as { grants: GrantDto[] };
+    return body.grants ?? [];
+  } catch {
+    return [];
   }
-  const result = json as { rev: number; updatedAt: string };
-  await storeCloudRev(result.rev);
-  return result;
+}
+
+/**
+ * Acknowledges all grants up to and including upToSeq.
+ * Should only be called after a successful local save AND cloud push.
+ * Returns true on success, false on network error.
+ */
+export async function ackGrants(upToSeq: number): Promise<boolean> {
+  try {
+    const res = await apiFetch('/sync/grants/ack', {
+      method: 'POST',
+      body: JSON.stringify({ upToSeq }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
 }
