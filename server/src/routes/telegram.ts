@@ -66,14 +66,15 @@ export async function telegramRoutes(app: FastifyInstance) {
       const tgId = BigInt(parsed.user.id);
 
       // Find or create user record
-      let telegramUser = await prisma.telegramUser.findUnique({
+      const existingTg = await prisma.telegramUser.findUnique({
         where: { telegramId: tgId },
         include: { user: true },
       });
 
       let isNewUser = false;
+      let userId: string;
 
-      if (!telegramUser) {
+      if (!existingTg) {
         // First login — create User + TelegramUser atomically
         const newUser = await prisma.user.create({
           data: {
@@ -92,8 +93,11 @@ export async function telegramRoutes(app: FastifyInstance) {
           },
           include: { telegramUser: true },
         });
-        telegramUser = newUser.telegramUser!;
-        (telegramUser as typeof telegramUser & { user: typeof newUser }).user = newUser;
+        const tg = newUser.telegramUser;
+        if (!tg) {
+          return reply.status(500).send({ error: 'Telegram profile was not created' });
+        }
+        userId = tg.userId;
         isNewUser = true;
       } else {
         // Update mutable profile fields (name, username can change in Telegram)
@@ -107,9 +111,8 @@ export async function telegramRoutes(app: FastifyInstance) {
             isPremium: parsed.user.is_premium ?? false,
           },
         });
+        userId = existingTg.userId;
       }
-
-      const userId = telegramUser.userId;
       const tokens = await issueTokens(app, userId);
 
       return reply.status(isNewUser ? 201 : 200).send({
@@ -123,6 +126,9 @@ export async function telegramRoutes(app: FastifyInstance) {
   /**
    * GET /telegram/me
    * Returns the Telegram user's profile and a summary of their game save.
+   *
+   * Reads from save.data.state.* (GameplaySaveEnvelopeV2) with a fallback
+   * for legacy v1 saves where state fields lived at the root of save.data.
    */
   app.get('/me', { preHandler: [app.authenticate] }, async (req, reply) => {
     const { userId } = req.user as JwtPayload;
@@ -136,13 +142,24 @@ export async function telegramRoutes(app: FastifyInstance) {
       return reply.status(404).send({ error: 'Not a Telegram account' });
     }
 
-    // Extract lightweight game summary without sending the entire save blob
-    const saveData = (save?.data ?? {}) as Record<string, unknown>;
+    // Extract game summary from envelope.
+    // V2 envelope: { version: 2, state: { playerXP, totalEarned, credits, ... } }
+    // V1 legacy:   { version: 1, state: { playerXP, totalEarned, credits, ... } }
+    // Raw (no version): fields at root
+    const raw = (save?.data ?? {}) as Record<string, unknown>;
+    let stateFields: Record<string, unknown>;
+    if (raw.version === 2 || raw.version === 1) {
+      stateFields = (raw.state as Record<string, unknown>) ?? {};
+    } else {
+      // No version field — old-style raw state at root
+      stateFields = raw;
+    }
+
     const gameSummary = {
-      playerXP: (saveData.playerXP as number) ?? 0,
-      totalEarned: (saveData.totalEarned as string) ?? '0',
-      credits: (saveData.credits as number) ?? 0,
-      unlockedPlanets: ((saveData.unlockedPlanetIds as string[]) ?? []).length,
+      playerXP: (stateFields.playerXP as number) ?? 0,
+      totalEarned: (stateFields.totalEarned as number) ?? 0,
+      credits: (stateFields.credits as number) ?? 0,
+      unlockedPlanets: ((stateFields.unlockedPlanetIds as unknown[]) ?? []).length,
       saveRev: save?.rev ?? 0,
     };
 
@@ -159,10 +176,12 @@ export async function telegramRoutes(app: FastifyInstance) {
 
   /**
    * GET /telegram/shop
-   * Returns active shop items. Unauthenticated — catalog is public.
+   * Returns active shop items filtered to only grant_sync delivery items.
+   * Items with deliveryMode != 'grant_sync' are hidden from the catalog.
+   * Unauthenticated — catalog is public.
    */
   app.get('/shop', async (_req, reply) => {
-    const items = await prisma.shopItem.findMany({
+    const allItems = await prisma.shopItem.findMany({
       where: { isActive: true },
       orderBy: [{ sortOrder: 'asc' }, { type: 'asc' }],
       select: {
@@ -176,6 +195,13 @@ export async function telegramRoutes(app: FastifyInstance) {
       },
     });
 
+    // Only expose items with deliveryMode: 'grant_sync'.
+    // Items with 'unsupported' or 'server_only' are hidden until mobile support is ready.
+    const items = allItems.filter((item) => {
+      const meta = (item.metadata as Record<string, unknown>) ?? {};
+      return meta.deliveryMode === 'grant_sync';
+    });
+
     reply.header('Cache-Control', 'public, max-age=300');
     return { items };
   });
@@ -186,6 +212,9 @@ export async function telegramRoutes(app: FastifyInstance) {
    *
    * Creates a pending Purchase record and returns a Telegram Stars invoice URL.
    * The frontend passes this URL to WebApp.openInvoice().
+   *
+   * Only items with deliveryMode: 'grant_sync' may be purchased.
+   * Unsupported SKUs are rejected here AND filtered from the catalog.
    */
   app.post('/shop/invoice', { preHandler: [app.authenticate] }, async (req, reply) => {
     const { userId } = req.user as JwtPayload;
@@ -199,6 +228,13 @@ export async function telegramRoutes(app: FastifyInstance) {
     if (!item) return reply.status(404).send({ error: 'Shop item not found' });
     if (!item.priceStars) {
       return reply.status(400).send({ error: 'Item is not available for Stars purchase' });
+    }
+
+    // Hard guard: only grant_sync items may be purchased via this endpoint.
+    // premium_unlock and other unsupported items must not be invoiceable.
+    const itemMeta = (item.metadata as Record<string, unknown>) ?? {};
+    if (itemMeta.deliveryMode !== 'grant_sync') {
+      return reply.status(400).send({ error: 'Item is not available for purchase in this version' });
     }
 
     // Create a pending purchase — fulfilled on successful_payment webhook
@@ -235,70 +271,21 @@ export async function telegramRoutes(app: FastifyInstance) {
 
   /**
    * POST /telegram/shop/buy-credits
-   * Body: { shopItemId: string }
    *
-   * Purchases an item using in-game credits. Deducts credits from the save,
-   * fulfils the purchase, and returns updated inventory.
+   * DISABLED (P0 safety gate).
+   *
+   * Credit purchase is unsafe in the current architecture: credits live
+   * inside the mobile gameplay save, the server has no authoritative wallet,
+   * and reading credit balance from `userSave` outside a transaction allows
+   * lost-update / free-purchase exploits under concurrency.
+   *
+   * Until a server-authoritative credit wallet is implemented (P1+), this
+   * endpoint is closed. Use Telegram Stars for all server-side purchases.
    */
-  app.post('/shop/buy-credits', { preHandler: [app.authenticate] }, async (req, reply) => {
-    const { userId } = req.user as JwtPayload;
-    const { shopItemId } = (req.body ?? {}) as { shopItemId?: unknown };
-
-    if (typeof shopItemId !== 'string') {
-      return reply.status(400).send({ error: 'shopItemId is required' });
-    }
-
-    const item = await prisma.shopItem.findUnique({ where: { id: shopItemId, isActive: true } });
-    if (!item) return reply.status(404).send({ error: 'Shop item not found' });
-    if (!item.priceCredits) {
-      return reply.status(400).send({ error: 'Item is not available for credits purchase' });
-    }
-
-    // Atomic credit deduction + purchase record creation
-    const save = await prisma.userSave.findUnique({ where: { userId } });
-    const saveData = (save?.data ?? {}) as Record<string, unknown>;
-    const currentCredits = (saveData.credits as number) ?? 0;
-
-    if (currentCredits < item.priceCredits) {
-      return reply.status(402).send({ error: 'Insufficient credits' });
-    }
-
-    const purchase = await prisma.$transaction(async (tx) => {
-      const newCredits = currentCredits - item.priceCredits!;
-      const newRev = (save?.rev ?? 0) + 1;
-
-      if (save) {
-        await tx.userSave.update({
-          where: { userId },
-          data: {
-            data: { ...(saveData as object), credits: newCredits },
-            rev: newRev,
-          },
-        });
-      } else {
-        await tx.userSave.create({
-          data: { userId, data: { credits: newCredits }, rev: newRev },
-        });
-      }
-
-      return tx.purchase.create({
-        data: {
-          userId,
-          shopItemId,
-          paymentMethod: 'credits',
-          creditsAmount: item.priceCredits,
-          status: 'pending',
-        },
-      });
+  app.post('/shop/buy-credits', { preHandler: [app.authenticate] }, async (_req, reply) => {
+    return reply.status(403).send({
+      error: 'Credit purchase via Telegram is currently unavailable. Use Telegram Stars.',
     });
-
-    const result = await fulfillPurchase(purchase.id);
-    if (!result.ok) {
-      return reply.status(500).send({ error: result.reason });
-    }
-
-    const inventory = await getUserInventory(userId);
-    return { ok: true, inventory };
   });
 
   /**

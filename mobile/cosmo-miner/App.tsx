@@ -48,6 +48,7 @@ import {
   loadGame,
   loadIntroSeen,
   saveGame,
+  saveGameEnvelope,
   saveIntroSeen,
 } from './src/game/storage';
 import { getAliens } from './src/game/ALIENS';
@@ -62,7 +63,11 @@ import {
   getAccessToken,
   getCloudRev,
   pushCloudSave,
+  fetchPendingGrants,
+  ackGrants,
 } from './src/game/cloudSave';
+import { serializeGameplaySaveV2, deserializeGameplaySaveEnvelope, pickNewerEnvelope } from './src/game/saveContract';
+import { applyGrants } from './src/game/grants';
 import { bootstrapTelegram } from './src/telegram/runtime';
 import { telegramAuthIfNeeded } from './src/telegram/auth';
 import { getPlanets } from './src/game/PLANETS';
@@ -74,7 +79,6 @@ import {
   UpgradeId,
 } from './src/game/UPGRADES';
 import { getResearchNodes } from './src/game/RESEARCH';
-import type { BoostStat, ShopItemId } from './src/game/SHOP';
 import type { GameStateInit } from './src/game/types';
 
 const ironMetal = METALS.find((m) => m.id === 'iron')!;
@@ -92,15 +96,22 @@ const TABS: Array<{ id: TabId; icon: string; label: string }> = [
 
 function GameApp({
   initial,
+  initialAppliedGrantSeq,
   tab,
   onSetTab,
   onReset,
 }: {
   initial: GameStateInit;
+  initialAppliedGrantSeq: number;
   tab: TabId;
   onSetTab: (t: TabId) => void;
   onReset: (showIntro?: boolean) => void;
 }) {
+  // appliedGrantSeq is the cursor for grant sync.
+  // It starts at the value loaded from the save envelope and updates only
+  // when new grants are applied during a session (P1). For P0, it is fixed
+  // at the bootstrap value.
+  const appliedGrantSeqRef = useRef(initialAppliedGrantSeq);
   const game = useGame(initial);
   const minAttackEnergy = Math.min(
     ...getAliens().map((a) => a.attackEnergyCost),
@@ -238,36 +249,22 @@ function GameApp({
     latestRef.current = game;
   });
 
-  // Save every 3 seconds
+  // Save every 3 seconds — full V2 envelope, same format for local and cloud
   useEffect(() => {
     const interval = setInterval(async () => {
       const g = latestRef.current;
-      const snapshot = {
-        energy: g.energy,
-        totalEarned: g.totalEarned,
-        clicks: g.clicks,
-        upgrades: g.upgrades,
-        unlockedPlanetIds: g.unlockedPlanetIds,
-        selectedPlanetId: g.selectedPlanetId,
-        achievements: g.achievements,
-        metals: g.metals,
-        fleet: g.fleet,
-        battle: g.battle,
-        playerXP: g.playerXP,
-        research: g.research,
-        expeditions: g.expeditions,
-      } as any;
-      saveGame(snapshot).catch(() => {});
+      const seq = appliedGrantSeqRef.current;
+      const envelope = serializeGameplaySaveV2(g, seq);
+
+      // Local save
+      saveGame(g, seq).catch(() => {});
       flushAnalytics().catch(() => {});
 
       // Cloud autosave — fire-and-forget, ignore 409 conflicts silently
       getAccessToken().then((token) => {
         if (!token) return;
         getCloudRev().then((rev) =>
-          pushCloudSave(
-            { version: 1, state: snapshot, savedAt: Date.now() },
-            rev ?? undefined,
-          ).catch(() => {}),
+          pushCloudSave(envelope, rev ?? undefined).catch(() => {}),
         );
       });
     }, 3000);
@@ -488,51 +485,10 @@ function GameApp({
           metals={game.metals}
           onBuyShopItem={game.buyShopItem}
           onAddCredits={game.addCredits}
-          onStarsPurchaseApplied={(item) => {
-            const meta = item.metadata;
-            const resMeta = item.purchaseResult?.metadata ?? {};
-
-            if (item.type === 'currency_pack') {
-              game.addCredits((meta.creditAmount as number) ?? 0);
-            } else if (item.type === 'metal_pack') {
-              const metalId = meta.metalId as MetalId;
-              const qty = (meta.quantity as number) ?? 0;
-              if (metalId && qty > 0) game.grantMetals({ [metalId]: qty });
-            } else if (item.type === 'booster') {
-              const stat = meta.effectType as BoostStat | undefined;
-              const durationMs = (meta.durationMs as number) ?? 3_600_000;
-              if (stat) {
-                game.activateBoost({
-                  shopItemId: item.id as ShopItemId,
-                  effect: {
-                    stat,
-                    multiplier:
-                      (meta.multiplier as number) ??
-                      (meta.bonus as number) ??
-                      1,
-                    durationMs,
-                  },
-                  expiresAt: Date.now() + durationMs,
-                });
-              }
-            } else if (item.type === 'loot_box') {
-              // Server rolled the metals; apply the authoritative result locally
-              const rolledMetals = resMeta.rolledMetals as
-                | Record<MetalId, number>
-                | undefined;
-              if (rolledMetals && Object.keys(rolledMetals).length > 0) {
-                game.grantMetals(rolledMetals);
-              }
-            } else if (item.type === 'premium_unlock') {
-              const effect = meta.effect as string | undefined;
-              if (effect === 'unlockNextSector') {
-                const planets = (resMeta.appliedPlanets as number[]) ?? [];
-                if (planets.length > 0) game.unlockPlanets(planets);
-              } else if (effect === 'resetResearch') {
-                const energyRefund = (resMeta.energyRefund as number) ?? 0;
-                game.resetResearch(energyRefund);
-              }
-            }
+          onStarsPurchaseApplied={() => {
+            // No immediate local apply — rewards are delivered exclusively via
+            // grant sync on next app launch (or next bootstrap).
+            // StarsShopTab already shows a "will be applied on next launch" message.
           }}
         />
       );
@@ -1245,6 +1201,7 @@ export default function App() {
   const [unlocked, setUnlocked] = useState(false);
   const [tab, setTab] = useState<TabId>('game');
   const [initial, setInitial] = useState<GameStateInit | undefined>(undefined);
+  const [initialAppliedGrantSeq, setInitialAppliedGrantSeq] = useState(0);
   const [introSeen, setIntroSeen] = useState<boolean | undefined>(undefined);
   const [gameKey, setGameKey] = useState(0);
   const [offlineEarnings, setOfflineEarnings] = useState(0);
@@ -1277,38 +1234,97 @@ export default function App() {
     let mounted = true;
     (async () => {
       // In Telegram runtime: auth first so getAccessToken() returns a valid
-      // token for the cloud-sync step below. No-op on native and plain web.
+      // token for the grant-sync step below. No-op on native and plain web.
       await telegramAuthIfNeeded();
 
-      const [loaded, seen, token] = await Promise.all([
+      const [localLoaded, seen, token] = await Promise.all([
         loadGame(),
         loadIntroSeen(),
         getAccessToken(),
       ]);
       if (!mounted) return;
 
-      // Cloud sync: if logged in, fetch cloud save and pick the newer snapshot
-      let cloudState: GameStateInit | undefined;
-      let cloudSavedAt = 0;
+      // Step 1-3: load local + cloud saves, pick newer envelope
+      let localEnvelope = localLoaded
+        ? { version: 2 as const, savedAt: localLoaded.savedAt, appliedGrantSeq: localLoaded.appliedGrantSeq, state: localLoaded.state }
+        : null;
+      let cloudRev: number | undefined;
+
       if (token) {
         const cloud = await fetchCloudSave();
         if (cloud) {
-          const localSavedAt = loaded?.savedAt ?? 0;
-          cloudSavedAt = cloud.data.savedAt ?? 0;
-          if (cloudSavedAt > localSavedAt) {
-            cloudState = cloud.data.state;
+          // cloud.data may be V1 or V2 — deserialize to normalize
+          const cloudResult = deserializeGameplaySaveEnvelope(cloud.data);
+          if (cloudResult.ok) {
+            localEnvelope = pickNewerEnvelope(localEnvelope, cloudResult.envelope);
+            cloudRev = cloud.rev;
           }
         }
       }
 
-      const resolvedState = cloudState ?? loaded?.state;
-      const resolvedSavedAt = cloudState
-        ? cloudSavedAt
-        : (loaded?.savedAt ?? 0);
+      // Step 4: read appliedGrantSeq from the chosen envelope
+      let resolvedEnvelope = localEnvelope;
+      let appliedGrantSeq = resolvedEnvelope?.appliedGrantSeq ?? 0;
 
-      if (resolvedState) {
-        const state = resolvedState;
-        const savedAt = resolvedSavedAt;
+      // Steps 5-9: grant sync (only when authenticated).
+      // Runs even when there is no existing save (fresh user) — start from
+      // empty state with appliedGrantSeq=0 so any welcome grants are applied.
+      if (token) {
+        const grantBaseSeq = resolvedEnvelope?.appliedGrantSeq ?? 0;
+        try {
+          const grants = await fetchPendingGrants(grantBaseSeq);
+          if (grants.length > 0) {
+            const baseState = resolvedEnvelope?.state ?? ({} as GameStateInit);
+            const { state: stateWithGrants, appliedGrantSeq: newSeq } = applyGrants(
+              baseState,
+              grants,
+              grantBaseSeq,
+            );
+
+            // Build new envelope with grant-applied state
+            resolvedEnvelope = {
+              version: 2,
+              savedAt: Date.now(),
+              appliedGrantSeq: newSeq,
+              state: stateWithGrants,
+            };
+            appliedGrantSeq = newSeq;
+
+            // Step 7: save locally via canonical path (no raw AsyncStorage.setItem)
+            let savedSuccessfully = false;
+            try {
+              await saveGameEnvelope(resolvedEnvelope);
+              savedSuccessfully = true;
+            } catch {
+              // Local save failed — do not ack
+            }
+
+            // Step 8: push to cloud
+            if (savedSuccessfully) {
+              try {
+                const pushed = await pushCloudSave(resolvedEnvelope, cloudRev);
+                cloudRev = pushed.rev;
+              } catch {
+                // Cloud push failed — safe, still saved locally; do not ack yet
+                savedSuccessfully = false;
+              }
+            }
+
+            // Step 9: ack only after both local save and cloud push succeeded
+            if (savedSuccessfully) {
+              await ackGrants(newSeq);
+            }
+          }
+        } catch {
+          // Grant sync failure is non-fatal — start game with current state
+        }
+      }
+
+      const state = resolvedEnvelope?.state;
+      const savedAt = resolvedEnvelope?.savedAt ?? 0;
+
+      if (state) {
+        // Apply offline earnings
         if (savedAt > 0) {
           const elapsedSeconds = (Date.now() - savedAt) / 1000;
           let basePassive = 0;
@@ -1333,8 +1349,10 @@ export default function App() {
           }
         }
         setInitial(state);
+        setInitialAppliedGrantSeq(appliedGrantSeq);
       } else {
         setInitial({});
+        setInitialAppliedGrantSeq(0);
       }
       setIntroSeen(seen);
     })();
@@ -1380,6 +1398,7 @@ export default function App() {
         <GameApp
           key={gameKey}
           initial={initial}
+          initialAppliedGrantSeq={initialAppliedGrantSeq}
           tab={tab}
           onSetTab={setTab}
           onReset={handleReset}

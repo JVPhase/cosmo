@@ -1,0 +1,18 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.UPGRADES_DATA = void 0;
+exports.UPGRADES_DATA = [
+    { id: 1, name: 'Лазерный бур Мк.1', baseCost: 15, clickBonus: 1, passiveBonus: 0 },
+    { id: 10, name: 'Плазменный ускоритель', baseCost: 600, clickBonus: 5, passiveBonus: 0 },
+    { id: 3, name: 'Орбитальная пушка', baseCost: 8000, clickBonus: 30, passiveBonus: 0 },
+    { id: 5, name: 'Варп-экстрактор', baseCost: 150000, clickBonus: 200, passiveBonus: 0 },
+    { id: 7, name: 'Гравитационный коллектор', baseCost: 3000000, clickBonus: 1500, passiveBonus: 0 },
+    { id: 9, name: 'Пассивный зонд', baseCost: 60, clickBonus: 0, passiveBonus: 1 },
+    { id: 2, name: 'Дрон-стажёр', baseCost: 350, clickBonus: 0, passiveBonus: 4 },
+    { id: 11, name: 'Реактор Мк.1', baseCost: 3500, clickBonus: 0, passiveBonus: 15 },
+    { id: 4, name: 'Автостанция «Рога и копыта»', baseCost: 25000, clickBonus: 0, passiveBonus: 80 },
+    { id: 12, name: 'Реактор Мк.2', baseCost: 120000, clickBonus: 0, passiveBonus: 350 },
+    { id: 6, name: 'Флот «Рабочие пчёлки»', baseCost: 500000, clickBonus: 0, passiveBonus: 1500 },
+    { id: 13, name: 'Реактор Мк.3', baseCost: 2000000, clickBonus: 0, passiveBonus: 7000 },
+    { id: 14, name: 'Реактор Мк.4 «Вечный»', baseCost: 10000000, clickBonus: 0, passiveBonus: 35000 },
+];

@@ -89,4 +89,19 @@ export type GameStateInit = {
   activeBoosts?: ActiveBoost[];
 };
 
+/**
+ * Canonical save envelope — V2.
+ * mobile is the sole writer; server stores and returns this blob as-is.
+ *   version:          2 (contract version, for server validation)
+ *   savedAt:          timestamp of last local snapshot (ms since epoch)
+ *   appliedGrantSeq:  last Grant seq mobile has applied (used as sync cursor)
+ *   state:            full gameplay snapshot
+ */
+export type GameplaySaveEnvelopeV2 = {
+  version: 2;
+  savedAt: number;
+  appliedGrantSeq: number;
+  state: GameStateInit;
+};
+
 export type { ActiveExpedition, BattleState, CharacterId, FleetState, MetalsState, ModuleId, OwnedShip, ResearchId, ResearchState };

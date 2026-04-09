@@ -2,6 +2,7 @@
  * Server-side inventory management.
  * All mutations go through here to keep business logic centralised.
  */
+import type { Prisma } from '@prisma/client';
 import prisma from './prisma';
 
 export interface InventoryEntry {
@@ -35,11 +36,17 @@ export async function addToInventory(
 ): Promise<InventoryEntry> {
   const row = await prisma.inventory.upsert({
     where: { userId_itemId: { userId, itemId } },
-    create: { userId, itemId, itemType, quantity, metadata: metadata ?? null },
+    create: {
+      userId,
+      itemId,
+      itemType,
+      quantity,
+      ...(metadata !== undefined ? { metadata: metadata as Prisma.InputJsonValue } : {}),
+    },
     update: {
       quantity: { increment: quantity },
       // Merge metadata for time-limited items (e.g. extend booster expiry)
-      ...(metadata ? { metadata } : {}),
+      ...(metadata !== undefined ? { metadata: metadata as Prisma.InputJsonValue } : {}),
     },
   });
   return {

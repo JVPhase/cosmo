@@ -77,8 +77,12 @@ type ShopItemSeed = {
   sortOrder: number;
 };
 
+// deliveryMode values:
+//   'grant_sync'   — delivered via Grant sync to mobile (P0 supported)
+//   'unsupported'  — no deterministic mobile apply path yet; hidden from catalog
+//   'server_only'  — server-side only effect, no mobile sync needed
 const SHOP_ITEMS: ShopItemSeed[] = [
-  // ── Boosters ───────────────────────────────────────────────────────────────
+  // ── Boosters (grant_sync) ──────────────────────────────────────────────────
   {
     id: 'booster_mining_1h',
     type: 'booster',
@@ -86,7 +90,7 @@ const SHOP_ITEMS: ShopItemSeed[] = [
     description: 'Doubles your click power for 1 hour.',
     priceStars: 25,
     priceCredits: 80,
-    metadata: { effectType: 'clickMultiplier', multiplier: 2, durationMs: 3_600_000 },
+    metadata: { effectType: 'clickMultiplier', multiplier: 2, durationMs: 3_600_000, deliveryMode: 'grant_sync' },
     sortOrder: 10,
   },
   {
@@ -96,7 +100,7 @@ const SHOP_ITEMS: ShopItemSeed[] = [
     description: 'Doubles XP earned for 1 hour.',
     priceStars: 20,
     priceCredits: 60,
-    metadata: { effectType: 'xpMultiplier', multiplier: 2, durationMs: 3_600_000 },
+    metadata: { effectType: 'xpMultiplier', multiplier: 2, durationMs: 3_600_000, deliveryMode: 'grant_sync' },
     sortOrder: 11,
   },
   {
@@ -106,7 +110,7 @@ const SHOP_ITEMS: ShopItemSeed[] = [
     description: 'Increases metal drop chance by 50% for 1 hour.',
     priceStars: 30,
     priceCredits: 90,
-    metadata: { effectType: 'metalDropBonus', bonus: 0.5, durationMs: 3_600_000 },
+    metadata: { effectType: 'metalDropBonus', bonus: 0.5, durationMs: 3_600_000, deliveryMode: 'grant_sync' },
     sortOrder: 12,
   },
   {
@@ -116,19 +120,19 @@ const SHOP_ITEMS: ShopItemSeed[] = [
     description: 'Increases battle damage by 1.5× for 30 minutes.',
     priceStars: 15,
     priceCredits: 50,
-    metadata: { effectType: 'damageMultiplier', multiplier: 1.5, durationMs: 1_800_000 },
+    metadata: { effectType: 'damageMultiplier', multiplier: 1.5, durationMs: 1_800_000, deliveryMode: 'grant_sync' },
     sortOrder: 13,
   },
 
-  // ── Metal Packs ────────────────────────────────────────────────────────────
+  // ── Metal Packs (grant_sync) ───────────────────────────────────────────────
   {
     id: 'metal_iron',
     type: 'metal_pack',
     name: '🪨 Iron Pack ×50',
-    description: '50 units of Iron delivered directly to your cargo hold.',
+    description: '50 units of Iron delivered to your cargo hold.',
     priceStars: 10,
     priceCredits: 30,
-    metadata: { metalId: 'iron', quantity: 50 },
+    metadata: { metalId: 'iron', quantity: 50, deliveryMode: 'grant_sync' },
     sortOrder: 20,
   },
   {
@@ -138,7 +142,7 @@ const SHOP_ITEMS: ShopItemSeed[] = [
     description: '20 units of Titan.',
     priceStars: 25,
     priceCredits: 70,
-    metadata: { metalId: 'titan', quantity: 20 },
+    metadata: { metalId: 'titan', quantity: 20, deliveryMode: 'grant_sync' },
     sortOrder: 21,
   },
   {
@@ -148,7 +152,7 @@ const SHOP_ITEMS: ShopItemSeed[] = [
     description: '10 units of Iridium.',
     priceStars: 50,
     priceCredits: 140,
-    metadata: { metalId: 'iridium', quantity: 10 },
+    metadata: { metalId: 'iridium', quantity: 10, deliveryMode: 'grant_sync' },
     sortOrder: 22,
   },
   {
@@ -158,7 +162,7 @@ const SHOP_ITEMS: ShopItemSeed[] = [
     description: '5 Void Crystals, rare tier-3 material.',
     priceStars: 90,
     priceCredits: 250,
-    metadata: { metalId: 'voidCrystal', quantity: 5 },
+    metadata: { metalId: 'voidCrystal', quantity: 5, deliveryMode: 'grant_sync' },
     sortOrder: 23,
   },
   {
@@ -168,11 +172,11 @@ const SHOP_ITEMS: ShopItemSeed[] = [
     description: '5 Echo Shards, rare tier-3 material.',
     priceStars: 90,
     priceCredits: 250,
-    metadata: { metalId: 'echoShard', quantity: 5 },
+    metadata: { metalId: 'echoShard', quantity: 5, deliveryMode: 'grant_sync' },
     sortOrder: 24,
   },
 
-  // ── Loot Boxes ────────────────────────────────────────────────────────────
+  // ── Loot Boxes (grant_sync) ────────────────────────────────────────────────
   {
     id: 'loot_box_basic',
     type: 'loot_box',
@@ -180,7 +184,7 @@ const SHOP_ITEMS: ShopItemSeed[] = [
     description: 'Contains a random amount of Iron, Titan, or Iridium.',
     priceStars: 15,
     priceCredits: 40,
-    metadata: { tier: 'basic', pool: ['iron', 'titan', 'iridium'] },
+    metadata: { tier: 'basic', pool: ['iron', 'titan', 'iridium'], deliveryMode: 'grant_sync' },
     sortOrder: 30,
   },
   {
@@ -190,7 +194,7 @@ const SHOP_ITEMS: ShopItemSeed[] = [
     description: 'All base metals plus a chance at rare materials.',
     priceStars: 40,
     priceCredits: 120,
-    metadata: { tier: 'advanced', pool: ['iron', 'titan', 'iridium', 'voidCrystal', 'echoShard'] },
+    metadata: { tier: 'advanced', pool: ['iron', 'titan', 'iridium', 'voidCrystal', 'echoShard'], deliveryMode: 'grant_sync' },
     sortOrder: 31,
   },
   {
@@ -200,11 +204,12 @@ const SHOP_ITEMS: ShopItemSeed[] = [
     description: 'Guaranteed rare materials with double quantities.',
     priceStars: 120,
     priceCredits: 350,
-    metadata: { tier: 'premium', pool: ['voidCrystal', 'echoShard'], guaranteed: true, doubleQty: true },
+    metadata: { tier: 'premium', pool: ['voidCrystal', 'echoShard'], guaranteed: true, doubleQty: true, deliveryMode: 'grant_sync' },
     sortOrder: 32,
   },
 
-  // ── Premium Unlocks ───────────────────────────────────────────────────────
+  // ── Premium Unlocks (unsupported in P0) ───────────────────────────────────
+  // Hidden from catalog until a deterministic mobile apply path exists.
   {
     id: 'premium_sector_skip',
     type: 'premium_unlock',
@@ -212,7 +217,7 @@ const SHOP_ITEMS: ShopItemSeed[] = [
     description: 'Instantly unlock the next sector without grinding the cost.',
     priceStars: 200,
     priceCredits: null,
-    metadata: { effect: 'unlockNextSector' },
+    metadata: { effect: 'unlockNextSector', deliveryMode: 'unsupported' },
     sortOrder: 40,
   },
   {
@@ -222,12 +227,12 @@ const SHOP_ITEMS: ShopItemSeed[] = [
     description: 'Reset all research nodes and recover spent energy.',
     priceStars: 150,
     priceCredits: null,
-    metadata: { effect: 'resetResearch' },
+    metadata: { effect: 'resetResearch', deliveryMode: 'unsupported' },
     sortOrder: 41,
   },
 
-  // ── Credit Packs (Telegram Stars → in-game credits) ──────────────────────
-  // On purchase these are credited directly to UserSave.data.credits (not inventory).
+  // ── Credit Packs (grant_sync) ─────────────────────────────────────────────
+  // Delivered via credits_grant to mobile via sync.
   {
     id: 'credits_100',
     type: 'currency_pack',
@@ -235,7 +240,7 @@ const SHOP_ITEMS: ShopItemSeed[] = [
     description: '100 in-game credits.',
     priceStars: 15,
     priceCredits: null,
-    metadata: { creditAmount: 100 },
+    metadata: { creditAmount: 100, deliveryMode: 'grant_sync' },
     sortOrder: 50,
   },
   {
@@ -245,7 +250,7 @@ const SHOP_ITEMS: ShopItemSeed[] = [
     description: '1 000 in-game credits — saves 13% vs buying individually.',
     priceStars: 130,
     priceCredits: null,
-    metadata: { creditAmount: 1000 },
+    metadata: { creditAmount: 1000, deliveryMode: 'grant_sync' },
     sortOrder: 51,
   },
   {
@@ -255,7 +260,7 @@ const SHOP_ITEMS: ShopItemSeed[] = [
     description: '10 000 in-game credits — best value, saves 33%.',
     priceStars: 1000,
     priceCredits: null,
-    metadata: { creditAmount: 10000 },
+    metadata: { creditAmount: 10000, deliveryMode: 'grant_sync' },
     sortOrder: 52,
   },
 ];

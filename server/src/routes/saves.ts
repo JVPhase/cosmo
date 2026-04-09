@@ -1,6 +1,50 @@
+/**
+ * Save routes:
+ *   GET /saves  — fetch latest snapshot
+ *   PUT /saves  — upsert game snapshot (optimistic concurrency via rev)
+ *
+ * Accepted formats:
+ *   V2 (preferred): { version: 2, savedAt: number, appliedGrantSeq: number, state: GameStateInit }
+ *   V1 (legacy):    { version: 1, savedAt?: number, state: GameStateInit }
+ *
+ * Server never modifies the state contents — it stores the blob as-is.
+ * mobile is the sole writer of gameplay state.
+ */
 import type { FastifyInstance } from 'fastify';
 import prisma from '../lib/prisma';
 import type { JwtPayload } from '../plugins/jwt';
+
+function validateEnvelope(data: unknown): { ok: true } | { ok: false; reason: string } {
+  if (typeof data !== 'object' || data === null || Array.isArray(data)) {
+    return { ok: false, reason: 'data must be a non-null object' };
+  }
+  const d = data as Record<string, unknown>;
+
+  // V2 envelope — strict validation
+  if (d.version === 2) {
+    if (typeof d.savedAt !== 'number') {
+      return { ok: false, reason: 'v2 envelope requires savedAt: number' };
+    }
+    if (typeof d.appliedGrantSeq !== 'number') {
+      return { ok: false, reason: 'v2 envelope requires appliedGrantSeq: number' };
+    }
+    if (typeof d.state !== 'object' || d.state === null || Array.isArray(d.state)) {
+      return { ok: false, reason: 'v2 envelope requires state: object' };
+    }
+    return { ok: true };
+  }
+
+  // V1 envelope — relaxed, legacy rollout support
+  if (d.version === 1) {
+    if (typeof d.state !== 'object' || d.state === null || Array.isArray(d.state)) {
+      return { ok: false, reason: 'v1 envelope requires state: object' };
+    }
+    return { ok: true };
+  }
+
+  // No version — reject; all clients must send a versioned envelope
+  return { ok: false, reason: 'data.version must be 1 or 2' };
+}
 
 export async function savesRoutes(app: FastifyInstance) {
   // GET /saves — fetch latest snapshot for the authenticated user
@@ -18,15 +62,16 @@ export async function savesRoutes(app: FastifyInstance) {
   });
 
   // PUT /saves — upsert game snapshot
-  // Body: { data: StoredGameV1, rev?: number }
+  // Body: { data: GameplaySaveEnvelopeV2 | GameplaySaveEnvelopeV1, rev?: number }
   // If `rev` is provided and doesn't match the server's current rev → 409 Conflict.
   // Client should then decide: discard local or force-push (omit rev).
   app.put('/', { preHandler: [app.authenticate] }, async (req, reply) => {
     const { userId } = req.user as JwtPayload;
     const body = (req.body ?? {}) as { data?: unknown; rev?: unknown };
 
-    if (typeof body.data !== 'object' || body.data === null || Array.isArray(body.data)) {
-      return reply.status(400).send({ error: 'data must be a non-null object' });
+    const validation = validateEnvelope(body.data);
+    if (!validation.ok) {
+      return reply.status(400).send({ error: validation.reason });
     }
 
     const existing = await prisma.userSave.findUnique({ where: { userId } });

@@ -1,17 +1,20 @@
 /**
  * Stars shop tab — visible only inside Telegram Mini App runtime.
  *
- * Supported SKU types (end-to-end verified):
- *   currency_pack   — credits go to UserSave.data.credits server-side;
- *                     onPurchaseApplied calls game.addCredits() locally.
- *   metal_pack      — metals go to server inventory;
- *                     onPurchaseApplied calls game.grantMetals() locally.
- *   booster         — booster goes to server inventory;
- *                     onPurchaseApplied calls game.activateBoost() locally.
- *   loot_box        — server rolls metals, writes to UserSave;
- *                     client fetches result, then game.grantMetals() with actual roll.
- *   premium_unlock  — server applies effect to UserSave;
- *                     client fetches result and applies locally for immediate feedback.
+ * Only shows items with deliveryMode: 'grant_sync' in their metadata.
+ * After purchase, the server creates a Grant. On next app launch (or
+ * during the current session if the user triggers a manual sync),
+ * the grant is fetched from /sync/grants, applied to the game state,
+ * saved, and acknowledged.
+ *
+ * Supported SKU types (P0, all delivered via grant_sync):
+ *   currency_pack       — credits_grant → state.credits += amount
+ *   metal_pack          — metal_grant   → state.metals[metalId] += quantity
+ *   booster             — booster_grant → state.activeBoosts += new boost
+ *   loot_box            — loot_box_reward_grant → state.metals += rolledMetals
+ *
+ * Hidden from catalog until grant apply path exists:
+ *   premium_unlock      — deliveryMode: 'unsupported'
  */
 import React, { useEffect, useState } from 'react';
 import {
@@ -28,13 +31,9 @@ import { getAccessToken, refreshAccessToken } from '../game/cloudSave';
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
 
-const SUPPORTED_TYPES = new Set([
-  'currency_pack',
-  'metal_pack',
-  'booster',
-  'loot_box',
-  'premium_unlock',
-]);
+// Only items with deliveryMode: 'grant_sync' are shown.
+// The server also filters the catalog — this is a client-side safety guard.
+const GRANT_SYNC_DELIVERY_MODE = 'grant_sync';
 
 interface StarShopItem {
   id: string;
@@ -97,7 +96,8 @@ async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   return json;
 }
 
-// ── Success copy by item type ──────────────────────────────────────────────
+// ── Purchase confirmation copy ─────────────────────────────────────────────
+// Delivery happens via grant sync on next launch — we show pending confirmation.
 
 const METAL_ICONS: Record<string, string> = {
   iron: '🪨',
@@ -107,51 +107,26 @@ const METAL_ICONS: Record<string, string> = {
   echoShard: '🔊',
 };
 
-function successMessage(item: StarShopItem, result?: StarsPurchaseResult): string {
+function grantPendingMessage(item: StarShopItem): string {
   const meta = item.metadata;
-  const resMeta = result?.metadata ?? {};
 
   switch (item.type) {
     case 'currency_pack':
-      return `+${meta.creditAmount as number} 💳 кредитов зачислено.`;
+      return `+${meta.creditAmount as number} 💳 кредитов будет зачислено при следующем запуске игры.`;
 
     case 'metal_pack': {
       const icon = METAL_ICONS[meta.metalId as string] ?? '🔩';
-      return `${icon} +${meta.quantity as number} ${meta.metalId as string} добавлено в трюм.`;
+      return `${icon} +${meta.quantity as number} ${meta.metalId as string} — будет добавлено при следующем запуске игры.`;
     }
 
     case 'booster':
-      return `${item.name} активирован!`;
+      return `${item.name} — будет активирован при следующем запуске игры.`;
 
-    case 'loot_box': {
-      const rolledMetals = resMeta.rolledMetals as Record<string, number> | undefined;
-      if (!rolledMetals || Object.keys(rolledMetals).length === 0) {
-        return `${item.name} вскрыт!`;
-      }
-      const lines = Object.entries(rolledMetals)
-        .map(([k, v]) => `${METAL_ICONS[k] ?? '🔩'} +${v} ${k}`)
-        .join('\n');
-      return `Содержимое ящика:\n${lines}`;
-    }
-
-    case 'premium_unlock': {
-      const effect = meta.effect as string | undefined;
-      if (effect === 'unlockNextSector') {
-        const planets = (resMeta.appliedPlanets as number[]) ?? [];
-        return planets.length > 0
-          ? `🚀 Сектор разблокирован! Открыто планет: ${planets.length}`
-          : '🚀 Следующий сектор уже разблокирован.';
-      }
-      if (effect === 'resetResearch') {
-        const refund = (resMeta.energyRefund as number) ?? 0;
-        const nodes = (resMeta.nodesReset as number) ?? 0;
-        return `🔬 Исследования сброшены (${nodes} узлов). Возвращено энергии: ${refund.toLocaleString()}`;
-      }
-      return `${item.name} применён.`;
-    }
+    case 'loot_box':
+      return `${item.name} куплен. Содержимое появится при следующем запуске игры.`;
 
     default:
-      return `${item.name} получен.`;
+      return `${item.name} куплен. Будет доставлен при следующем запуске игры.`;
   }
 }
 
@@ -169,8 +144,12 @@ export function StarsShopTab({ onPurchaseApplied }: StarsShopTabProps) {
     apiFetch<{ items: Array<StarShopItem & { priceStars: number | null }> }>('/telegram/shop')
       .then((res) =>
         setItems(
+          // Server already filters by deliveryMode: 'grant_sync'.
+          // This client-side filter is a safety guard for cached/stale responses.
           res.items.filter(
-            (i) => i.priceStars !== null && SUPPORTED_TYPES.has(i.type),
+            (i) =>
+              i.priceStars !== null &&
+              (i.metadata as Record<string, unknown>)?.deliveryMode === GRANT_SYNC_DELIVERY_MODE,
           ) as StarShopItem[],
         ),
       )
@@ -201,29 +180,15 @@ export function StarsShopTab({ onPurchaseApplied }: StarsShopTabProps) {
         if (status === 'paid') {
           tg.hapticFeedback.notificationOccurred('success');
 
-          // For loot_box and premium_unlock: fetch server-authoritative result
-          let purchaseResult: StarsPurchaseResult | undefined;
-          if (
-            (item.type === 'loot_box' || item.type === 'premium_unlock') &&
-            purchaseId
-          ) {
-            try {
-              purchaseResult = await apiFetch<StarsPurchaseResult>(
-                `/telegram/purchase/${purchaseId}/result`,
-              );
-            } catch {
-              // Non-fatal: state already applied server-side, will sync on next cloud pull
-            }
-          }
-
+          // Delivery is via grant sync — no immediate local apply.
+          // The grant will be applied on the next app launch or manual sync.
           onPurchaseApplied({
             id: item.id,
             type: item.type,
             metadata: item.metadata,
-            purchaseResult,
           });
 
-          Alert.alert('Покупка завершена', successMessage(item, purchaseResult));
+          Alert.alert('Покупка завершена', grantPendingMessage(item));
         } else if (status !== 'cancelled') {
           Alert.alert('Ошибка оплаты', `Статус: ${status}`);
         }

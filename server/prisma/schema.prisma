@@ -20,6 +20,7 @@ model User {
   telegramUser  TelegramUser?
   purchases     Purchase[]
   inventory     Inventory[]
+  grants        Grant[]
 }
 
 model TelegramUser {
@@ -119,6 +120,27 @@ model Purchase {
 
   @@index([userId])
   @@index([telegramPaymentChargeId])
+}
+
+// ── Grants ────────────────────────────────────────────────────────────────────
+
+// Server-to-mobile delivery channel for purchase effects.
+// mobile applies grants in seq order, then acks upToSeq.
+// ackedAt = null means grant is pending delivery.
+model Grant {
+  id         String    @id @default(cuid())
+  userId     String
+  seq        Int
+  kind       String    // "credits_grant" | "metal_grant" | "booster_grant" | "loot_box_reward_grant"
+  payload    Json      // deterministic reward payload, no rolling on client
+  source     String?   // e.g. "purchase"
+  purchaseId String?
+  ackedAt    DateTime?
+  createdAt  DateTime  @default(now())
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, seq])
+  @@index([userId, ackedAt, seq])
 }
 
 // Server-authoritative inventory for each user.
