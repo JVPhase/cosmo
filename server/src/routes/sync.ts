@@ -14,6 +14,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { JwtPayload } from '../plugins/jwt';
 import { getPendingGrants, ackGrants } from '../lib/grants';
+import { GRANT_SYNC_ENABLED } from '../lib/features';
 
 export async function syncRoutes(app: FastifyInstance) {
   /**
@@ -22,6 +23,9 @@ export async function syncRoutes(app: FastifyInstance) {
    * afterSeq defaults to 0 (fetch all pending grants).
    */
   app.get('/grants', { preHandler: [app.authenticate] }, async (req, reply) => {
+    if (!GRANT_SYNC_ENABLED) {
+      return reply.status(503).send({ error: 'Grant sync is temporarily unavailable' });
+    }
     const { userId } = req.user as JwtPayload;
     const query = (req.query ?? {}) as { afterSeq?: unknown };
     const afterSeq = typeof query.afterSeq === 'string' ? parseInt(query.afterSeq, 10) : 0;
@@ -41,6 +45,9 @@ export async function syncRoutes(app: FastifyInstance) {
    * mobile must only call this after a successful save/push.
    */
   app.post('/grants/ack', { preHandler: [app.authenticate] }, async (req, reply) => {
+    if (!GRANT_SYNC_ENABLED) {
+      return reply.status(503).send({ error: 'Grant sync is temporarily unavailable' });
+    }
     const { userId } = req.user as JwtPayload;
     const body = (req.body ?? {}) as { upToSeq?: unknown };
 
