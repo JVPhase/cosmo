@@ -10,7 +10,10 @@
     "db:generate": "prisma generate",
     "db:seed": "prisma generate && tsx prisma/seed.ts",
     "db:up": "docker compose -f ../docker-compose.yml up -d",
-    "db:down": "docker compose -f ../docker-compose.yml down"
+    "db:down": "docker compose -f ../docker-compose.yml down",
+    "db:test:setup": "tsx scripts/test-db-setup.ts",
+    "test:contract": "tsx --env-file=.env.test --test test/contract/*.test.ts",
+    "test:contract:verbose": "tsx --env-file=.env.test --test --test-reporter=spec test/contract/*.test.ts"
   },
   "prisma": {
     "seed": "prisma generate && tsx prisma/seed.ts"
@@ -18,7 +21,8 @@
   "dependencies": {
     "dotenv": "^16.4.7",
     "@cosmo/game-config": "file:../packages/game-config",
-    "@fastify/jwt": "^9.0.0",
+    "@fastify/cors": "^11.0.0",
+    "@fastify/jwt": "^10.0.0",
     "@fastify/rate-limit": "^10.0.0",
     "@prisma/client": "^6.0.0",
     "argon2": "^0.43.0",

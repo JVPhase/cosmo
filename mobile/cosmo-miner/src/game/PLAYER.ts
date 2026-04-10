@@ -1,110 +1,20 @@
+/**
+ * Player data: titles, remote-config overlay helpers, and level calculators.
+ *
+ * XP_THRESHOLDS and MAX_LEVEL are now canonical — imported from @cosmo/game-config.
+ * Level calculation delegates to canonical calculators; remoteConfig is the overlay.
+ */
+import {
+  XP_THRESHOLDS,
+  MAX_LEVEL,
+  computePlayerLevel as _canonicalComputeLevel,
+  xpAtLevelStart as _canonicalXpAtLevelStart,
+  xpForNextLevel as _canonicalXpForNextLevel,
+} from '@cosmo/game-config';
 import { getCachedRemoteConfig } from './remoteConfig';
 
-// Total XP required to reach each level (index 0 = level 1 start, index 99 = level 100 start)
-export const XP_THRESHOLDS = [
-  0,           // level 1
-  100,         // level 2
-  300,         // level 3
-  700,         // level 4
-  1_500,       // level 5
-  3_000,       // level 6
-  6_000,       // level 7
-  12_000,      // level 8
-  22_000,      // level 9
-  40_000,      // level 10
-  70_000,      // level 11
-  120_000,     // level 12
-  200_000,     // level 13
-  320_000,     // level 14
-  500_000,     // level 15
-  750_000,     // level 16
-  1_100_000,   // level 17
-  1_600_000,   // level 18
-  2_200_000,   // level 19
-  3_000_000,   // level 20
-  3_958_524,   // level 21
-  5_223_303,   // level 22
-  6_892_190,   // level 23
-  9_094_299,   // level 24
-  12_000_000,  // level 25
-  15_267_116,  // level 26
-  19_423_735,  // level 27
-  24_712_034,  // level 28
-  31_440_123,  // level 29
-  40_000_000,  // level 30
-  49_829_238,  // level 31
-  62_073_823,  // level 32
-  77_327_282,  // level 33
-  96_328_987,  // level 34
-  120_000_000, // level 35
-  150_309_123, // level 36
-  188_273_604, // level 37
-  235_827_004, // level 38
-  295_391_251, // level 39
-  370_000_000, // level 40
-  460_086_951, // level 41
-  572_108_116, // level 42
-  711_403_997, // level 43
-  884_615_395, // level 44
-  1_100_000_000, // level 45
-  1_344_430_632, // level 46
-  1_643_176_113, // level 47
-  2_008_305_728, // level 48
-  2_454_570_672, // level 49
-  3_000_000_000, // level 50
-  3_626_704_146, // level 51
-  4_384_327_655, // level 52
-  5_300_219_762, // level 53
-  6_407_442_995, // level 54
-  7_745_966_692, // level 55
-  9_364_109_840, // level 56
-  11_320_285_328, // level 57
-  13_685_108_578, // level 58
-  16_543_946_674, // level 59
-  20_000_000_000, // level 60
-  24_464_487_485, // level 61
-  29_925_557_395, // level 62
-  36_605_671_218, // level 63
-  44_776_949_269, // level 64
-  54_772_255_751, // level 65
-  66_998_758_266, // level 66
-  81_954_514_155, // level 67
-  100_248_759_294, // level 68
-  122_626_725_856, // level 69
-  150_000_000_000, // level 70
-  181_335_207_314, // level 71
-  219_216_382_743, // level 72
-  265_010_988_075, // level 73
-  320_372_149_754, // level 74
-  387_298_334_621, // level 75
-  468_205_492_005, // level 76
-  566_014_266_387, // level 77
-  684_255_428_919, // level 78
-  827_197_333_723, // level 79
-  1_000_000_000_000, // level 80
-  1_214_814_044_039, // level 81
-  1_475_773_161_595, // level 82
-  1_792_789_962_521, // level 83
-  2_177_906_424_483, // level 84
-  2_645_751_311_065, // level 85
-  3_214_095_849_716, // level 86
-  3_904_528_777_123, // level 87
-  4_743_276_393_803, // level 88
-  5_762_198_777_951, // level 89
-  7_000_000_000_000, // level 90
-  8_520_895_446_666, // level 91
-  10_372_237_030_430, // level 92
-  12_625_821_040_619, // level 93
-  15_369_043_002_204, // level 94
-  18_708_286_933_870, // level 95
-  22_773_050_992_818, // level 96
-  27_720_969_501_628, // level 97
-  33_743_926_114_798, // level 98
-  41_075_495_197_744, // level 99
-  50_000_000_000_000, // level 100
-] as const;
-
-export const MAX_LEVEL = XP_THRESHOLDS.length; // 100
+// Re-export canonical constants so existing imports from this file continue to work.
+export { XP_THRESHOLDS, MAX_LEVEL };
 
 export const PLAYER_TITLES: readonly string[] = [
   // Zone 1 — Внутренний Кластер (levels 1–10)
@@ -187,7 +97,7 @@ export const PLAYER_TITLES: readonly string[] = [
   // Zone 8 — Сингулярная Бездна (levels 71–80)
   'Верховный Регулятор Тёмной Материи',
   'Главный Надзиратель Сингулярных Зон',
-  'Суперкомиссар Временных Потоков',
+  'Суперкомиссар Временских Потоков',
   'Вице-Председатель Совета Галактических Эпох',
   'Председатель Совета Пространства',
   'Верховный Правитель Квантовых Измерений',
@@ -219,25 +129,19 @@ export const PLAYER_TITLES: readonly string[] = [
   'Единственный. Неповторимый. Магнат.',
 ] as const;
 
-/** XP-пороги из remote-конфига (или локальные значения). */
+/** XP-пороги: remote-config overlay над каноническими данными. */
 export function getXpThresholds(): readonly number[] {
   return getCachedRemoteConfig()?.player?.xpThresholds ?? XP_THRESHOLDS;
 }
 
-/** Максимальный уровень из remote-конфига (или локальное значение). */
+/** Максимальный уровень: remote-config overlay. */
 export function getMaxLevel(): number {
   return getCachedRemoteConfig()?.player?.maxLevel ?? MAX_LEVEL;
 }
 
+/** Вычисляет уровень игрока. Использует canonical calculator + remoteConfig overlay. */
 export function computePlayerLevel(xp: number): number {
-  const thresholds = getXpThresholds();
-  const maxLevel = getMaxLevel();
-  let level = 1;
-  for (let i = 0; i < thresholds.length; i++) {
-    if (xp >= thresholds[i]) level = i + 1;
-    else break;
-  }
-  return Math.min(level, maxLevel);
+  return _canonicalComputeLevel(xp, getXpThresholds(), getMaxLevel());
 }
 
 export function getPlayerTitle(level: number): string {
@@ -248,13 +152,12 @@ export function getPlayerTitle(level: number): string {
   );
 }
 
-/** Total XP needed to reach the START of this level (i.e. the threshold for level n). */
+/** Total XP needed to reach the START of this level. */
 export function xpAtLevelStart(level: number): number {
-  return getXpThresholds()[Math.max(0, level - 1)] ?? 0;
+  return _canonicalXpAtLevelStart(level, getXpThresholds());
 }
 
 /** Total XP needed to reach the NEXT level, or null if already at max. */
 export function xpForNextLevel(level: number): number | null {
-  if (level >= getMaxLevel()) return null;
-  return getXpThresholds()[level] ?? null;
+  return _canonicalXpForNextLevel(level, getXpThresholds(), getMaxLevel());
 }

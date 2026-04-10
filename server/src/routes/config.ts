@@ -51,6 +51,15 @@ const STATIC_FALLBACKS: Record<string, unknown> = {
   planets: { overrides: HARDCODED_PLANETS_DATA, zoneThemes: PLANET_ZONE_THEMES_DATA },
 };
 
+/** Keys mergeable via `GameConfig` / CRM (same set as `/config` payload). */
+export function listGameConfigKeys(): string[] {
+  return Object.keys(STATIC_FALLBACKS);
+}
+
+export function getStaticGameConfigFallback(key: string): unknown {
+  return STATIC_FALLBACKS[key];
+}
+
 async function buildConfigPayload() {
   const rows = await prisma.gameConfig.findMany();
   const db: Record<string, unknown> = Object.fromEntries(rows.map((r) => [r.key, r.data]));

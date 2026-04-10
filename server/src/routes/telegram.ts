@@ -19,7 +19,13 @@ import {
 } from '../lib/telegram';
 import { fulfillPurchase } from '../lib/fulfillment';
 import { getUserInventory } from '../lib/inventory';
-import { TELEGRAM_SHOP_SYNC_ONLY } from '../lib/features';
+import { TELEGRAM_SHOP_SYNC_ONLY, TELEGRAM_SUMMARY_CANONICAL } from '../lib/features';
+import {
+  computePlayerLevel,
+  xpProgressFraction,
+  XP_THRESHOLDS,
+  MAX_LEVEL,
+} from '@cosmo/game-config';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -133,9 +139,12 @@ export async function telegramRoutes(app: FastifyInstance) {
   app.get('/me', { preHandler: [app.authenticate] }, async (req, reply) => {
     const { userId } = req.user as JwtPayload;
 
-    const [tgUser, save] = await Promise.all([
+    const [tgUser, save, playerConfigRow] = await Promise.all([
       prisma.telegramUser.findUnique({ where: { userId } }),
       prisma.userSave.findUnique({ where: { userId } }),
+      // Read remoteConfig overrides for player XP/level thresholds — same source
+      // as GET /config uses. Fallback to canonical package values when absent.
+      prisma.gameConfig.findUnique({ where: { key: 'player' } }),
     ]);
 
     if (!tgUser) {
@@ -155,13 +164,33 @@ export async function telegramRoutes(app: FastifyInstance) {
       stateFields = raw;
     }
 
-    const gameSummary = {
-      playerXP: (stateFields.playerXP as number) ?? 0,
-      totalEarned: (stateFields.totalEarned as number) ?? 0,
-      credits: (stateFields.credits as number) ?? 0,
-      unlockedPlanets: ((stateFields.unlockedPlanetIds as unknown[]) ?? []).length,
-      saveRev: save?.rev ?? 0,
+    const playerXP = (stateFields.playerXP as number) ?? 0;
+
+    // remoteConfig overrides — same as mobile's getXpThresholds() / getMaxLevel()
+    const playerConfig = (playerConfigRow?.data ?? {}) as {
+      xpThresholds?: number[];
+      maxLevel?: number;
     };
+    const xpThresholds: readonly number[] = playerConfig.xpThresholds ?? XP_THRESHOLDS;
+    const maxLevel: number = playerConfig.maxLevel ?? MAX_LEVEL;
+
+    const gameSummary = TELEGRAM_SUMMARY_CANONICAL
+      ? {
+          playerXP,
+          level: computePlayerLevel(playerXP, xpThresholds, maxLevel),
+          xpProgressFraction: xpProgressFraction(playerXP, xpThresholds, maxLevel),
+          totalEarned: (stateFields.totalEarned as number) ?? 0,
+          credits: (stateFields.credits as number) ?? 0,
+          unlockedPlanets: ((stateFields.unlockedPlanetIds as unknown[]) ?? []).length,
+          saveRev: save?.rev ?? 0,
+        }
+      : {
+          playerXP,
+          totalEarned: (stateFields.totalEarned as number) ?? 0,
+          credits: (stateFields.credits as number) ?? 0,
+          unlockedPlanets: ((stateFields.unlockedPlanetIds as unknown[]) ?? []).length,
+          saveRev: save?.rev ?? 0,
+        };
 
     return {
       telegramId: tgUser.telegramId.toString(),
