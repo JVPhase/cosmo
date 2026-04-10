@@ -11,6 +11,8 @@ import type { FastifyInstance } from 'fastify';
 import prisma from '../lib/prisma';
 import { issueTokens } from '../lib/tokens';
 import type { JwtPayload } from '../plugins/jwt';
+import { LIMITS } from '../lib/rateLimitConfig';
+import { makeSlowDown, ipKey } from '../plugins/slowDown';
 import {
   validateInitData,
   createStarsInvoiceLink,
@@ -35,6 +37,10 @@ function requireEnv(name: string): string {
   return v;
 }
 
+// ── route-level slow-down (created once, reused per request) ──────────────────
+
+const tgAuthSlowDown = makeSlowDown(LIMITS.telegramAuth.slowDown!, ipKey)
+
 // ── routes ────────────────────────────────────────────────────────────────────
 
 export async function telegramRoutes(app: FastifyInstance) {
@@ -48,7 +54,10 @@ export async function telegramRoutes(app: FastifyInstance) {
    */
   app.post(
     '/auth',
-    { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } },
+    {
+      config: { rateLimit: LIMITS.telegramAuth },
+      preHandler: [tgAuthSlowDown],
+    },
     async (req, reply) => {
       const { initData } = (req.body ?? {}) as { initData?: unknown };
       if (typeof initData !== 'string' || !initData) {
@@ -366,7 +375,7 @@ export async function telegramRoutes(app: FastifyInstance) {
    *   { "url": "https://your-server/telegram/webhook",
    *     "secret_token": "<TELEGRAM_WEBHOOK_SECRET>" }
    */
-  app.post('/webhook', async (req, reply) => {
+  app.post('/webhook', { config: { rateLimit: LIMITS.telegramWebhook } }, async (req, reply) => {
     const webhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET ?? '';
     const headerSecret = req.headers['x-telegram-bot-api-secret-token'] as string | undefined;
 
