@@ -16,11 +16,18 @@ model User {
   updatedAt     DateTime       @updatedAt
   refreshTokens RefreshToken[]
   save          UserSave?
+  gameplaySave  GameplaySave?
+  wallet        Wallet?
   oauthAccounts OAuthAccount[]
   telegramUser  TelegramUser?
   purchases     Purchase[]
   inventory     Inventory[]
   grants        Grant[]
+  crmUser       CrmUser?
+  crmAccounts   CrmAccount[]
+  crmLeads      CrmLead[]
+  crmDeals      CrmDeal[]
+  crmActivities CrmActivity[]
 }
 
 model TelegramUser {
@@ -69,6 +76,36 @@ model UserSave {
   rev       Int      @default(0)
   updatedAt DateTime @updatedAt
   createdAt DateTime @default(now())
+}
+
+// ── P1: Segregated gameplay save ──────────────────────────────────────────────
+// Stores GameplaySaveEnvelopeV2 JSON. Mobile is the sole writer.
+// Supersedes UserSave; dual-read during SAVE_TABLE_V2_ENABLED migration window.
+model GameplaySave {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  data      Json     // GameplaySaveEnvelopeV2
+  rev       Int      @default(0)
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ── P1: Wallet ────────────────────────────────────────────────────────────────
+// Server-authoritative credit counter for atomic operations.
+// Populated via backfill from UserSave/GameplaySave.credits.
+// Activated when WALLET_ENABLED=true; credits remain in save JSON until then.
+model Wallet {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  credits   BigInt   @default(0)
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 model GameConfig {
@@ -159,4 +196,97 @@ model Inventory {
 
   @@unique([userId, itemId])
   @@index([userId])
+}
+
+// ────────────────────────────── CRM ──────────────────────────────
+model CrmUser {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  role      String   @default("member") // "admin" | "member" | "viewer"
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CrmAccount {
+  id        String   @id @default(cuid())
+  name      String
+  industry  String?
+  region    String?
+  status    String   @default("Active")
+  health    String   @default("Stable")
+  arr       Int?
+  ownerId   String?
+  owner     User?    @relation(fields: [ownerId], references: [id])
+  deals     CrmDeal[]
+  activities CrmActivity[]
+  convertedLeads CrmLead[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ownerId])
+  @@index([status])
+}
+
+model CrmLead {
+  id                 String   @id @default(cuid())
+  name               String
+  email              String?
+  company            String?
+  source             String?
+  status             String   @default("New")
+  score              Int?
+  ownerId            String?
+  owner              User?    @relation(fields: [ownerId], references: [id])
+  convertedAccountId String?
+  convertedAccount   CrmAccount? @relation(fields: [convertedAccountId], references: [id])
+  activities         CrmActivity[]
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([ownerId])
+  @@index([status])
+}
+
+model CrmDeal {
+  id        String   @id @default(cuid())
+  name      String
+  stage     String   @default("Qualified")
+  value     Int?
+  closeDate DateTime?
+  ownerId   String?
+  owner     User?    @relation(fields: [ownerId], references: [id])
+  accountId String?
+  account   CrmAccount? @relation(fields: [accountId], references: [id])
+  activities CrmActivity[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ownerId])
+  @@index([accountId])
+  @@index([stage])
+}
+
+model CrmActivity {
+  id        String   @id @default(cuid())
+  type      String   @default("Note")
+  title     String
+  notes     String?
+  dueAt     DateTime?
+  doneAt    DateTime?
+  ownerId   String?
+  owner     User?    @relation(fields: [ownerId], references: [id])
+  accountId String?
+  account   CrmAccount? @relation(fields: [accountId], references: [id])
+  leadId    String?
+  lead      CrmLead? @relation(fields: [leadId], references: [id])
+  dealId    String?
+  deal      CrmDeal? @relation(fields: [dealId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ownerId])
+  @@index([accountId])
+  @@index([leadId])
+  @@index([dealId])
 }

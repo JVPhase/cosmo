@@ -13,42 +13,7 @@
 import type { FastifyInstance } from 'fastify';
 import prisma from '../lib/prisma';
 import type { JwtPayload } from '../plugins/jwt';
-import { SAVE_V2_ENABLED } from '../lib/features';
-
-function validateEnvelope(data: unknown): { ok: true } | { ok: false; reason: string } {
-  if (typeof data !== 'object' || data === null || Array.isArray(data)) {
-    return { ok: false, reason: 'data must be a non-null object' };
-  }
-  const d = data as Record<string, unknown>;
-
-  // V2 envelope — strict validation
-  if (d.version === 2) {
-    if (!SAVE_V2_ENABLED) {
-      return { ok: false, reason: 'V2 save envelopes are not accepted on this server' };
-    }
-    if (typeof d.savedAt !== 'number') {
-      return { ok: false, reason: 'v2 envelope requires savedAt: number' };
-    }
-    if (typeof d.appliedGrantSeq !== 'number') {
-      return { ok: false, reason: 'v2 envelope requires appliedGrantSeq: number' };
-    }
-    if (typeof d.state !== 'object' || d.state === null || Array.isArray(d.state)) {
-      return { ok: false, reason: 'v2 envelope requires state: object' };
-    }
-    return { ok: true };
-  }
-
-  // V1 envelope — relaxed, legacy rollout support
-  if (d.version === 1) {
-    if (typeof d.state !== 'object' || d.state === null || Array.isArray(d.state)) {
-      return { ok: false, reason: 'v1 envelope requires state: object' };
-    }
-    return { ok: true };
-  }
-
-  // No version — reject; all clients must send a versioned envelope
-  return { ok: false, reason: 'data.version must be 1 or 2' };
-}
+import { validateGameplayEnvelope } from '../lib/saveEnvelope';
 
 export async function savesRoutes(app: FastifyInstance) {
   // GET /saves — fetch latest snapshot for the authenticated user
@@ -73,7 +38,7 @@ export async function savesRoutes(app: FastifyInstance) {
     const { userId } = req.user as JwtPayload;
     const body = (req.body ?? {}) as { data?: unknown; rev?: unknown };
 
-    const validation = validateEnvelope(body.data);
+    const validation = validateGameplayEnvelope(body.data);
     if (!validation.ok) {
       return reply.status(400).send({ error: validation.reason });
     }

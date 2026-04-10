@@ -1,4 +1,5 @@
 services:
+  # PostgreSQL for cosmo-server (game API, Telegram, CRM — одна Prisma-база).
   postgres:
     image: postgres:16-alpine
     container_name: cosmo-postgres
@@ -16,6 +17,39 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+
+  server:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    image: cosmo-server:local
+    container_name: cosmo-server
+    restart: unless-stopped
+    # Внутри контейнера API всегда :3000; снаружи — 3001, чтобы не конфликтовать с локальным процессом на :3000
+    ports:
+      - "3001:3000"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/cosmo_db
+      JWT_SECRET: ${JWT_SECRET:-cosmo-local-dev-change-me-openssl-rand-hex-64}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Статика: Expo Web (Telegram Web App) в корне, CRM (Vite) по пути /crm/
+  game-web:
+    build:
+      context: .
+      dockerfile: mobile/cosmo-miner/Dockerfile
+      args:
+        # URL видны из браузера пользователя — укажи публичный API при деплое.
+        EXPO_PUBLIC_API_URL: http://localhost:3001
+        EXPO_PUBLIC_CONFIG_URL: http://localhost:3001/config
+        VITE_API_URL: http://localhost:3001
+    image: cosmo-game-web:local
+    container_name: cosmo-game-web
+    restart: unless-stopped
+    ports:
+      - "8080:80"
 
 volumes:
   cosmo_pg_data:
