@@ -3,6 +3,8 @@ import * as argon2 from 'argon2';
 import prisma from '../lib/prisma';
 import type { JwtPayload } from '../plugins/jwt';
 import { issueTokens } from '../lib/tokens';
+import { LIMITS } from '../lib/rateLimitConfig';
+import { makeSlowDown, ipKey } from '../plugins/slowDown';
 
 // Dummy hash used to prevent timing attacks when user doesn't exist
 let _dummyHash: string | null = null;
@@ -24,11 +26,18 @@ function validateEmailPassword(email: unknown, password: unknown): string | null
   return null;
 }
 
+// Route-level slow-down handlers — created once, reused per request.
+const registerSlowDown = makeSlowDown(LIMITS.authRegister.slowDown!, ipKey)
+const loginSlowDown = makeSlowDown(LIMITS.authLogin.slowDown!, ipKey)
+
 export async function authRoutes(app: FastifyInstance) {
   // POST /auth/register
   app.post(
     '/register',
-    { config: { rateLimit: { max: 5, timeWindow: '1 minute' } } },
+    {
+      config: { rateLimit: LIMITS.authRegister },
+      preHandler: [registerSlowDown],
+    },
     async (req, reply) => {
       const { email, password } = (req.body ?? {}) as { email?: unknown; password?: unknown };
 
@@ -50,7 +59,10 @@ export async function authRoutes(app: FastifyInstance) {
   // POST /auth/login
   app.post(
     '/login',
-    { config: { rateLimit: { max: 5, timeWindow: '1 minute' } } },
+    {
+      config: { rateLimit: LIMITS.authLogin },
+      preHandler: [loginSlowDown],
+    },
     async (req, reply) => {
       const { email, password } = (req.body ?? {}) as { email?: unknown; password?: unknown };
 

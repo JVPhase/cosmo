@@ -28,6 +28,7 @@ model User {
   crmLeads      CrmLead[]
   crmDeals      CrmDeal[]
   crmActivities CrmActivity[]
+  consents      UserConsent[]
 }
 
 model TelegramUser {
@@ -289,4 +290,23 @@ model CrmActivity {
   @@index([accountId])
   @@index([leadId])
   @@index([dealId])
+}
+
+// ── Legal Consents ────────────────────────────────────────────────────────────
+// Records each consent grant/revocation for compliance (GDPR Art. 7, 152-ФЗ ст. 9).
+// consentType: "privacy_policy" | "terms_of_service" | "telegram_data" | "marketing"
+model UserConsent {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  consentType String
+  version     String    // document version at time of consent, e.g. "1.0"
+  grantedAt   DateTime  @default(now())
+  revokedAt   DateTime?
+  ipAddress   String?
+  userAgent   String?
+  metadata    Json?     // e.g. { "source": "onboarding" }
+
+  @@unique([userId, consentType])
+  @@index([userId])
 }

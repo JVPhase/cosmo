@@ -1,0 +1,27 @@
+# Cosmo — cron-расписание резервного копирования PostgreSQL
+#
+# Установка:
+#   sudo cp cosmo-backup.cron /etc/cron.d/cosmo-backup
+#   sudo chmod 644 /etc/cron.d/cosmo-backup
+#
+# Переменные окружения для скриптов:
+#   sudo cp cosmo-backup.env.example /etc/cosmo-backup.env
+#   sudo chmod 600 /etc/cosmo-backup.env  # содержит credentials
+#
+# Путь к скриптам (поправить под реальный деплой):
+SCRIPT_DIR=/opt/cosmo/docs/backup/scripts
+
+# Вывод логируется в системный syslog (journalctl -t cosmo-backup)
+MAILTO=""
+
+# ── Full backup + загрузка в S3 (02:00 каждый день) ──────────────────────────
+0 2 * * * root $SCRIPT_DIR/backup.sh --remote >> /var/backups/cosmo/logs/cron.log 2>&1
+
+# ── Проверка бэкапа (03:00, час после backup) ─────────────────────────────────
+# При ошибке выход 1 — напишите MAILTO=ops@example.com для алертов
+0 3 * * * root $SCRIPT_DIR/verify-backup.sh >> /var/backups/cosmo/logs/cron.log 2>&1
+
+# ── Тест восстановления раз в неделю (воскресенье 04:00) ─────────────────────
+# Восстанавливает в отдельную тестовую БД — не трогает prod.
+# Раскомментировать после настройки TEST_PG_CONTAINER и TEST_PG_DB в env-файле.
+# 0 4 * * 0 root PG_CONTAINER=$TEST_PG_CONTAINER PG_DB=$TEST_PG_DB $SCRIPT_DIR/restore.sh $(find /var/backups/cosmo/daily -name "*.dump.gz" | sort | tail -1) --drop-existing >> /var/backups/cosmo/logs/cron.log 2>&1
