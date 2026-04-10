@@ -88,6 +88,32 @@
 - `f58e524` — усилены механики геймплея и система прогрессии игрока.
 - `0d111de` — скорректированы бонусы в `PLANETS` для баланса.
 
+## P0 — Save-contract и grant-sync (2026-04-08 → 2026-04-10)
+
+Закрыт набор P0-задач по стабилизации save-контракта и безопасной доставке покупок в mobile.
+
+### Credits purchase flow
+
+Покупка кредитов реализована через Telegram Stars → grant-flow:
+
+1. Клиент вызывает `POST /telegram/shop/invoice` с одним из SKU: `credits_100`, `credits_1000`, `credits_10000`.
+2. Сервер создаёт `Purchase` и возвращает ссылку на Stars-инвойс.
+3. После оплаты Telegram присылает `successful_payment` на webhook.
+4. `fulfillPurchase()` создаёт `Grant(credits_grant, { amount })` — без прямой записи в `userSave`.
+5. Mobile при следующем запуске получает pending grants через `GET /sync/grants`, применяет `state.credits += amount` и acks.
+
+`POST /telegram/shop/buy-credits` (списание игровых кредитов за покупку) остаётся отключённым (403): у сервера нет авторитетного кредит-wallet'а, прямое чтение баланса из `userSave.data` создаёт TOCTOU-риск. Этот путь переносится в P1 вместе с серверным wallet.
+
+### Feature flags
+
+Добавлены три env-флага для безопасного rollout и rollback:
+
+- `SAVE_V2_ENABLED` — отклонять V2-конверты при откате клиента.
+- `GRANT_SYNC_ENABLED` — закрывать grant-sync API перед миграцией БД.
+- `TELEGRAM_SHOP_SYNC_ONLY` — показывать только `grant_sync`-SKU в каталоге.
+
+На mobile: `EXPO_PUBLIC_GRANT_SYNC_ENABLED` отключает bootstrap grant-sync без пересборки.
+
 ## Краткая динамика развития
 
 - Проект быстро прошёл путь от базового каркаса к насыщенной игре с несколькими экранами и подсистемами.

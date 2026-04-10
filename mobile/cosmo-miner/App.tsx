@@ -83,6 +83,10 @@ import type { GameStateInit } from './src/game/types';
 
 const ironMetal = METALS.find((m) => m.id === 'iron')!;
 
+// Feature flag: set EXPO_PUBLIC_GRANT_SYNC_ENABLED=false in .env to disable
+// grant-sync bootstrap without a new release. Mirrors GRANT_SYNC_ENABLED on the server.
+const GRANT_SYNC_ENABLED = (process.env.EXPO_PUBLIC_GRANT_SYNC_ENABLED ?? 'true') !== 'false';
+
 type TabId = 'game' | 'upgrades' | 'planets' | 'shipyard' | 'battle' | 'shop';
 
 const TABS: Array<{ id: TabId; icon: string; label: string }> = [
@@ -1266,10 +1270,10 @@ export default function App() {
       let resolvedEnvelope = localEnvelope;
       let appliedGrantSeq = resolvedEnvelope?.appliedGrantSeq ?? 0;
 
-      // Steps 5-9: grant sync (only when authenticated).
+      // Steps 5-9: grant sync (only when authenticated and flag is enabled).
       // Runs even when there is no existing save (fresh user) — start from
       // empty state with appliedGrantSeq=0 so any welcome grants are applied.
-      if (token) {
+      if (token && GRANT_SYNC_ENABLED) {
         const grantBaseSeq = resolvedEnvelope?.appliedGrantSeq ?? 0;
         try {
           const grants = await fetchPendingGrants(grantBaseSeq);

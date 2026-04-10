@@ -4,7 +4,6 @@
  *   GET  /telegram/me            — profile + game summary for the current TG user
  *   GET  /telegram/shop          — shop catalog (Stars prices)
  *   POST /telegram/shop/invoice  — create a Stars invoice link
- *   POST /telegram/shop/buy-credits — spend in-game credits on a shop item
  *   GET  /telegram/inventory     — current user's owned items
  *   POST /telegram/webhook       — Telegram bot webhook (pre_checkout + successful_payment)
  */
@@ -18,8 +17,9 @@ import {
   answerPreCheckoutQuery,
   verifyWebhookSecret,
 } from '../lib/telegram';
-import { fulfillPurchase, failPurchase } from '../lib/fulfillment';
+import { fulfillPurchase } from '../lib/fulfillment';
 import { getUserInventory } from '../lib/inventory';
+import { TELEGRAM_SHOP_SYNC_ONLY } from '../lib/features';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -195,12 +195,15 @@ export async function telegramRoutes(app: FastifyInstance) {
       },
     });
 
-    // Only expose items with deliveryMode: 'grant_sync'.
-    // Items with 'unsupported' or 'server_only' are hidden until mobile support is ready.
-    const items = allItems.filter((item) => {
-      const meta = (item.metadata as Record<string, unknown>) ?? {};
-      return meta.deliveryMode === 'grant_sync';
-    });
+    // When TELEGRAM_SHOP_SYNC_ONLY is enabled (default), expose only items with
+    // deliveryMode: 'grant_sync'. Items with 'unsupported' or 'server_only' are
+    // hidden until mobile support is ready.
+    const items = TELEGRAM_SHOP_SYNC_ONLY
+      ? allItems.filter((item) => {
+          const meta = (item.metadata as Record<string, unknown>) ?? {};
+          return meta.deliveryMode === 'grant_sync';
+        })
+      : allItems;
 
     reply.header('Cache-Control', 'public, max-age=300');
     return { items };
@@ -230,10 +233,11 @@ export async function telegramRoutes(app: FastifyInstance) {
       return reply.status(400).send({ error: 'Item is not available for Stars purchase' });
     }
 
-    // Hard guard: only grant_sync items may be purchased via this endpoint.
-    // premium_unlock and other unsupported items must not be invoiceable.
+    // When TELEGRAM_SHOP_SYNC_ONLY is enabled (default), only grant_sync items
+    // may be purchased via this endpoint. premium_unlock and other unsupported
+    // items are blocked until mobile support is ready.
     const itemMeta = (item.metadata as Record<string, unknown>) ?? {};
-    if (itemMeta.deliveryMode !== 'grant_sync') {
+    if (TELEGRAM_SHOP_SYNC_ONLY && itemMeta.deliveryMode !== 'grant_sync') {
       return reply.status(400).send({ error: 'Item is not available for purchase in this version' });
     }
 
@@ -267,25 +271,6 @@ export async function telegramRoutes(app: FastifyInstance) {
     }
 
     return { invoiceUrl, purchaseId: purchase.id };
-  });
-
-  /**
-   * POST /telegram/shop/buy-credits
-   *
-   * DISABLED (P0 safety gate).
-   *
-   * Credit purchase is unsafe in the current architecture: credits live
-   * inside the mobile gameplay save, the server has no authoritative wallet,
-   * and reading credit balance from `userSave` outside a transaction allows
-   * lost-update / free-purchase exploits under concurrency.
-   *
-   * Until a server-authoritative credit wallet is implemented (P1+), this
-   * endpoint is closed. Use Telegram Stars for all server-side purchases.
-   */
-  app.post('/shop/buy-credits', { preHandler: [app.authenticate] }, async (_req, reply) => {
-    return reply.status(403).send({
-      error: 'Credit purchase via Telegram is currently unavailable. Use Telegram Stars.',
-    });
   });
 
   /**

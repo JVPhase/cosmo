@@ -79,12 +79,12 @@
 
 Сейчас кредиты меняются из нескольких источников:
 
-- achievements,
+- achievements (ачивки),
 - rewarded ads,
 - native IAP,
-- Telegram shop.
+- Telegram Stars покупки.
 
-Перевод всего этого в server-authoritative wallet резко расширит scope. Для `P0` достаточно сделать безопасную доставку server-side grants и прекратить прямые server writes в `userSave`.
+Для `P0` достаточно сделать безопасную доставку server-side grants и прекратить прямые server writes в `userSave`.
 
 ## Scope
 
@@ -102,7 +102,6 @@
 ### Не входит в `P0`
 
 - полный shared package для всех domain-contracts;
-- server-authoritative wallet;
 - consumption-инвентарь как полноценный домен;
 - полный рефакторинг Telegram inventory UI;
 - выделение Telegram Mini App обратно в отдельный клиент;
@@ -419,7 +418,8 @@ body: { upToSeq: 21 }
 
 ### 2. Credits purchase flow
 
-Покупка за кредиты остается server-side, но меняется источник последствий:
+Покупка кредитов осуществляется через Telegram Stars (покупка credit packs).
+Отдельный purchase-flow “за кредиты” в P0 не поддерживается.
 
 - сервер создает purchase;
 - сервер создает grant;
@@ -531,12 +531,6 @@ Rollback mobile:
 - ни один серверный flow больше не пишет gameplay-поля напрямую в `userSave`;
 - mobile cloud autosave использует тот же полный envelope, что и local save;
 - Telegram UI не обещает синк, которого нет;
-- хотя бы один реальный supported purchase проходит путь:
-  - purchase
-  - grant
-  - mobile apply
-  - save
-  - ack
 
 ## Файлы и модули, которые почти наверняка будут затронуты
 

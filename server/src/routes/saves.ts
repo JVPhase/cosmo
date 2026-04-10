@@ -13,6 +13,7 @@
 import type { FastifyInstance } from 'fastify';
 import prisma from '../lib/prisma';
 import type { JwtPayload } from '../plugins/jwt';
+import { SAVE_V2_ENABLED } from '../lib/features';
 
 function validateEnvelope(data: unknown): { ok: true } | { ok: false; reason: string } {
   if (typeof data !== 'object' || data === null || Array.isArray(data)) {
@@ -22,6 +23,9 @@ function validateEnvelope(data: unknown): { ok: true } | { ok: false; reason: st
 
   // V2 envelope — strict validation
   if (d.version === 2) {
+    if (!SAVE_V2_ENABLED) {
+      return { ok: false, reason: 'V2 save envelopes are not accepted on this server' };
+    }
     if (typeof d.savedAt !== 'number') {
       return { ok: false, reason: 'v2 envelope requires savedAt: number' };
     }

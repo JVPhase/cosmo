@@ -20,6 +20,7 @@
 import prisma from './prisma';
 import { nextGrantSeq, createGrantInTx } from './grants';
 import type { GrantKind } from './grants';
+import { addToInventory } from './inventory';
 
 export type FulfillResult =
   | { ok: true; alreadyFulfilled: boolean }
@@ -110,6 +111,10 @@ export async function fulfillPurchase(
     return { ok: false, reason: `Purchase is in terminal state: ${purchase.status}` };
   }
 
+  // Captured outside the transaction so we can write the inventory audit record
+  // after the transaction commits (best-effort; does not affect delivery state).
+  let fulfilledGrantKind: GrantKind | null = null;
+
   await prisma.$transaction(async (tx) => {
     // Record Telegram charge ID if provided (Stars flow) — idempotency key
     if (telegramPaymentChargeId) {
@@ -179,6 +184,7 @@ export async function fulfillPurchase(
         source: 'purchase',
         purchaseId: purchase.id,
       });
+      fulfilledGrantKind = grantKind;
     }
 
     // Mark purchase fulfilled — inside the same transaction
@@ -187,6 +193,20 @@ export async function fulfillPurchase(
       data: { status: 'completed', fulfilledAt: new Date() },
     });
   });
+
+  // Inventory audit: write a read-model record after the transaction commits.
+  // Best-effort — failure here does not affect grant delivery or gameplay state.
+  if (fulfilledGrantKind) {
+    addToInventory(
+      purchase.userId,
+      purchase.shopItemId,
+      purchase.shopItem.type,
+      1,
+      { grantKind: fulfilledGrantKind, purchaseId: purchase.id },
+    ).catch(() => {
+      // Audit write failure is non-fatal; the grant is already delivered.
+    });
+  }
 
   return { ok: true, alreadyFulfilled: false };
 }
