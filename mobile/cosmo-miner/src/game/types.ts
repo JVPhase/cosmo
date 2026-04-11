@@ -49,7 +49,6 @@ export type GameState = {
   tabsUnlocked: TabsUnlockedState;
   moduleLevels: Partial<Record<ModuleId, number>>;
   chosenCharacterId: CharacterId | null;
-  metalDealDone: boolean;
   battlesWon: number;
   battleWinStreak: number;
   credits: number;
@@ -82,7 +81,6 @@ export type GameStateInit = {
   tabsUnlocked?: Partial<TabsUnlockedState>;
   moduleLevels?: Partial<Record<ModuleId, number>>;
   chosenCharacterId?: CharacterId | null;
-  metalDealDone?: boolean;
   battlesWon?: number;
   battleWinStreak?: number;
   credits?: number;

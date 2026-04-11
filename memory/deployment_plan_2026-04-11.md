@@ -52,10 +52,62 @@
 
 1. Создать/подготовить бота в @BotFather.
 2. Настроить Webhook:  
-   - URL вида `https://api.<domain>/telegram/webhook/<secret>`  
-   - Вызвать `setWebhook` (официальный Bot API).  
-3. Проверить `getWebhookInfo` и логи доставки.
-4. Включить проверку `X-Telegram-Bot-Api-Secret-Token` на своей стороне.
+   - URL: `https://api.<domain>/telegram/webhook`  
+   - Сгенерировать `TELEGRAM_WEBHOOK_SECRET`: `openssl rand -hex 32`
+   - Зарегистрировать через Bot API:
+
+     ```bash
+     curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook" \
+       -H "Content-Type: application/json" \
+       -d '{
+         "url": "https://api.<domain>/telegram/webhook",
+         "secret_token": "<TELEGRAM_WEBHOOK_SECRET>",
+         "allowed_updates": ["message", "pre_checkout_query"]
+       }'
+     ```
+
+3. Проверить `getWebhookInfo` и убедиться, что `pending_update_count` = 0.
+4. Убедиться, что сервер проверяет заголовок `X-Telegram-Bot-Api-Secret-Token` — в коде это уже есть (`verifyWebhookSecret`).
+
+## 6а) Telegram Stars — платежи
+
+> Сервер уже реализует полный цикл Stars: `POST /telegram/shop/invoice` → Telegram → `pre_checkout_query` → `successful_payment`. Ниже — шаги активации.
+
+1. **Активировать Stars-платежи в @BotFather**:
+   - Зайти в @BotFather → выбрать бота → **Payments**.
+   - Telegram Stars не требует стороннего провайдера (Stripe/etc.) — выбрать **«Telegram Stars»** как провайдер.
+   - Убедиться, что бот получил права на принятие платежей.
+
+2. **Проверить env-переменные** перед запуском:
+
+   ```env
+   TELEGRAM_BOT_TOKEN=1234567890:AAxxxx        # обязательно
+   TELEGRAM_WEBHOOK_SECRET=<openssl rand -hex 32>  # обязательно
+   MONETIZATION_ENABLED=true                   # по умолчанию true
+   # TELEGRAM_SHOP_SYNC_ONLY=true              # оставить true: только grant_sync товары
+   ```
+
+3. **Заполнить каталог магазина** (`ShopItem` в БД):
+   - Каждый товар должен иметь `priceStars > 0` и `isActive = true`.
+   - В поле `metadata` указать `{ "deliveryMode": "grant_sync" }` — иначе товар не появится в каталоге пока `TELEGRAM_SHOP_SYNC_ONLY=true`.
+   - Пример через Prisma Studio или миграцию seed-данных.
+
+4. **Webhook принимает два типа событий** (уже реализовано в `telegram.ts`):
+   - `pre_checkout_query` — сервер отвечает `answerPreCheckoutQuery` в течение **10 секунд**. Если pending-покупка не найдена — отклоняет.
+   - `successful_payment` — сервер вызывает `fulfillPurchase(purchaseId, chargeId)` и доставляет товар. Идемпотентность обеспечена через `telegramPaymentChargeId`.
+
+5. **Проверить сценарий end-to-end** (тестовая оплата):
+   - В @BotFather: `/setpaymentprovider` → Telegram Stars → тестовый режим (sandbox).
+   - Открыть Mini App → каталог → купить товар → убедиться что `Purchase.status = 'completed'` в БД.
+   - Проверить `GET /telegram/purchase/:id/result` — должен вернуть `status: completed` и `metadata` с результатом.
+
+6. **Проверить обработку ошибок**:
+   - Если `fulfillPurchase` вернул `ok: false` — сервер логирует ошибку, но отвечает Telegram `200 OK` (иначе Telegram будет ретраить).
+   - Убедиться, что в мониторинге/логах видны предупреждения `Fulfillment failed`.
+
+7. **Рефанды** (ручной процесс):
+   - Telegram Stars рефанды инициируются через @BotFather или Bot API (`refundStarPayment`).
+   - При рефанде в БД нужно вручную поставить `Purchase.status = 'refunded'` и откатить инвентарь.
 
 ## 7) Запуск игры в Telegram
 

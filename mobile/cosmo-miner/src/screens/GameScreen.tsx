@@ -78,8 +78,7 @@ export type GameScreenProps = {
   onOpenMetalInfo: (metalId: MetalId) => void;
   onOpenStoryLog: () => void;
   hasNewStoryEntry: boolean;
-  characterMessage: string | null;
-  onCloseCharacterMessage: () => void;
+  hasUnreadChannelMessage: boolean;
   chosenCharacter: { id: string; name: string; icon: string } | null;
   onOpenCharacterChannel: () => void;
   characterChannelUnlocked: boolean;
@@ -112,8 +111,7 @@ export function GameScreen({
   onOpenMetalInfo,
   onOpenStoryLog,
   hasNewStoryEntry,
-  characterMessage,
-  onCloseCharacterMessage,
+  hasUnreadChannelMessage,
   chosenCharacter,
   onOpenCharacterChannel,
   characterChannelUnlocked,
@@ -441,11 +439,13 @@ export function GameScreen({
             style={({ pressed }) => [
               styles.floatingBtn,
               styles.floatingBtnChannel,
+              hasUnreadChannelMessage && styles.floatingBtnChannelUnread,
               pressed ? { opacity: 0.7 } : null
             ]}
           >
             <Text style={styles.floatingBtnIcon}>{chosenCharacter.icon}</Text>
             <Text style={styles.floatingBtnChannelLabel}>КАНАЛ СВЯЗИ</Text>
+            {hasUnreadChannelMessage && <View style={styles.channelUnreadDot} />}
           </Pressable>
         </View>
       )}
@@ -571,26 +571,6 @@ export function GameScreen({
         </View>
       ) : null}
 
-      {/* Character message bubble */}
-      {characterMessage && chosenCharacter && !clerkMessage ? (
-        <View style={[styles.characterBubble, { borderColor: CHARACTER_BORDER_COLORS[chosenCharacter.id] ?? 'rgba(255,200,80,0.35)' }]}>
-          <Text style={styles.characterIcon}>{chosenCharacter.icon}</Text>
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.characterHeader, { color: CHARACTER_TEXT_COLORS[chosenCharacter.id] ?? 'rgba(255,200,80,0.7)' }]}>
-              {chosenCharacter.name.toUpperCase()} · ВХОДЯЩЕЕ СООБЩЕНИЕ
-            </Text>
-            <Text style={[styles.characterText, { color: CHARACTER_TEXT_COLORS[chosenCharacter.id] ?? 'rgba(200,230,255,0.9)' }]}>
-              {characterMessage}
-            </Text>
-          </View>
-          <Pressable
-            onPress={onCloseCharacterMessage}
-            style={({ pressed }) => (pressed ? { opacity: 0.9 } : null)}
-          >
-            <Text style={styles.clerkClose}>✕</Text>
-          </Pressable>
-        </View>
-      ) : null}
     </LinearGradient>
   );
 }
@@ -990,6 +970,19 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     color: 'rgba(0,212,255,0.75)',
     letterSpacing: 1
+  },
+  floatingBtnChannelUnread: {
+    borderColor: 'rgba(0,212,255,0.6)',
+    backgroundColor: 'rgba(0,212,255,0.14)',
+  },
+  channelUnreadDot: {
+    position: 'absolute',
+    top: -3,
+    right: -3,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#00d4ff',
   },
   floatingBtn: {
     width: 36,

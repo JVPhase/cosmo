@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
-import { CHARACTERS, type CharacterId } from '../game/CHARACTERS';
+import type { CharacterId } from '../game/CHARACTERS';
+import type { DialogueCharacter } from '../game/dialogues';
 import { getAliens } from '../game/ALIENS';
 import { getModules } from '../game/MODULES';
 import { logEvent } from '../game/analytics';
 
 type Props = {
+  characters: readonly DialogueCharacter[];
   step:
     | 'select'
     | 'garbled'
@@ -25,6 +27,7 @@ type Props = {
 };
 
 export function CharacterSelectFlow({
+  characters,
   step,
   chosenCharacterId,
   onChoose,
@@ -42,7 +45,7 @@ export function CharacterSelectFlow({
   }, [step]);
 
   const chosen = chosenCharacterId
-    ? (CHARACTERS.find((c) => c.id === chosenCharacterId) ?? null)
+    ? (characters.find((c) => c.id === chosenCharacterId) ?? null)
     : null;
 
   return (
@@ -76,7 +79,7 @@ export function CharacterSelectFlow({
                 </Text>
               </View>
               <View style={styles.choiceList}>
-                {CHARACTERS.map((c) => (
+                {characters.map((c) => (
                   <Pressable
                     key={c.id}
                     style={({ pressed }) => [

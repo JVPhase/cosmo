@@ -39,7 +39,7 @@ import { IntroOverlay } from './src/ui/IntroOverlay';
 import { ModalSheet } from './src/ui/ModalSheet';
 import { Popup } from './src/ui/Popup';
 import { formatNum } from './src/game/formatNum';
-import { METALS, type MetalId } from './src/game/METALS';
+import { getMetals, type MetalId } from './src/game/METALS';
 import { getModuleById } from './src/game/MODULES';
 import { PasswordScreen } from './src/ui/PasswordScreen';
 import { useGame } from './src/game/useGame';
@@ -54,6 +54,7 @@ import {
 import { getAliens } from './src/game/ALIENS';
 import { STORY_LOG } from './src/game/STORY_LOG';
 import { isSectorUnlocked } from './src/game/SECTORS';
+import { fetchDialogues, type DialoguesPayload } from './src/game/dialogues';
 import {
   loadRemoteConfigFromCache,
   fetchAndCacheRemoteConfig,
@@ -81,8 +82,6 @@ import {
 import { getResearchNodes } from './src/game/RESEARCH';
 import type { GameStateInit } from './src/game/types';
 
-const ironMetal = METALS.find((m) => m.id === 'iron')!;
-
 // Feature flag: set EXPO_PUBLIC_GRANT_SYNC_ENABLED=false in .env to disable
 // grant-sync bootstrap without a new release. Mirrors GRANT_SYNC_ENABLED on the server.
 const GRANT_SYNC_ENABLED = (process.env.EXPO_PUBLIC_GRANT_SYNC_ENABLED ?? 'true') !== 'false';
@@ -101,12 +100,14 @@ const TABS: Array<{ id: TabId; icon: string; label: string }> = [
 function GameApp({
   initial,
   initialAppliedGrantSeq,
+  dialogues,
   tab,
   onSetTab,
   onReset,
 }: {
   initial: GameStateInit;
   initialAppliedGrantSeq: number;
+  dialogues: DialoguesPayload;
   tab: TabId;
   onSetTab: (t: TabId) => void;
   onReset: (showIntro?: boolean) => void;
@@ -116,7 +117,7 @@ function GameApp({
   // when new grants are applied during a session (P1). For P0, it is fixed
   // at the bootstrap value.
   const appliedGrantSeqRef = useRef(initialAppliedGrantSeq);
-  const game = useGame(initial);
+  const game = useGame(initial, dialogues);
   const minAttackEnergy = Math.min(
     ...getAliens().map((a) => a.attackEnergyCost),
   );
@@ -133,11 +134,6 @@ function GameApp({
   const [resetShowIntro, setResetShowIntro] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [analyticsSizeKb, setAnalyticsSizeKb] = useState(0);
-
-  useEffect(() => {
-    loadRemoteConfigFromCache();
-    fetchAndCacheRemoteConfig();
-  }, []);
 
   useEffect(() => {
     getAnalyticsSizeKb()
@@ -387,7 +383,6 @@ function GameApp({
             const ctx = {
               unlockedPlanetIds: game.unlockedPlanetIds,
               chosenCharacterId: game.chosenCharacterId,
-              metalDealDone: game.metalDealDone,
             };
             setSeenStoryCount(
               STORY_LOG.filter((e) => e.isUnlocked(ctx)).length,
@@ -400,23 +395,18 @@ function GameApp({
               e.isUnlocked({
                 unlockedPlanetIds: game.unlockedPlanetIds,
                 chosenCharacterId: game.chosenCharacterId,
-                metalDealDone: game.metalDealDone,
               }),
             ).length > seenStoryCount
           }
-          characterMessage={game.characterMessage}
-          onCloseCharacterMessage={() => {
-            logEvent('toast_close', { toast: 'character_message' });
-            game.closeCharacterMessage();
-          }}
+          hasUnreadChannelMessage={!!game.characterMessage}
           chosenCharacter={game.chosenCharacter}
           onOpenCharacterChannel={() => {
             logEvent('modal_open', { modal: 'character_channel' });
             setChannelOpen(true);
           }}
           characterChannelUnlocked={
-            game.unlockedPlanetIds.includes(getAliens()[7].planetId as any) &&
-            !game.metalDealDone
+            game.unlockedPlanetIds.includes(getAliens()[7].planetId as any) ||
+            !!game.characterMessage
           }
         />
       );
@@ -568,9 +558,9 @@ function GameApp({
         }}
       >
         <StoryLogScreen
+          characters={dialogues.characters}
           unlockedPlanetIds={game.unlockedPlanetIds}
           chosenCharacterId={game.chosenCharacterId}
-          metalDealDone={game.metalDealDone}
         />
       </ModalSheet>
 
@@ -595,7 +585,7 @@ function GameApp({
           logEvent('toast_close', { toast: 'first_iron' });
           game.closeFirstIronToast();
         }}
-        image={ironMetal.image}
+        image={getMetals().find((m) => m.id === 'iron')?.image}
         text={
           'Зафиксирован первый образец Железа™! За эту выдающуюся находку вам полагается премия — после заполнения форм ЖЛ-1 по ЖЛ-83, нотариально заверенного снимка астероида и справки с предыдущего места работы. P.S. Этот металл может пригодиться. Возможно.'
         }
@@ -759,9 +749,8 @@ function GameApp({
           });
           goToTab('game');
         }}
-      />
-
-      <CharacterSelectFlow
+      />      <CharacterSelectFlow
+        characters={dialogues.characters}
         step={game.characterFlowStep}
         chosenCharacterId={game.chosenCharacterId}
         onChoose={game.chooseCharacter}
@@ -781,16 +770,13 @@ function GameApp({
           visible={channelOpen}
           onClose={() => setChannelOpen(false)}
           chosenCharacter={game.chosenCharacter}
+          character={game.chosenCharacter}
           planet10Unlocked={game.unlockedPlanetIds.includes(10 as any)}
-          canAffordMetalDeal={game.canAffordMetalDeal}
-          metalDealEnergyCost={game.metalDealEnergyCost}
-          onAcceptMetalDeal={() => {
-            game.acceptMetalDeal();
-            setChannelOpen(false);
-          }}
-          onEarnEnergy={() => {
-            setChannelOpen(false);
-            goToTab('game');
+          characterMessage={game.characterMessage}
+          hasMoreDialogueLines={game.characterDialogueQueue.length > 0}
+          onCloseCharacterMessage={() => {
+            logEvent('toast_close', { toast: 'character_message' });
+            game.closeCharacterMessage();
           }}
         />
       )}
@@ -843,7 +829,7 @@ function GameApp({
           },
         };
         const metal = metalInfoOpenId
-          ? METALS.find((m) => m.id === metalInfoOpenId)
+          ? getMetals().find((m) => m.id === metalInfoOpenId)
           : null;
         const info = metalInfoOpenId ? METAL_INFO[metalInfoOpenId] : null;
         return (
@@ -1209,10 +1195,26 @@ export default function App() {
   const [introSeen, setIntroSeen] = useState<boolean | undefined>(undefined);
   const [gameKey, setGameKey] = useState(0);
   const [offlineEarnings, setOfflineEarnings] = useState(0);
+  const [dialogues, setDialogues] = useState<DialoguesPayload | null>(null);
+  const [dialoguesError, setDialoguesError] = useState<string | null>(null);
+  const [configReady, setConfigReady] = useState(false);
+  const [configError, setConfigError] = useState<string | null>(null);
 
   const sessionIdRef = useRef(
     Math.random().toString(36).slice(2) + Date.now().toString(36),
   );
+
+  const retryDialogues = useCallback(() => {
+    setDialoguesError(null);
+    fetchDialogues()
+      .then((data) => {
+        setDialogues(data);
+        setDialoguesError(null);
+      })
+      .catch((err) => {
+        setDialoguesError(err?.message ?? 'Failed to load dialogues');
+      });
+  }, []);
   useEffect(() => {
     initAnalytics(sessionIdRef.current);
 
@@ -1232,6 +1234,40 @@ export default function App() {
       return () =>
         window.removeEventListener('unhandledrejection', onUnhandled);
     }
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    fetchDialogues()
+      .then((data) => {
+        if (!mounted) return;
+        setDialogues(data);
+        setDialoguesError(null);
+      })
+      .catch((err) => {
+        if (!mounted) return;
+        setDialoguesError(err?.message ?? 'Failed to load dialogues');
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      const cached = await loadRemoteConfigFromCache();
+      if (cached && mounted) setConfigReady(true);
+      try {
+        await fetchAndCacheRemoteConfig();
+        if (mounted) { setConfigReady(true); setConfigError(null); }
+      } catch (err: any) {
+        if (!mounted) return;
+        if (!cached) setConfigError(err?.message ?? 'Не удалось загрузить конфиг');
+        // if cached config was loaded, silently ignore fetch error
+      }
+    })();
+    return () => { mounted = false; };
   }, []);
 
   useEffect(() => {
@@ -1385,12 +1421,51 @@ export default function App() {
     );
   }
 
-  if (initial === undefined || introSeen === undefined) {
+  if (!configReady && configError) {
     return (
       <View style={styles.container}>
         <StatusBar style="light" />
         <View style={styles.loading}>
-          <Text style={styles.loadingText}>Загрузка...</Text>
+          <Text style={styles.loadingText}>Не удалось загрузить конфиг.</Text>
+          <Text style={[styles.loadingText, { marginTop: 8, opacity: 0.6 }]}>
+            {configError}
+          </Text>
+          <Pressable style={styles.retryBtn} onPress={() => {
+            setConfigError(null);
+            fetchAndCacheRemoteConfig()
+              .then(() => setConfigReady(true))
+              .catch((err: any) => setConfigError(err?.message ?? 'Ошибка'));
+          }}>
+            <Text style={styles.retryBtnText}>Повторить</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
+
+  if (!dialogues && dialoguesError) {
+    return (
+      <View style={styles.container}>
+        <StatusBar style="light" />
+        <View style={styles.loading}>
+          <Text style={styles.loadingText}>�� ������� ��������� �������.</Text>
+          <Text style={[styles.loadingText, { marginTop: 8, opacity: 0.6 }]}>
+            {dialoguesError}
+          </Text>
+          <Pressable style={styles.retryBtn} onPress={retryDialogues}>
+            <Text style={styles.retryBtnText}>���������</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
+
+  if (!configReady || initial === undefined || introSeen === undefined || !dialogues) {
+    return (
+      <View style={styles.container}>
+        <StatusBar style="light" />
+        <View style={styles.loading}>
+          <Text style={styles.loadingText}>��������...</Text>
         </View>
       </View>
     );
@@ -1403,6 +1478,7 @@ export default function App() {
           key={gameKey}
           initial={initial}
           initialAppliedGrantSeq={initialAppliedGrantSeq}
+          dialogues={dialogues}
           tab={tab}
           onSetTab={setTab}
           onReset={handleReset}
@@ -1431,6 +1507,8 @@ const styles = StyleSheet.create({
   content: { flex: 1 },
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   loadingText: { color: 'rgba(0,212,255,0.7)', fontWeight: '800' },
+  retryBtn: { marginTop: 16, paddingVertical: 8, paddingHorizontal: 16, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(0,212,255,0.4)' },
+  retryBtnText: { color: '#00d4ff', fontWeight: '800', fontSize: 12 },
   tabBarOuter: {
     borderTopWidth: 1,
     borderTopColor: 'rgba(0,212,255,0.15)',
@@ -1659,3 +1737,7 @@ const styles = StyleSheet.create({
   },
   editorToggleTextOn: { color: '#00d4ff' },
 });
+
+
+
+

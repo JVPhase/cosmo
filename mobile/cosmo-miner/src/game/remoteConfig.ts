@@ -1,67 +1,259 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { FORMULA_CONSTANTS } from '@cosmo/game-config';
 import { invalidatePlanetsCache } from './PLANETS';
+import { invalidateAliensCache } from './ALIENS';
 
 const REMOTE_CONFIG_KEY = 'cosmo_remote_config_v1';
 
-// URL сервера — задайте через переменную окружения или замените напрямую
 const REMOTE_CONFIG_URL = process.env.EXPO_PUBLIC_CONFIG_URL ?? 'http://localhost:3000/config';
 
-// ── Типы для числовых данных сущностей (только числовые поля) ───────────────
-export type RemoteUpgrade = { id: number; baseCost: number; clickBonus: number; passiveBonus: number };
-export type RemoteShip = { id: string; damageMultiplier: number; expeditionMultiplier: number; unlockLevel: number; baseCost: Record<string, number>; repairCost: Record<string, number> };
-export type RemoteExpedition = { id: string; durationMs: number; metalRewards: Record<string, number>; xpReward: number };
-export type RemoteCannon = { id: string; damagePerLevel: number; baseCost: Record<string, number> };
-export type RemoteModuleDef = { id: string; cost: Record<string, number>; ultDurationMs: number; hitsToCharge: number };
-export type RemoteAlienZone = { baseHP: number; baseXP: number; zoneStart: number; sectorScale: number };
-export type RemoteResearchNode = { id: string; requiredLevel: number; energyCost: number; effect: { type: string; value: number; metalId?: string } };
+// ── Config types (mirrors DB seed shape) ────────────────────────────────────
 
-export type RemoteAchievementTarget =
+export type FormulaConstantsConfig = {
+  UPGRADE_COST_EXP: number;
+  UPGRADE_POWER_EXP: number;
+  CANNON_COST_EXP: number;
+  MODULE_COST_BASE: number;
+  MODULE_COST_EXP: number;
+  ZONE_PLANET_SCALE: number;
+  ENERGY_BASE: number;
+  ENERGY_STEP: number;
+  METAL_CONVERSION_RATE: number;
+  CONVERTER_FEE_PER_TIER: number;
+};
+
+export type UpgradeConfig = {
+  id: number;
+  name: string;
+  icon: string;
+  baseCost: number;
+  clickBonus: number;
+  passiveBonus: number;
+  lore: string;
+};
+
+export type ShipConfig = {
+  id: string;
+  name: string;
+  icon: string;
+  imageKey: string;
+  damageMultiplier: number;
+  expeditionMultiplier: number;
+  unlockLevel: number;
+  baseCost: Record<string, number>;
+  repairCost: Record<string, number>;
+  lore: string;
+};
+
+export type CannonConfig = {
+  id: string;
+  name: string;
+  icon: string;
+  imageKey: string;
+  damagePerLevel: number;
+  baseCost: Record<string, number>;
+  lore: string;
+};
+
+export type ExpeditionConfig = {
+  id: string;
+  name: string;
+  icon: string;
+  durationMs: number;
+  metalRewards: Record<string, number>;
+  xpReward: number;
+  lore: string;
+};
+
+export type ModuleConfig = {
+  id: string;
+  name: string;
+  icon: string;
+  lore: string;
+  cost: Record<string, number>;
+  ultName: string;
+  ultDescription: string;
+  ultDurationMs: number;
+  hitsToCharge: number;
+};
+
+export type ModulesConfig = {
+  definitions: ModuleConfig[];
+  maxLevel: number;
+};
+
+export type ShopItemConfig = {
+  id: string;
+  name: string;
+  icon: string;
+  category: string;
+  creditCost: number;
+  lore: string;
+  boostEffect?: { stat: string; multiplier: number; durationMs: number };
+  metalReward?: { metalId: string; amount: number }[];
+  lootPool?: { metalId: string; min: number; max: number; chance: number }[];
+};
+
+export type ShopConfig = {
+  items: ShopItemConfig[];
+  metalTiers: Record<string, number>;
+};
+
+export type ResearchConfig = {
+  id: string;
+  name: string;
+  icon: string;
+  branch: string;
+  requiredLevel: number;
+  energyCost: number;
+  requires: string[];
+  effect: { type: string; value: number; metalId?: string };
+  lore: string;
+};
+
+export type PlayerConfig = {
+  xpThresholds: number[];
+  maxLevel: number;
+  titles: string[];
+};
+
+export type AchievementTargetConfig =
   | { type: string; value: number }
   | { type: 'battleCondition'; conditionKey: string }
   | { type: 'metalAtLeast'; metalId: string; value: number };
-export type RemoteAchievement = { id: number; target: RemoteAchievementTarget };
 
-export type RemotePlanetOverride = { id: number; cost: number; bonus: number };
-export type RemotePlanetZoneTheme = { zoneIndex: number; bonusBase: number; bonusSectorScale: number };
+export type AchievementConfig = {
+  id: number;
+  name: string;
+  icon: string;
+  target: AchievementTargetConfig;
+  lore: string;
+};
 
-export type RemoteMetalDrop = { metalId: string; chance: number };
-export type RemoteShopItem = { id: string; creditCost: number };
+export type AchievementsConfig = {
+  claimCredits: number;
+  data: AchievementConfig[];
+};
+
+export type PlanetOverrideConfig = {
+  id: number;
+  sectorId: number;
+  name: string;
+  icon: string;
+  imageKey: string;
+  unlocked: boolean;
+  cost: number;
+  bonus: number;
+  resource: string;
+  color: string;
+  lore: string;
+};
+
+export type PlanetZoneThemeConfig = {
+  zoneIndex: number;
+  namePrefix: string;
+  iconPool: string[];
+  resourcePool: string[];
+  colorPool: string[];
+  lore: string;
+  bonusBase: number;
+  bonusSectorScale: number;
+};
+
+export type PlanetsConfig = {
+  overrides: PlanetOverrideConfig[];
+  zoneThemes: PlanetZoneThemeConfig[];
+};
+
+export type AlienZoneConfig = {
+  baseHP: number;
+  baseXP: number;
+  zoneStart: number;
+  sectorScale: number;
+  namePool: string[];
+  iconPool: string[];
+  lore: string;
+};
+
+export type HardcodedAlienConfig = {
+  planetId: number;
+  name: string;
+  icon: string;
+  imageKey: string;
+  lore: string;
+  ability?: { type: string; intervalMs: number; durationMs: number };
+};
+
+export type AliensConfig = {
+  battleDurationMs: number;
+  zoneData: AlienZoneConfig[];
+  hardcodedAliens: HardcodedAlienConfig[];
+};
+
+export type MetalConfig = {
+  id: string;
+  name: string;
+  icon: string;
+  imageKey: string;
+};
+
+export type MetalDropConfig = { metalId: string; chance: number };
+
+export type MetalsConfig = {
+  metals: MetalConfig[];
+  planetDropTable: Record<string | number, MetalDropConfig[]>;
+};
+
+export type ZoneConfig = {
+  index: number;
+  name: string;
+  icon: string;
+  lore: string;
+  sectorScale: number;
+  minLevel: number;
+};
+
+export type SectorsConfig = {
+  zones: ZoneConfig[];
+  planetsPerSector: number;
+  sectorsPerZone: number;
+  totalSectors: number;
+  totalPlanets: number;
+};
 
 export type RemoteGameConfig = {
   version: number;
   generatedAt: number;
-  monetizationEnabled?: boolean;
-  formulaConstants?: Partial<typeof FORMULA_CONSTANTS>;
-  upgrades?: RemoteUpgrade[];
-  ships?: RemoteShip[];
-  expeditions?: RemoteExpedition[];
-  cannons?: RemoteCannon[];
-  modules?: { definitions: RemoteModuleDef[]; maxLevel: number };
-  aliens?: { zoneData: RemoteAlienZone[]; battleDurationMs: number };
-  research?: RemoteResearchNode[];
-  player?: { xpThresholds: number[]; maxLevel: number };
-  achievements?: { claimCredits: number; data: RemoteAchievement[] };
-  planets?: { overrides: RemotePlanetOverride[]; zoneThemes: RemotePlanetZoneTheme[] };
-  metals?: { planetDropTable: Record<number, RemoteMetalDrop[]> };
-  shop?: { items: RemoteShopItem[] };
+  monetizationEnabled: boolean;
+  formulaConstants: FormulaConstantsConfig;
+  upgrades: UpgradeConfig[];
+  ships: ShipConfig[];
+  cannons: CannonConfig[];
+  modules: ModulesConfig;
+  expeditions: ExpeditionConfig[];
+  shop: ShopConfig;
+  research: ResearchConfig[];
+  player: PlayerConfig;
+  achievements: AchievementsConfig;
+  planets: PlanetsConfig;
+  aliens: AliensConfig;
+  metals: MetalsConfig;
+  sectors: SectorsConfig;
 };
 
 let _cachedConfig: RemoteGameConfig | null = null;
 
-/** Возвращает закэшированный remote-конфиг, или null если не загружен */
+/** Returns the cached remote config, or null if not yet loaded. */
 export function getCachedRemoteConfig(): RemoteGameConfig | null {
   return _cachedConfig;
 }
 
-/** Формульные константы: remote-значения поверх локальных констант */
-export function getFormulaConstants(): typeof FORMULA_CONSTANTS {
-  const remote = getCachedRemoteConfig()?.formulaConstants;
-  if (!remote) return FORMULA_CONSTANTS;
-  return { ...FORMULA_CONSTANTS, ...remote };
+/** Formula constants — throws if config is not loaded. */
+export function getFormulaConstants(): FormulaConstantsConfig {
+  if (!_cachedConfig) throw new Error('Game config not loaded');
+  return _cachedConfig.formulaConstants;
 }
 
-/** Загружает конфиг из AsyncStorage (быстро, без сети) */
+/** Load config from AsyncStorage (fast, no network). */
 export async function loadRemoteConfigFromCache(): Promise<RemoteGameConfig | null> {
   try {
     const raw = await AsyncStorage.getItem(REMOTE_CONFIG_KEY);
@@ -70,26 +262,24 @@ export async function loadRemoteConfigFromCache(): Promise<RemoteGameConfig | nu
     if (typeof parsed !== 'object' || parsed === null) return null;
     _cachedConfig = parsed as RemoteGameConfig;
     invalidatePlanetsCache();
+    invalidateAliensCache();
     return _cachedConfig;
   } catch {
     return null;
   }
 }
 
-/** Загружает свежий конфиг с сервера и сохраняет в AsyncStorage для следующего запуска */
+/** Fetch fresh config from server and persist to AsyncStorage. */
 export async function fetchAndCacheRemoteConfig(): Promise<void> {
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5_000);
-    const res = await fetch(REMOTE_CONFIG_URL, { signal: controller.signal });
-    clearTimeout(timeout);
-    if (!res.ok) return;
-    const data: unknown = await res.json();
-    if (typeof data !== 'object' || data === null) return;
-    await AsyncStorage.setItem(REMOTE_CONFIG_KEY, JSON.stringify(data));
-    _cachedConfig = data as RemoteGameConfig;
-    invalidatePlanetsCache();
-  } catch {
-    // Сеть недоступна — тихо используем локальные константы
-  }
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10_000);
+  const res = await fetch(REMOTE_CONFIG_URL, { signal: controller.signal });
+  clearTimeout(timeout);
+  if (!res.ok) throw new Error(`Config fetch failed: ${res.status}`);
+  const data: unknown = await res.json();
+  if (typeof data !== 'object' || data === null) throw new Error('Config response is not an object');
+  await AsyncStorage.setItem(REMOTE_CONFIG_KEY, JSON.stringify(data));
+  _cachedConfig = data as RemoteGameConfig;
+  invalidatePlanetsCache();
+  invalidateAliensCache();
 }

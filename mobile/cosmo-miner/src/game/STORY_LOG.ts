@@ -4,7 +4,6 @@ import type { CharacterId } from './CHARACTERS';
 export type StoryContext = {
   unlockedPlanetIds: number[];
   chosenCharacterId: CharacterId | null;
-  metalDealDone: boolean;
 };
 
 export type StoryEntry = {
@@ -107,14 +106,6 @@ export const STORY_LOG: readonly StoryEntry[] = [
       ctx.chosenCharacterId !== null && ctx.unlockedPlanetIds.includes(10)
   },
   {
-    id: 'entry_11b',
-    icon: '🤝',
-    title: 'Поставка материалов',
-    stardate: 'Звёздная дата 2403.02',
-    text: '',
-    isUnlocked: (ctx) => ctx.metalDealDone
-  },
-  {
     id: 'entry_12',
     icon: '🌀',
     title: 'Сектор 3. Иллюзии',
@@ -164,6 +155,3 @@ export function getCharacterContactEntry(
   return `Связь установлена. Собеседник: ${charName} [${charRole}].\n\nПервое сообщение получено в полном объёме:\n\n"${greeting}"\n\nКонтакт подтверждён. Форма ПК-1 «Акт об установлении личного контакта» направлена в архив. Это всё, что от меня требуется официально.\n\nНеофициально — интересно, что будет дальше.`;
 }
 
-export function getMetalDealEntry(charName: string, charRole: string): string {
-  return `${charName} [${charRole}] связался с запросом на поставку материалов Сектора 3.\n\nСодержание запроса: объяснение назначения боевых модулей, перечень необходимых компонентов — Кристалл Пустоты, Осколок Эха — и условия обмена.\n\nСделка состоялась. 15 единиц каждого материала получены в обмен на 500 энергиума.\n\nФорма ТО-3 «Акт о неофициальной поставке ресурсов» не предусмотрена. Сделка зафиксирована в личном журнале. Для архива не передаётся.`;
-}
