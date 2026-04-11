@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify'
 import prisma from '../lib/prisma'
-import { getStaticGameConfigFallback, listGameConfigKeys } from './config'
+import { listGameConfigKeys } from './config'
 import { validateGameplayEnvelope } from '../lib/saveEnvelope'
 
 const CONFIG_KEY_HINTS: Record<string, string> = {
@@ -21,6 +21,34 @@ const CONFIG_KEY_HINTS: Record<string, string> = {
 }
 
 export function registerCrmGameAdminRoutes(app: FastifyInstance) {
+  app.get('/dialogues', async (_req, reply) => {
+    const row = await prisma.gameConfig.findUnique({ where: { key: 'dialogues' } })
+    if (!row) return reply.status(404).send({ error: 'dialogues_not_seeded' })
+    return {
+      key: row.key,
+      data: row.data,
+      version: row.version,
+      updatedAt: row.updatedAt.toISOString()
+    }
+  })
+
+  app.put('/dialogues', async (req, reply) => {
+    const body = (req.body ?? {}) as { data?: unknown }
+    if (body.data === undefined) {
+      return reply.status(400).send({ error: 'body.data is required' })
+    }
+    const row = await prisma.gameConfig.upsert({
+      where: { key: 'dialogues' },
+      create: { key: 'dialogues', data: body.data as object, version: 1 },
+      update: { data: body.data as object, version: { increment: 1 } }
+    })
+    return {
+      key: row.key,
+      version: row.version,
+      updatedAt: row.updatedAt.toISOString()
+    }
+  })
+
   app.get('/game-config/keys', async () => {
     const keys = listGameConfigKeys()
     const rows = await prisma.gameConfig.findMany({
@@ -44,11 +72,10 @@ export function registerCrmGameAdminRoutes(app: FastifyInstance) {
       return reply.status(404).send({ error: 'unknown config key' })
     }
     const row = await prisma.gameConfig.findUnique({ where: { key } })
-    const fallback = getStaticGameConfigFallback(key)
     return {
       key,
       overridden: Boolean(row),
-      data: row?.data ?? fallback,
+      data: row?.data ?? null,
       version: row?.version ?? null,
       updatedAt: row?.updatedAt.toISOString() ?? null
     }

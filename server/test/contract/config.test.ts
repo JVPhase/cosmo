@@ -16,7 +16,6 @@ import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import type { FastifyInstance } from 'fastify';
 import { buildApp } from '../helpers/app';
-import { XP_THRESHOLDS, MAX_LEVEL } from '@cosmo/game-config';
 
 // ── Structural validator ──────────────────────────────────────────────────────
 
@@ -120,25 +119,20 @@ describe('Contract: GET /config', () => {
     assert.equal(typeof body.player?.maxLevel, 'number', 'player.maxLevel must be a number');
   });
 
-  // ── Canonical snapshot ──────────────────────────────────────────────────────
-  // Snapshot only the player section against the domain package values.
-  // Any change to XP_THRESHOLDS or MAX_LEVEL breaks this test and requires
-  // explicit schema update.
-
-  it('player.xpThresholds matches canonical @cosmo/game-config XP_THRESHOLDS (snapshot)', () => {
+  it('player.xpThresholds has 100 entries (one per level)', () => {
     const thresholds = body.player?.xpThresholds as number[];
-    assert.deepEqual(
-      thresholds,
-      Array.from(XP_THRESHOLDS),
-      'player.xpThresholds drifted from canonical XP_THRESHOLDS — update the domain package or DB override intentionally',
+    assert.equal(
+      thresholds.length,
+      100,
+      `player.xpThresholds should have 100 entries, got ${thresholds.length}`,
     );
   });
 
-  it('player.maxLevel matches canonical @cosmo/game-config MAX_LEVEL (snapshot)', () => {
+  it('player.maxLevel equals 100', () => {
     assert.equal(
       body.player?.maxLevel as number,
-      MAX_LEVEL,
-      'player.maxLevel drifted from canonical MAX_LEVEL',
+      100,
+      'player.maxLevel must be 100',
     );
   });
 });

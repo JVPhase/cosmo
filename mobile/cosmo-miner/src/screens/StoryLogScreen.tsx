@@ -1,25 +1,25 @@
 import React from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
-import { CHARACTERS, type CharacterId } from '../game/CHARACTERS';
+import type { CharacterId } from '../game/CHARACTERS';
+import type { DialogueCharacter } from '../game/dialogues';
 import {
   STORY_LOG,
   getCharacterContactEntry,
-  getMetalDealEntry,
   type StoryContext,
 } from '../game/STORY_LOG';
 
 type Props = {
+  characters: readonly DialogueCharacter[];
   unlockedPlanetIds: number[];
   chosenCharacterId: CharacterId | null;
-  metalDealDone: boolean;
 };
 
 
-export function StoryLogScreen({ unlockedPlanetIds, chosenCharacterId, metalDealDone }: Props) {
-  const ctx: StoryContext = { unlockedPlanetIds, chosenCharacterId, metalDealDone };
+export function StoryLogScreen({ characters, unlockedPlanetIds, chosenCharacterId }: Props) {
+  const ctx: StoryContext = { unlockedPlanetIds, chosenCharacterId };
 
   const chosenChar = chosenCharacterId
-    ? CHARACTERS.find((c) => c.id === chosenCharacterId) ?? null
+    ? characters.find((c) => c.id === chosenCharacterId) ?? null
     : null;
 
   const unlockedEntries = STORY_LOG.filter((e) => e.isUnlocked(ctx)).reverse();
@@ -44,10 +44,6 @@ export function StoryLogScreen({ unlockedPlanetIds, chosenCharacterId, metalDeal
               chosenChar.greeting,
             );
           }
-          if (entry.id === 'entry_11b' && chosenChar) {
-            bodyText = getMetalDealEntry(chosenChar.name, chosenChar.role);
-          }
-
           return (
             <View style={[styles.card, styles.cardUnlocked]}>
               <View style={styles.cardHeader}>

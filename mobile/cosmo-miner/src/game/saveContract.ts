@@ -39,7 +39,6 @@ export function serializeGameplaySaveV2(
       tabsUnlocked: state.tabsUnlocked,
       moduleLevels: state.moduleLevels,
       chosenCharacterId: state.chosenCharacterId,
-      metalDealDone: state.metalDealDone,
       battlesWon: state.battlesWon,
       battleWinStreak: state.battleWinStreak,
       credits: state.credits,
