@@ -1,7 +1,202 @@
 import type { FastifyInstance } from 'fastify'
+import { Prisma } from '@prisma/client'
 import prisma from '../lib/prisma'
 import { listGameConfigKeys } from './config'
 import { validateGameplayEnvelope } from '../lib/saveEnvelope'
+
+const STARS_SHOP_TYPES = [
+  'currency_pack',
+  'metal_pack',
+  'booster',
+  'loot_box',
+  'premium_unlock'
+] as const
+
+const DELIVERY_MODES = ['grant_sync', 'unsupported', 'server_only'] as const
+const LOOT_BOX_TIERS = ['basic', 'advanced', 'premium'] as const
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function readNonEmptyString(value: unknown): string | null {
+  if (typeof value !== 'string' || value.trim() === '') return null
+  return value.trim()
+}
+
+function readBoolean(value: unknown, fallback: boolean): boolean {
+  return typeof value === 'boolean' ? value : fallback
+}
+
+function readRequiredInt(value: unknown, min = 0): number | null {
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < min) return null
+  return value
+}
+
+function readNullableInt(value: unknown, min = 0): number | null | undefined {
+  if (value === null || value === undefined || value === '') return null
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < min) return undefined
+  return value
+}
+
+function validateStarsShopMetadata(
+  type: string,
+  metadata: Record<string, unknown>
+): string | null {
+  const deliveryMode = metadata.deliveryMode
+  if (
+    typeof deliveryMode !== 'string' ||
+    !DELIVERY_MODES.includes(deliveryMode as (typeof DELIVERY_MODES)[number])
+  ) {
+    return 'metadata.deliveryMode must be one of: grant_sync, unsupported, server_only'
+  }
+
+  switch (type) {
+    case 'currency_pack': {
+      const creditAmount = metadata.creditAmount
+      if (
+        typeof creditAmount !== 'number' ||
+        !Number.isInteger(creditAmount) ||
+        creditAmount <= 0
+      ) {
+        return 'currency_pack requires metadata.creditAmount > 0'
+      }
+      return null
+    }
+
+    case 'metal_pack': {
+      const metalId = metadata.metalId
+      const quantity = metadata.quantity
+      if (typeof metalId !== 'string' || metalId.trim() === '') {
+        return 'metal_pack requires metadata.metalId'
+      }
+      if (typeof quantity !== 'number' || !Number.isInteger(quantity) || quantity <= 0) {
+        return 'metal_pack requires metadata.quantity > 0'
+      }
+      return null
+    }
+
+    case 'booster': {
+      const effectType = metadata.effectType
+      const durationMs = metadata.durationMs
+      const multiplier = metadata.multiplier
+      const bonus = metadata.bonus
+
+      if (typeof effectType !== 'string' || effectType.trim() === '') {
+        return 'booster requires metadata.effectType'
+      }
+      if (typeof durationMs !== 'number' || !Number.isInteger(durationMs) || durationMs <= 0) {
+        return 'booster requires metadata.durationMs > 0'
+      }
+      const hasMultiplier = typeof multiplier === 'number' && Number.isFinite(multiplier)
+      const hasBonus = typeof bonus === 'number' && Number.isFinite(bonus)
+      if (!hasMultiplier && !hasBonus) {
+        return 'booster requires metadata.multiplier or metadata.bonus'
+      }
+      return null
+    }
+
+    case 'loot_box': {
+      const tier = metadata.tier
+      if (
+        typeof tier !== 'string' ||
+        !LOOT_BOX_TIERS.includes(tier as (typeof LOOT_BOX_TIERS)[number])
+      ) {
+        return 'loot_box requires metadata.tier to be basic, advanced, or premium'
+      }
+      return null
+    }
+
+    case 'premium_unlock': {
+      const effect = metadata.effect
+      if (typeof effect !== 'string' || effect.trim() === '') {
+        return 'premium_unlock requires metadata.effect'
+      }
+      if (deliveryMode === 'grant_sync') {
+        return 'premium_unlock cannot use deliveryMode=grant_sync in the current mobile flow'
+      }
+      return null
+    }
+
+    default:
+      return `Unsupported shop item type: ${type}`
+  }
+}
+
+type StarsShopItemInput = {
+  id: string
+  type: string
+  name: string
+  description: string
+  priceStars: number
+  priceCredits: number | null
+  metadata: Record<string, unknown>
+  isActive: boolean
+  sortOrder: number
+}
+
+function parseStarsShopItemInput(
+  body: unknown,
+  opts: { requireId: boolean; id?: string }
+): { ok: true; data: StarsShopItemInput } | { ok: false; error: string } {
+  if (!isPlainObject(body)) {
+    return { ok: false, error: 'body must be an object' }
+  }
+
+  const id = opts.requireId ? readNonEmptyString(body.id) : opts.id ?? ''
+  if (!id) return { ok: false, error: 'id is required' }
+
+  const type = readNonEmptyString(body.type)
+  if (!type || !STARS_SHOP_TYPES.includes(type as (typeof STARS_SHOP_TYPES)[number])) {
+    return { ok: false, error: `type must be one of: ${STARS_SHOP_TYPES.join(', ')}` }
+  }
+
+  const name = readNonEmptyString(body.name)
+  if (!name) return { ok: false, error: 'name is required' }
+
+  const description = readNonEmptyString(body.description)
+  if (!description) return { ok: false, error: 'description is required' }
+
+  const priceStars = readRequiredInt(body.priceStars, 1)
+  if (priceStars === null) {
+    return { ok: false, error: 'priceStars must be a positive integer' }
+  }
+
+  const priceCredits = readNullableInt(body.priceCredits, 0)
+  if (priceCredits === undefined) {
+    return { ok: false, error: 'priceCredits must be null or a non-negative integer' }
+  }
+
+  const sortOrder = readRequiredInt(body.sortOrder, 0)
+  if (sortOrder === null) {
+    return { ok: false, error: 'sortOrder must be a non-negative integer' }
+  }
+
+  if (!isPlainObject(body.metadata)) {
+    return { ok: false, error: 'metadata must be a JSON object' }
+  }
+
+  const metadata = body.metadata
+  const metadataError = validateStarsShopMetadata(type, metadata)
+  if (metadataError) {
+    return { ok: false, error: metadataError }
+  }
+
+  return {
+    ok: true,
+    data: {
+      id,
+      type,
+      name,
+      description,
+      priceStars,
+      priceCredits,
+      metadata,
+      isActive: readBoolean(body.isActive, true),
+      sortOrder
+    }
+  }
+}
 
 const CONFIG_KEY_HINTS: Record<string, string> = {
   formulaConstants: 'Формулы и константы прогрессии',
@@ -112,6 +307,104 @@ export function registerCrmGameAdminRoutes(app: FastifyInstance) {
       return reply.status(404).send({ error: 'no override stored for this key' })
     }
     return reply.status(204).send()
+  })
+
+  app.get('/stars-shop/items', async () => {
+    const items = await prisma.shopItem.findMany({
+      where: { priceStars: { not: null } },
+      orderBy: [{ sortOrder: 'asc' }, { updatedAt: 'desc' }],
+      select: {
+        id: true,
+        type: true,
+        name: true,
+        description: true,
+        priceStars: true,
+        priceCredits: true,
+        metadata: true,
+        isActive: true,
+        sortOrder: true,
+        updatedAt: true
+      }
+    })
+
+    return {
+      items: items.map((item) => {
+        const metadata = (item.metadata as Record<string, unknown>) ?? {}
+        return {
+          ...item,
+          deliveryMode: typeof metadata.deliveryMode === 'string' ? metadata.deliveryMode : null,
+          updatedAt: item.updatedAt.toISOString()
+        }
+      })
+    }
+  })
+
+  app.get('/stars-shop/items/:id', async (req, reply) => {
+    const { id } = req.params as { id: string }
+    const item = await prisma.shopItem.findUnique({ where: { id } })
+    if (!item || item.priceStars === null) {
+      return reply.status(404).send({ error: 'stars shop item not found' })
+    }
+    return {
+      ...item,
+      metadata: (item.metadata as Record<string, unknown>) ?? {},
+      updatedAt: item.updatedAt.toISOString(),
+      createdAt: item.createdAt.toISOString()
+    }
+  })
+
+  app.post('/stars-shop/items', async (req, reply) => {
+    const parsed = parseStarsShopItemInput(req.body, { requireId: true })
+    if (!parsed.ok) {
+      return reply.status(400).send({ error: parsed.error })
+    }
+
+    const existing = await prisma.shopItem.findUnique({ where: { id: parsed.data.id } })
+    if (existing) {
+      return reply.status(409).send({ error: 'shop item with this id already exists' })
+    }
+
+    const created = await prisma.shopItem.create({
+      data: {
+        ...parsed.data,
+        metadata: parsed.data.metadata as Prisma.InputJsonValue
+      }
+    })
+
+    return reply.status(201).send({
+      ...created,
+      metadata: (created.metadata as Record<string, unknown>) ?? {},
+      updatedAt: created.updatedAt.toISOString(),
+      createdAt: created.createdAt.toISOString()
+    })
+  })
+
+  app.put('/stars-shop/items/:id', async (req, reply) => {
+    const { id } = req.params as { id: string }
+    const existing = await prisma.shopItem.findUnique({ where: { id } })
+    if (!existing || existing.priceStars === null) {
+      return reply.status(404).send({ error: 'stars shop item not found' })
+    }
+
+    const parsed = parseStarsShopItemInput(req.body, { requireId: false, id })
+    if (!parsed.ok) {
+      return reply.status(400).send({ error: parsed.error })
+    }
+
+    const updated = await prisma.shopItem.update({
+      where: { id },
+      data: {
+        ...parsed.data,
+        metadata: parsed.data.metadata as Prisma.InputJsonValue
+      }
+    })
+
+    return {
+      ...updated,
+      metadata: (updated.metadata as Record<string, unknown>) ?? {},
+      updatedAt: updated.updatedAt.toISOString(),
+      createdAt: updated.createdAt.toISOString()
+    }
   })
 
   app.get('/players/search', async (req, reply) => {

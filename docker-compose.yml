@@ -44,6 +44,10 @@ services:
         # URL видны из браузера пользователя — укажи публичный API при деплое.
         EXPO_PUBLIC_API_URL: http://localhost:3001
         EXPO_PUBLIC_CONFIG_URL: http://localhost:3001/config
+        # Local Telegram Stars catalog test mode for Expo web outside Telegram.
+        EXPO_PUBLIC_TELEGRAM_TEST_MODE: ${EXPO_PUBLIC_TELEGRAM_TEST_MODE:-true}
+        EXPO_PUBLIC_TELEGRAM_TEST_INIT_DATA: ${EXPO_PUBLIC_TELEGRAM_TEST_INIT_DATA:-}
+        EXPO_PUBLIC_TELEGRAM_TEST_INVOICE_STATUS: ${EXPO_PUBLIC_TELEGRAM_TEST_INVOICE_STATUS:-cancelled}
         VITE_API_URL: http://localhost:3001
     image: cosmo-game-web:local
     container_name: cosmo-game-web

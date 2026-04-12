@@ -8,6 +8,7 @@
  *   POST /telegram/webhook       — Telegram bot webhook (pre_checkout + successful_payment)
  */
 import type { FastifyInstance } from 'fastify';
+import { Prisma } from '@prisma/client';
 import prisma from '../lib/prisma';
 import { issueTokens } from '../lib/tokens';
 import type { JwtPayload } from '../plugins/jwt';
@@ -22,6 +23,7 @@ import {
 import { fulfillPurchase } from '../lib/fulfillment';
 import { getUserInventory } from '../lib/inventory';
 import { TELEGRAM_SHOP_SYNC_ONLY, TELEGRAM_SUMMARY_CANONICAL } from '../lib/features';
+import { makeShopItemSnapshot, readShopItemSnapshot } from '../lib/shopItemSnapshot';
 import {
   computePlayerLevel,
   xpProgressFraction,
@@ -287,7 +289,10 @@ export async function telegramRoutes(app: FastifyInstance) {
         paymentMethod: 'stars',
         starsAmount: item.priceStars,
         status: 'pending',
-        metadata: { initiatedAt: new Date().toISOString() },
+        metadata: {
+          initiatedAt: new Date().toISOString(),
+          shopItemSnapshot: makeShopItemSnapshot(item) as unknown as Prisma.InputJsonValue,
+        } as Prisma.InputJsonValue,
       },
     });
 
@@ -345,13 +350,20 @@ export async function telegramRoutes(app: FastifyInstance) {
       if (!purchase) return reply.status(404).send({ error: 'Purchase not found' });
       if (purchase.userId !== userId) return reply.status(403).send({ error: 'Forbidden' });
 
+      const rawPurchaseMeta = ((purchase.metadata as Record<string, unknown>) ?? {});
+      const purchaseMetadata = { ...rawPurchaseMeta };
+      delete purchaseMetadata.shopItemSnapshot;
+      const snapshot =
+        readShopItemSnapshot(rawPurchaseMeta.shopItemSnapshot) ??
+        makeShopItemSnapshot(purchase.shopItem);
+
       return {
         purchaseId: purchase.id,
         status: purchase.status,
-        type: purchase.shopItem.type,
+        type: snapshot.type,
         shopItemId: purchase.shopItemId,
-        metadata: (purchase.metadata as Record<string, unknown>) ?? {},
-        itemMetadata: (purchase.shopItem.metadata as Record<string, unknown>) ?? {},
+        metadata: purchaseMetadata,
+        itemMetadata: snapshot.metadata,
       };
     },
   );

@@ -227,6 +227,48 @@ describe('Contract: purchase fulfillment', () => {
     assert.ok(updated!.fulfilledAt !== null, 'fulfilledAt should be set after fulfillment');
   });
 
+  it('uses shop item snapshot from purchase metadata when the catalog item changes later', async () => {
+    const purchase = await db.purchase.create({
+      data: {
+        userId,
+        shopItemId: TEST_ITEMS.credits100.id,
+        paymentMethod: 'stars',
+        starsAmount: 15,
+        status: 'pending',
+        metadata: {
+          initiatedAt: new Date().toISOString(),
+          shopItemSnapshot: {
+            id: TEST_ITEMS.credits100.id,
+            type: 'currency_pack',
+            name: 'Snapshot Credits 100',
+            description: 'Snapshot payload',
+            priceStars: 15,
+            priceCredits: null,
+            metadata: { creditAmount: 100, deliveryMode: 'grant_sync' },
+          },
+        },
+      },
+    });
+
+    await db.shopItem.update({
+      where: { id: TEST_ITEMS.credits100.id },
+      data: {
+        type: 'currency_pack',
+        metadata: { creditAmount: 9999, deliveryMode: 'grant_sync' },
+      },
+    });
+
+    const result = await fulfillPurchase(purchase.id);
+    assert.ok(result.ok);
+
+    const grant = await db.grant.findFirst({
+      where: { userId, purchaseId: purchase.id },
+    });
+    assert.ok(grant, 'Grant was not created');
+    assert.equal(grant!.kind, 'credits_grant');
+    assert.equal((grant!.payload as { amount: number }).amount, 100);
+  });
+
   // ── 6. UserSave not mutated ───────────────────────────────────────────────
 
   it('GameplaySave/UserSave is NOT mutated during fulfillment', async () => {

@@ -1,5 +1,5 @@
 ﻿import { Link, NavLink, Outlet } from 'react-router-dom'
-import { Gamepad2, Layers, LifeBuoy, Sparkles, Target, TrendingUp, UserRound, Users } from 'lucide-react'
+import { Gamepad2, Layers, LifeBuoy, Sparkles, Target, TrendingUp, UserRound, Users, ShoppingBag } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { clearTokens } from '@/lib/api'
 
@@ -10,6 +10,7 @@ const nav = [
   { label: 'Deals', to: '/deals', icon: TrendingUp },
   { label: 'Activity', to: '/activity', icon: LifeBuoy },
   { label: 'Game config', to: '/game-config', icon: Gamepad2 },
+  { label: 'Stars shop', to: '/stars-shop', icon: ShoppingBag },
   { label: 'Players', to: '/players', icon: Users }
 ]
 

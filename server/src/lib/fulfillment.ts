@@ -21,6 +21,7 @@ import prisma from './prisma';
 import { nextGrantSeq, createGrantInTx } from './grants';
 import type { GrantKind } from './grants';
 import { addToInventory } from './inventory';
+import { makeShopItemSnapshot, readShopItemSnapshot } from './shopItemSnapshot';
 
 export type FulfillResult =
   | { ok: true; alreadyFulfilled: boolean }
@@ -114,6 +115,10 @@ export async function fulfillPurchase(
   // Captured outside the transaction so we can write the inventory audit record
   // after the transaction commits (best-effort; does not affect delivery state).
   let fulfilledGrantKind: GrantKind | null = null;
+  const purchaseMeta = (purchase.metadata as Record<string, unknown>) ?? {};
+  const item =
+    readShopItemSnapshot(purchaseMeta.shopItemSnapshot) ??
+    makeShopItemSnapshot(purchase.shopItem);
 
   await prisma.$transaction(async (tx) => {
     // Record Telegram charge ID if provided (Stars flow) — idempotency key
@@ -124,8 +129,7 @@ export async function fulfillPurchase(
       });
     }
 
-    const item = purchase.shopItem;
-    const meta = (item.metadata as Record<string, unknown>) ?? {};
+    const meta = item.metadata ?? {};
     const userId = purchase.userId;
 
     // Allocate seq inside the transaction for strict monotonicity
@@ -161,7 +165,7 @@ export async function fulfillPurchase(
       const rollResult = rollLootBox(tier);
 
       // Store the roll in purchase metadata for observability / client polling
-      const existingMeta = (purchase.metadata as Record<string, unknown>) ?? {};
+      const existingMeta = purchaseMeta;
       await tx.purchase.update({
         where: { id: purchaseId },
         data: { metadata: { ...existingMeta, ...rollResult } },
@@ -199,8 +203,8 @@ export async function fulfillPurchase(
   if (fulfilledGrantKind) {
     addToInventory(
       purchase.userId,
-      purchase.shopItemId,
-      purchase.shopItem.type,
+      item.id,
+      item.type,
       1,
       { grantKind: fulfilledGrantKind, purchaseId: purchase.id },
     ).catch(() => {

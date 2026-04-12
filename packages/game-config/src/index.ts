@@ -1,4 +1,5 @@
 export { computePlayerLevel, xpAtLevelStart, xpForNextLevel, xpProgressFraction } from './calculators';
+export { XP_THRESHOLDS, MAX_LEVEL } from './player';
 export type {
   BoostStatDto,
   BoostEffectDto,
