@@ -26,7 +26,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { getTelegramWebApp } from './runtime';
+import { getTelegramWebApp, isTelegramTestMode } from './runtime';
 import { getAccessToken, refreshAccessToken } from '../game/cloudSave';
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
@@ -137,6 +137,7 @@ export function StarsShopTab({ onPurchaseApplied }: StarsShopTabProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [buying, setBuying] = useState<string | null>(null);
+  const telegramTestMode = isTelegramTestMode();
 
   function loadCatalog() {
     setLoading(true);
@@ -165,7 +166,13 @@ export function StarsShopTab({ onPurchaseApplied }: StarsShopTabProps) {
 
   async function handleBuy(item: StarShopItem) {
     const tg = getTelegramWebApp();
-    if (!tg) return;
+    if (!tg) {
+      Alert.alert(
+        'Telegram недоступен',
+        'Откройте Mini App внутри Telegram или включите EXPO_PUBLIC_TELEGRAM_TEST_MODE=true для локальной проверки каталога.',
+      );
+      return;
+    }
 
     setBuying(item.id);
     let purchaseId: string | undefined;
@@ -232,6 +239,18 @@ export function StarsShopTab({ onPurchaseApplied }: StarsShopTabProps) {
       data={items}
       keyExtractor={(i) => i.id}
       contentContainerStyle={styles.list}
+      ListHeaderComponent={
+        telegramTestMode ? (
+          <View style={styles.testModeBanner}>
+            <Text style={styles.testModeTitle}>TEST MODE</Text>
+            <Text style={styles.testModeText}>
+              Stars-вкладка включена локально для проверки каталога. Реальная оплата и webhook
+              подтверждение требуют запуска внутри Telegram. Для auth в dev-режиме можно
+              передать EXPO_PUBLIC_TELEGRAM_TEST_INIT_DATA.
+            </Text>
+          </View>
+        ) : null
+      }
       renderItem={({ item }) => {
         const isBuying = buying === item.id;
         return (
@@ -277,6 +296,26 @@ const styles = StyleSheet.create({
   },
   retryText: { color: '#00d4ff', fontSize: 13, fontWeight: '700' },
   list: { padding: 16, gap: 10 },
+  testModeBanner: {
+    marginBottom: 10,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,200,0,0.4)',
+    backgroundColor: 'rgba(255,200,0,0.08)',
+  },
+  testModeTitle: {
+    marginBottom: 4,
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#ffd700',
+    letterSpacing: 1,
+  },
+  testModeText: {
+    fontSize: 11,
+    lineHeight: 16,
+    color: 'rgba(255,255,255,0.72)',
+  },
   card: {
     flexDirection: 'row',
     alignItems: 'center',

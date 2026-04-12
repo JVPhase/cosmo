@@ -9,6 +9,7 @@ import LoginPage from '@/pages/Login'
 import GameConfigPage from '@/pages/GameConfig'
 import OverviewPage from '@/pages/Overview'
 import PlayerGamePage from '@/pages/PlayerGame'
+import StarsShopPage from '@/pages/StarsShop'
 
 function RequireAuth({ children }: { children: JSX.Element }) {
   if (!getAccessToken()) return <Navigate to="/login" replace />
@@ -34,6 +35,8 @@ export default function App() {
         <Route path="activity" element={<ActivityPage />} />
         <Route path="game-config" element={<GameConfigPage />} />
         <Route path="game-config/:key" element={<GameConfigPage />} />
+        <Route path="stars-shop" element={<StarsShopPage />} />
+        <Route path="stars-shop/:itemId" element={<StarsShopPage />} />
         <Route path="players" element={<PlayerGamePage />} />
         <Route path="players/:userId" element={<PlayerGamePage />} />
       </Route>

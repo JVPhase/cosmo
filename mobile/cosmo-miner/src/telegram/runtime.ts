@@ -8,6 +8,12 @@ import { Platform } from 'react-native';
 
 // ── Minimal TelegramWebApp surface we actually use ────────────────────────────
 
+const TELEGRAM_TEST_MODE_ENABLED =
+  process.env.EXPO_PUBLIC_TELEGRAM_TEST_MODE === 'true';
+const TELEGRAM_TEST_INIT_DATA =
+  process.env.EXPO_PUBLIC_TELEGRAM_TEST_INIT_DATA?.trim() ??
+  'telegram-test-runtime';
+
 export interface TelegramWebApp {
   initData: string;
   initDataUnsafe: {
@@ -42,14 +48,68 @@ export interface TelegramWebApp {
 
 export type InvoiceStatus = 'paid' | 'cancelled' | 'failed' | 'pending';
 
+function getTelegramTestInvoiceStatus(): InvoiceStatus {
+  const status = process.env.EXPO_PUBLIC_TELEGRAM_TEST_INVOICE_STATUS;
+  switch (status) {
+    case 'paid':
+    case 'cancelled':
+    case 'failed':
+    case 'pending':
+      return status;
+    default:
+      return 'cancelled';
+  }
+}
+
+function createMockTelegramWebApp(): TelegramWebApp {
+  return {
+    initData: TELEGRAM_TEST_INIT_DATA,
+    initDataUnsafe: {
+      user: {
+        id: 0,
+        first_name: 'Dev',
+        username: 'telegram_test_mode',
+      },
+      auth_date: Math.floor(Date.now() / 1000),
+      hash: 'telegram-test-mode',
+    },
+    colorScheme: 'dark',
+    themeParams: {
+      bg_color: '#050918',
+      text_color: '#ffffff',
+      hint_color: '#7b8aa5',
+      button_color: '#00d4ff',
+      button_text_color: '#041018',
+      secondary_bg_color: '#0c152d',
+    },
+    ready() {},
+    expand() {},
+    openInvoice(url: string, callback?: (status: InvoiceStatus) => void) {
+      if (typeof window !== 'undefined') {
+        window.open(url, '_blank', 'noopener,noreferrer');
+      }
+      setTimeout(() => callback?.(getTelegramTestInvoiceStatus()), 0);
+    },
+    hapticFeedback: {
+      notificationOccurred() {},
+    },
+  };
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+export function isTelegramTestMode(): boolean {
+  return Platform.OS === 'web' && TELEGRAM_TEST_MODE_ENABLED;
+}
 
 /** Returns the Telegram WebApp SDK object, or null when not available. */
 export function getTelegramWebApp(): TelegramWebApp | null {
   if (Platform.OS !== 'web') return null;
   if (typeof window === 'undefined') return null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (window as any)?.Telegram?.WebApp ?? null;
+  const realTelegram = (window as any)?.Telegram?.WebApp ?? null;
+  if (realTelegram) return realTelegram;
+  return isTelegramTestMode() ? createMockTelegramWebApp() : null;
 }
 
 /**
@@ -58,7 +118,9 @@ export function getTelegramWebApp(): TelegramWebApp | null {
  */
 export function isTelegramRuntime(): boolean {
   const tg = getTelegramWebApp();
-  return tg !== null && typeof tg.initData === 'string' && tg.initData.length > 0;
+  if (!tg) return false;
+  if (isTelegramTestMode()) return true;
+  return typeof tg.initData === 'string' && tg.initData.length > 0;
 }
 
 /**

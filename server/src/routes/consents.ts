@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import { Prisma } from '@prisma/client';
 import prisma from '../lib/prisma';
 import type { JwtPayload } from '../plugins/jwt';
 
@@ -39,8 +40,8 @@ export async function consentsRoutes(app: FastifyInstance) {
           ipAddress: req.ip ?? null,
           userAgent: req.headers['user-agent'] ?? null,
           metadata: typeof body.metadata === 'object' && body.metadata !== null
-            ? (body.metadata as object)
-            : null,
+            ? (body.metadata as Prisma.InputJsonValue)
+            : Prisma.DbNull,
         },
         update: {
           version: body.version.trim(),
@@ -49,8 +50,8 @@ export async function consentsRoutes(app: FastifyInstance) {
           ipAddress: req.ip ?? null,
           userAgent: req.headers['user-agent'] ?? null,
           metadata: typeof body.metadata === 'object' && body.metadata !== null
-            ? (body.metadata as object)
-            : null,
+            ? (body.metadata as Prisma.InputJsonValue)
+            : Prisma.DbNull,
         },
       });
 
