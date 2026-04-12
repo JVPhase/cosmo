@@ -7,7 +7,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  View,
+  View
 } from 'react-native';
 import { getShopItems, type ShopCategory, type ShopItemId } from '../game/SHOP';
 import { CREDIT_PACKS } from '../game/CREDIT_PACKS';
@@ -19,11 +19,14 @@ import {
   initIAP,
   purchasePack,
   getProducts,
-  type IAPProduct,
+  type IAPProduct
 } from '../services/iap';
 import { getCachedRemoteConfig } from '../game/remoteConfig';
 import { isTelegramRuntime } from '../telegram/runtime';
-import { StarsShopTab, type StarsPurchasedItem } from '../telegram/StarsShopTab';
+import {
+  StarsShopTab,
+  type StarsPurchasedItem
+} from '../telegram/StarsShopTab';
 
 export type ShopScreenProps = {
   credits: number;
@@ -36,7 +39,7 @@ export type ShopScreenProps = {
       convertTo?: string;
       convertAmount?: number;
       onLootResult?: (drops: Partial<Record<MetalId, number>>) => void;
-    },
+    }
   ) => void;
   onAddCredits: (amount: number) => void;
   /** Called after a successful Telegram Stars purchase to apply the effect to game state. */
@@ -45,11 +48,12 @@ export type ShopScreenProps = {
 
 type ShopTab = ShopCategory | 'credits' | 'stars';
 const ALL_TABS: { id: ShopTab; label: string }[] = [
-  { id: 'credits', label: '💳 КРЕДИТЫ' },
+  // until android release
+  // { id: 'credits', label: '💳 КРЕДИТЫ' },
   { id: 'boosters', label: '⚡ БУСТЕРЫ' },
   { id: 'metals', label: '⛏️ МЕТАЛЛЫ' },
   { id: 'lootboxes', label: '📦 КОНТЕЙН.' },
-  { id: 'converter', label: '🔄 КОНВЕРТЕР' },
+  { id: 'converter', label: '🔄 КОНВЕРТЕР' }
 ];
 const STARS_TAB = { id: 'stars' as ShopTab, label: '⭐ STARS' };
 
@@ -58,7 +62,7 @@ const METAL_ORDER: MetalId[] = [
   'titan',
   'iridium',
   'voidCrystal',
-  'echoShard',
+  'echoShard'
 ];
 
 function formatMs(ms: number): string {
@@ -117,7 +121,7 @@ function ActiveBoostsBanner({ boosts }: { boosts: ActiveBoost[] }) {
 function ConverterPanel({
   credits,
   metals,
-  onBuy,
+  onBuy
 }: {
   credits: number;
   metals: Record<MetalId, number>;
@@ -137,13 +141,13 @@ function ConverterPanel({
   const canConvert =
     rate > 0 && credits >= creditCost && metals[fromId] >= totalFrom;
 
-  const metalDef = (id: MetalId) => METALS.find((m) => m.id === id)!;
+  const metalDef = (id: MetalId) => getMetals().find((m) => m.id === id)!;
 
   function cycleMetal(
     currentIdx: number,
     direction: 1 | -1,
     excludeIdx: number,
-    setIdx: (i: number) => void,
+    setIdx: (i: number) => void
   ) {
     let next =
       (currentIdx + direction + METAL_ORDER.length) % METAL_ORDER.length;
@@ -221,7 +225,7 @@ function ConverterPanel({
             <Text
               style={[
                 styles.amountText,
-                amount === n && styles.amountTextActive,
+                amount === n && styles.amountTextActive
               ]}
             >
               ×{n}
@@ -243,7 +247,7 @@ function ConverterPanel({
           onBuy('converter', {
             convertFrom: fromId,
             convertTo: toId,
-            convertAmount: amount,
+            convertAmount: amount
           });
         }}
       >
@@ -309,7 +313,7 @@ function CreditsTab({ onAddCredits }: { onAddCredits: (n: number) => void }) {
         <Pressable
           style={[
             styles.creditBuyBtn,
-            adLoading && styles.creditBuyBtnDisabled,
+            adLoading && styles.creditBuyBtnDisabled
           ]}
           onPress={handleWatchAd}
           disabled={adLoading}
@@ -325,7 +329,7 @@ function CreditsTab({ onAddCredits }: { onAddCredits: (n: number) => void }) {
       {/* IAP packs */}
       {iapPacks.map((pack) => {
         const storeProduct = products.find(
-          (p) => p.productId === pack.productId,
+          (p) => p.productId === pack.productId
         );
         const priceLabel = storeProduct?.price ?? pack.basePrice ?? '—';
         const loading = iapLoading === pack.productId;
@@ -341,7 +345,7 @@ function CreditsTab({ onAddCredits }: { onAddCredits: (n: number) => void }) {
               style={[
                 styles.creditBuyBtn,
                 styles.creditBuyBtnIAP,
-                loading && styles.creditBuyBtnDisabled,
+                loading && styles.creditBuyBtnDisabled
               ]}
               onPress={() => handleIAP(pack.productId!, pack.credits)}
               disabled={loading || iapLoading !== null}
@@ -371,17 +375,19 @@ export function ShopScreen({
   metals,
   onBuyShopItem,
   onAddCredits,
-  onStarsPurchaseApplied,
+  onStarsPurchaseApplied
 }: ShopScreenProps) {
   const METALS = getMetals();
   const SHOP = getShopItems();
   const monetizationEnabled =
     getCachedRemoteConfig()?.monetizationEnabled ?? false;
   const inTelegram = isTelegramRuntime();
-  const baseTabs = monetizationEnabled ? ALL_TABS : ALL_TABS.filter((t) => t.id !== 'credits');
+  const baseTabs = monetizationEnabled
+    ? ALL_TABS
+    : ALL_TABS.filter((t) => t.id !== 'credits');
   const TABS = inTelegram ? [...baseTabs, STARS_TAB] : baseTabs;
   const [tab, setTab] = useState<ShopTab>(
-    monetizationEnabled ? 'credits' : 'boosters',
+    monetizationEnabled ? 'credits' : 'boosters'
   );
   const [lootResult, setLootResult] = useState<Partial<
     Record<MetalId, number>
@@ -393,7 +399,7 @@ export function ShopScreen({
     const item = SHOP.find((s) => s.id === id)!;
     if (item.category === 'lootboxes') {
       onBuyShopItem(id, {
-        onLootResult: (drops) => setLootResult(drops),
+        onLootResult: (drops) => setLootResult(drops)
       });
     } else {
       onBuyShopItem(id);
@@ -471,7 +477,9 @@ export function ShopScreen({
 
       {/* Telegram Stars tab */}
       {tab === 'stars' && (
-        <StarsShopTab onPurchaseApplied={onStarsPurchaseApplied ?? (() => {})} />
+        <StarsShopTab
+          onPurchaseApplied={onStarsPurchaseApplied ?? (() => {})}
+        />
       )}
 
       {/* Regular item list */}
@@ -486,7 +494,7 @@ export function ShopScreen({
               <View
                 style={[
                   styles.card,
-                  canAfford ? styles.cardAffordable : styles.cardLocked,
+                  canAfford ? styles.cardAffordable : styles.cardLocked
                 ]}
               >
                 <Text style={styles.cardIcon}>{item.icon}</Text>
@@ -527,7 +535,7 @@ export function ShopScreen({
                       styles.cardCost,
                       canAfford
                         ? styles.cardCostAffordable
-                        : styles.cardCostLocked,
+                        : styles.cardCostLocked
                     ]}
                   >
                     💳 {item.creditCost}
@@ -575,13 +583,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingTop: 16,
-    paddingBottom: 8,
+    paddingBottom: 8
   },
   headerTitle: {
     fontSize: 16,
     fontWeight: '800',
     color: '#fff',
-    letterSpacing: 1,
+    letterSpacing: 1
   },
   creditsChip: {
     backgroundColor: 'rgba(0,212,255,0.12)',
@@ -589,7 +597,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderWidth: 1,
-    borderColor: 'rgba(0,212,255,0.3)',
+    borderColor: 'rgba(0,212,255,0.3)'
   },
   creditsChipText: { fontSize: 14, fontWeight: '700', color: '#00d4ff' },
 
@@ -601,17 +609,17 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: 'rgba(0,212,255,0.12)',
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    backgroundColor: 'rgba(255,255,255,0.03)'
   },
   tabActive: {
     backgroundColor: 'rgba(0,212,255,0.12)',
-    borderColor: 'rgba(0,212,255,0.4)',
+    borderColor: 'rgba(0,212,255,0.4)'
   },
   tabText: {
     fontSize: 11,
     fontWeight: '700',
     color: 'rgba(255,255,255,0.35)',
-    letterSpacing: 0.5,
+    letterSpacing: 0.5
   },
   tabTextActive: { color: '#00d4ff' },
 
@@ -622,19 +630,19 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: 'rgba(0,212,255,0.1)',
     borderWidth: 1,
-    borderColor: 'rgba(0,212,255,0.35)',
+    borderColor: 'rgba(0,212,255,0.35)'
   },
   lootToastTitle: {
     fontSize: 13,
     fontWeight: '700',
     color: '#00d4ff',
-    marginBottom: 6,
+    marginBottom: 6
   },
   lootToastLine: { fontSize: 13, color: '#fff', marginBottom: 2 },
   lootToastDismiss: {
     fontSize: 10,
     color: 'rgba(255,255,255,0.35)',
-    marginTop: 6,
+    marginTop: 6
   },
 
   activeBanner: {
@@ -644,20 +652,20 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: 'rgba(255,200,0,0.07)',
     borderWidth: 1,
-    borderColor: 'rgba(255,200,0,0.25)',
+    borderColor: 'rgba(255,200,0,0.25)'
   },
   activeBannerTitle: {
     fontSize: 10,
     fontWeight: '700',
     color: 'rgba(255,200,0,0.7)',
     letterSpacing: 1,
-    marginBottom: 6,
+    marginBottom: 6
   },
   activeRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 4,
+    marginBottom: 4
   },
   activeIcon: { fontSize: 16 },
   activeName: { flex: 1, fontSize: 12, color: '#fff' },
@@ -671,15 +679,15 @@ const styles = StyleSheet.create({
     padding: 14,
     borderRadius: 12,
     marginBottom: 10,
-    borderWidth: 1,
+    borderWidth: 1
   },
   cardAffordable: {
     backgroundColor: 'rgba(0,212,255,0.05)',
-    borderColor: 'rgba(0,212,255,0.25)',
+    borderColor: 'rgba(0,212,255,0.25)'
   },
   cardLocked: {
     backgroundColor: 'rgba(255,255,255,0.02)',
-    borderColor: 'rgba(255,255,255,0.07)',
+    borderColor: 'rgba(255,255,255,0.07)'
   },
   cardIcon: { fontSize: 28, marginTop: 2 },
   cardBody: { flex: 1 },
@@ -696,17 +704,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderWidth: 1,
-    borderColor: 'rgba(0,212,255,0.4)',
+    borderColor: 'rgba(0,212,255,0.4)'
   },
   buyBtnDisabled: {
     backgroundColor: 'rgba(255,255,255,0.03)',
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: 'rgba(255,255,255,0.1)'
   },
   buyBtnText: {
     fontSize: 11,
     fontWeight: '700',
     color: '#00d4ff',
-    letterSpacing: 0.5,
+    letterSpacing: 0.5
   },
 
   // Converter
@@ -715,12 +723,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#fff',
-    marginBottom: 4,
+    marginBottom: 4
   },
   converterSubtitle: {
     fontSize: 11,
     color: 'rgba(255,255,255,0.4)',
-    marginBottom: 16,
+    marginBottom: 16
   },
   converterRow: { marginBottom: 16 },
   converterLabel: {
@@ -728,7 +736,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: 'rgba(255,255,255,0.4)',
     letterSpacing: 1,
-    marginBottom: 6,
+    marginBottom: 6
   },
   metalPicker: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   arrow: { padding: 8 },
@@ -738,12 +746,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 14,
     fontWeight: '700',
-    color: '#fff',
+    color: '#fff'
   },
   converterStock: {
     fontSize: 11,
     color: 'rgba(255,255,255,0.5)',
-    marginTop: 4,
+    marginTop: 4
   },
   amountRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
   amountBtn: {
@@ -753,18 +761,18 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: 'rgba(255,200,0,0.2)',
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    backgroundColor: 'rgba(255,255,255,0.03)'
   },
   amountBtnActive: {
     backgroundColor: 'rgba(255,200,0,0.12)',
-    borderColor: 'rgba(255,200,0,0.5)',
+    borderColor: 'rgba(255,200,0,0.5)'
   },
   amountText: { fontSize: 13, fontWeight: '700', color: 'rgba(255,200,0,0.4)' },
   amountTextActive: { color: '#ffd700' },
   converterError: {
     fontSize: 12,
     color: 'rgba(255,100,100,0.8)',
-    marginBottom: 12,
+    marginBottom: 12
   },
   convertBtn: {
     backgroundColor: 'rgba(0,212,255,0.15)',
@@ -772,17 +780,17 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(0,212,255,0.4)',
+    borderColor: 'rgba(0,212,255,0.4)'
   },
   convertBtnDisabled: {
     backgroundColor: 'rgba(255,255,255,0.03)',
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: 'rgba(255,255,255,0.1)'
   },
   convertBtnText: {
     fontSize: 13,
     fontWeight: '700',
     color: '#00d4ff',
-    letterSpacing: 0.5,
+    letterSpacing: 0.5
   },
 
   // Credits tab
@@ -793,15 +801,15 @@ const styles = StyleSheet.create({
     gap: 12,
     padding: 14,
     borderRadius: 12,
-    borderWidth: 1,
+    borderWidth: 1
   },
   creditCardAd: {
     backgroundColor: 'rgba(0,212,255,0.05)',
-    borderColor: 'rgba(0,212,255,0.25)',
+    borderColor: 'rgba(0,212,255,0.25)'
   },
   creditCardIAP: {
     backgroundColor: 'rgba(255,200,0,0.05)',
-    borderColor: 'rgba(255,200,0,0.2)',
+    borderColor: 'rgba(255,200,0,0.2)'
   },
   creditCardIcon: { fontSize: 30 },
   creditCardBody: { flex: 1 },
@@ -809,18 +817,18 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: '#fff',
-    marginBottom: 2,
+    marginBottom: 2
   },
   creditCardAmount: {
     fontSize: 15,
     fontWeight: '800',
     color: '#00d4ff',
-    marginBottom: 3,
+    marginBottom: 3
   },
   creditCardLore: {
     fontSize: 10,
     color: 'rgba(255,255,255,0.4)',
-    lineHeight: 14,
+    lineHeight: 14
   },
   creditBuyBtn: {
     backgroundColor: 'rgba(0,212,255,0.15)',
@@ -830,18 +838,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(0,212,255,0.4)',
     minWidth: 80,
-    alignItems: 'center',
+    alignItems: 'center'
   },
   creditBuyBtnIAP: {
     backgroundColor: 'rgba(255,200,0,0.12)',
-    borderColor: 'rgba(255,200,0,0.4)',
+    borderColor: 'rgba(255,200,0,0.4)'
   },
   creditBuyBtnDisabled: { opacity: 0.5 },
   creditBuyBtnText: {
     fontSize: 12,
     fontWeight: '700',
     color: '#00d4ff',
-    letterSpacing: 0.5,
+    letterSpacing: 0.5
   },
-  creditBuyBtnTextIAP: { color: '#ffd700' },
+  creditBuyBtnTextIAP: { color: '#ffd700' }
 });
