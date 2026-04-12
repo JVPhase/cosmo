@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import type { CannonId } from '../../game/CANNONS';
 import { formatNum } from '../../game/formatNum';
-import { METALS, type MetalId } from '../../game/METALS';
+import { getMetals, type MetalId } from '../../game/METALS';
 import {
   computeModuleUpgradeCost,
   getMaxUltsPerBattle,
@@ -68,6 +68,7 @@ export function FleetTab({
   onEquipModule,
   onOpenMetalInfo,
 }: FleetTabProps) {
+  const METALS = getMetals();
   const [expandedShipId, setExpandedShipId] = useState<ShipId | null>(
     fleet.selectedShipId,
   );

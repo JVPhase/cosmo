@@ -1,6 +1,6 @@
 import React from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
-import { METALS, type MetalId } from '../../game/METALS';
+import { getMetals, type MetalId } from '../../game/METALS';
 import type { MetalsState } from '../../game/types';
 
 export function MetalCost({
@@ -10,6 +10,7 @@ export function MetalCost({
   cost: Partial<MetalsState>;
   color: string;
 }) {
+  const METALS = getMetals();
   return (
     <View style={styles.metalCostRow}>
       {Object.entries(cost).map(([k, v]) => {

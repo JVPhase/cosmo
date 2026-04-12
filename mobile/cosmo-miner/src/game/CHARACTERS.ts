@@ -188,3 +188,10 @@ export function getRandomMessage(id: CharacterId): string {
   const idx = Math.floor(Math.random() * character.messages.length);
   return character.messages[idx]!;
 }
+
+export const CHARACTER_IMAGES: Record<string, number> = {
+  lien:   require('../../assets/lien.png'),
+  riva:   require('../../assets/riva.png'),
+  graves: require('../../assets/graves.png'),
+  alex:   require('../../assets/alex.png'),
+};

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
-import type { CharacterId } from '../game/CHARACTERS';
+import { Image, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { CHARACTER_IMAGES, type CharacterId } from '../game/CHARACTERS';
 import type { DialogueCharacter } from '../game/dialogues';
 import { getAliens } from '../game/ALIENS';
 import { getModules } from '../game/MODULES';
@@ -78,6 +78,15 @@ export function CharacterSelectFlow({
                   }
                 </Text>
               </View>
+              {pendingId && (
+                <View style={styles.portraitWrapper}>
+                  <Image
+                    source={CHARACTER_IMAGES[pendingId]}
+                    style={styles.portrait}
+                    resizeMode="cover"
+                  />
+                </View>
+              )}
               <View style={styles.choiceList}>
                 {characters.map((c) => (
                   <Pressable
@@ -177,6 +186,13 @@ export function CharacterSelectFlow({
 
           {step === 'greeting' && chosen && (
             <>
+              <View style={styles.portraitWrapper}>
+                <Image
+                  source={CHARACTER_IMAGES[chosen.id]}
+                  style={styles.portrait}
+                  resizeMode="cover"
+                />
+              </View>
               <View style={[styles.body, styles.bodyCompact]}>
                 <Text style={styles.charEmoji}>{chosen.icon}</Text>
                 <View style={styles.charMeta}>
@@ -201,6 +217,13 @@ export function CharacterSelectFlow({
 
           {step === 'metalDeal_intro' && chosen && (
             <>
+              <View style={styles.portraitWrapper}>
+                <Image
+                  source={CHARACTER_IMAGES[chosen.id]}
+                  style={styles.portrait}
+                  resizeMode="cover"
+                />
+              </View>
               <View style={[styles.body, styles.bodyCompact]}>
                 <Text style={styles.charEmoji}>{chosen.icon}</Text>
                 <View style={styles.charMeta}>
@@ -225,6 +248,13 @@ export function CharacterSelectFlow({
 
           {step === 'metalDeal_offer' && chosen && (
             <>
+              <View style={styles.portraitWrapper}>
+                <Image
+                  source={CHARACTER_IMAGES[chosen.id]}
+                  style={styles.portrait}
+                  resizeMode="cover"
+                />
+              </View>
               <View style={[styles.body, styles.bodyCompact]}>
                 <Text style={styles.charEmoji}>{chosen.icon}</Text>
                 <View style={styles.charMeta}>
@@ -507,5 +537,16 @@ const styles = StyleSheet.create({
   },
   bodyCompact: {
     paddingBottom: 4
+  },
+  portraitWrapper: {
+    alignItems: 'center',
+    paddingTop: 12,
+    paddingBottom: 4
+  },
+  portrait: {
+    width: 300,
+    height: 300,
+    borderRadius: 12,
+    overflow: 'hidden'
   }
 });
