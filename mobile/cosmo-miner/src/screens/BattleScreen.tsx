@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { getAliens } from '../game/ALIENS';
 import { getMaxUltsPerBattle, type ModuleDefinition } from '../game/MODULES';
-import { PLANETS } from '../game/PLANETS';
+import { getPlanets } from '../game/PLANETS';
 import { formatNum } from '../game/formatNum';
 import type { BattleState } from '../game/types';
 import { AnimatedHitEffects } from '../ui/AnimatedHitEffects';
@@ -73,6 +73,7 @@ export function BattleScreen({
   onAddBattleTime,
   onUltActivated,
 }: BattleScreenProps) {
+  const PLANETS = getPlanets();
   const [hitState, setHitState] = useState<{ count: number; origin?: { x: number; y: number } }>({ count: 0 });
   const battleHitAreaRef = useRef<View>(null);
   const shakeAnim = useRef(new Animated.Value(0)).current;

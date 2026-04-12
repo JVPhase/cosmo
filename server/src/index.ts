@@ -59,13 +59,12 @@ async function main() {
     },
   })
 
-  await app.register(
-    cors,
-    {
-      origin: true,
-      credentials: true
-    }
-  )
+  await app.register(cors, {
+    origin: true,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Telegram-User-Id'],
+  })
 
   // JWT decorator + app.authenticate helper
   await app.register(jwtPlugin)

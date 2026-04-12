@@ -53,6 +53,8 @@ export type GameState = {
   battleWinStreak: number;
   credits: number;
   activeBoosts: ActiveBoost[];
+  characterMessageHistory: string[];
+  greetingShown: boolean;
 };
 
 export type GameStateInit = {
@@ -85,6 +87,8 @@ export type GameStateInit = {
   battleWinStreak?: number;
   credits?: number;
   activeBoosts?: ActiveBoost[];
+  characterMessageHistory?: string[];
+  greetingShown?: boolean;
 };
 
 /**

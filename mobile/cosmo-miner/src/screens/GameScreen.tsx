@@ -15,7 +15,7 @@ import {
 import { AnimatedMineEffects } from '../ui/AnimatedMineEffects';
 import { PassiveMiningFx } from '../ui/PassiveMiningFx';
 import { formatNum } from '../game/formatNum';
-import { METALS, type MetalId } from '../game/METALS';
+import { getMetals, type MetalId } from '../game/METALS';
 import type { PlanetDefinition } from '../game/PLANETS';
 import { getPlayerTitle, xpAtLevelStart, xpForNextLevel } from '../game/PLAYER';
 import type { MetalsState } from '../game/types';
@@ -116,6 +116,7 @@ export function GameScreen({
   onOpenCharacterChannel,
   characterChannelUnlocked,
 }: GameScreenProps) {
+  const METALS = getMetals();
   const xpStart = xpAtLevelStart(playerLevel);
   const xpNext = xpForNextLevel(playerLevel);
   const xpPercent =
@@ -432,7 +433,7 @@ export function GameScreen({
       )}
 
       {/* Character channel button (top-right) */}
-      {headerHeight > 0 && chosenCharacter && characterChannelUnlocked && (
+      {headerHeight > 0 && characterChannelUnlocked && (
         <View style={[styles.floatingBtnsRight, { top: headerHeight + 10 }]}>
           <Pressable
             onPress={onOpenCharacterChannel}
@@ -443,7 +444,7 @@ export function GameScreen({
               pressed ? { opacity: 0.7 } : null
             ]}
           >
-            <Text style={styles.floatingBtnIcon}>{chosenCharacter.icon}</Text>
+            <Text style={styles.floatingBtnIcon}>{chosenCharacter?.icon ?? '📡'}</Text>
             <Text style={styles.floatingBtnChannelLabel}>КАНАЛ СВЯЗИ</Text>
             {hasUnreadChannelMessage && <View style={styles.channelUnreadDot} />}
           </Pressable>

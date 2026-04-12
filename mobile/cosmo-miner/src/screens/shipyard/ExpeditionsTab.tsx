@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { logEvent } from '../../game/analytics';
 import { getExpeditions, type ExpeditionId } from '../../game/EXPEDITIONS';
-import { METALS } from '../../game/METALS';
+import { getMetals } from '../../game/METALS';
 import { getShips, type ShipId } from '../../game/SHIPS';
 import type { ActiveExpedition, BattleState, FleetState } from '../../game/types';
 import { TIMELY_CLAIM_WINDOW_MS } from '../../game/useGame';
@@ -34,6 +34,7 @@ export function ExpeditionsTab({
   onStartExpedition,
   onClaimExpedition,
 }: ExpeditionsTabProps) {
+  const METALS = getMetals();
   const [expeditionShipId, setExpeditionShipId] = useState<ShipId | null>(null);
 
   const isBattleActive = !!battle;

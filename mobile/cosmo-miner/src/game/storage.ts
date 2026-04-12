@@ -1,7 +1,8 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { METALS } from "./METALS";
-import { PLANETS, type PlanetId } from "./PLANETS";
+import { getMetals } from "./METALS";
+import { getPlanets, type PlanetId } from "./PLANETS";
 import { getUpgrades } from "./UPGRADES";
+import { getCachedRemoteConfig } from "./remoteConfig";
 import type { GameState, GameStateInit, GameplaySaveEnvelopeV2 } from "./types";
 import { serializeGameplaySaveV2, deserializeGameplaySaveEnvelope } from "./saveContract";
 
@@ -24,25 +25,31 @@ function isValidState(s: unknown): s is GameStateInit {
   if (!Array.isArray((state.achievements as Record<string, unknown>).unlockedIds)) return false;
 
   if (typeof state.upgrades !== "object" || state.upgrades === null) return false;
-  const upgrades = state.upgrades as Record<string, unknown>;
-  for (const upg of getUpgrades()) {
-    const v = upgrades[String(upg.id)];
-    if (v !== undefined && typeof v !== "number") return false;
+  if (getCachedRemoteConfig()) {
+    const upgrades = state.upgrades as Record<string, unknown>;
+    for (const upg of getUpgrades()) {
+      const v = upgrades[String(upg.id)];
+      if (v !== undefined && typeof v !== "number") return false;
+    }
   }
 
   if (typeof state.metals !== "object" || state.metals === null) return false;
-  const metals = state.metals as Record<string, unknown>;
-  for (const metal of METALS) {
-    if (metals[metal.id] !== undefined && typeof metals[metal.id] !== "number") return false;
+  if (getCachedRemoteConfig()) {
+    const metals = state.metals as Record<string, unknown>;
+    for (const metal of getMetals()) {
+      if (metals[metal.id] !== undefined && typeof metals[metal.id] !== "number") return false;
+    }
   }
 
   if (typeof state.fleet !== "object" || state.fleet === null) return false;
   const fleet = state.fleet as Record<string, unknown>;
   if (!Array.isArray(fleet.ownedShips)) return false;
 
-  const validPlanetIds = new Set(PLANETS.map((p) => p.id));
-  if (!validPlanetIds.has(state.selectedPlanetId as PlanetId)) return false;
-  if (!(state.unlockedPlanetIds as unknown[]).every((id) => validPlanetIds.has(id as PlanetId))) return false;
+  if (getCachedRemoteConfig()) {
+    const validPlanetIds = new Set(getPlanets().map((p) => p.id));
+    if (!validPlanetIds.has(state.selectedPlanetId as PlanetId)) return false;
+    if (!(state.unlockedPlanetIds as unknown[]).every((id) => validPlanetIds.has(id as PlanetId))) return false;
+  }
 
   const validCharIds = new Set(['lien', 'riva', 'graves', 'alex']);
   if (state.chosenCharacterId !== undefined && state.chosenCharacterId !== null && !validCharIds.has(state.chosenCharacterId as string)) return false;

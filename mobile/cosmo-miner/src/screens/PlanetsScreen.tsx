@@ -10,10 +10,10 @@ import {
 } from 'react-native';
 import { getAliens } from '../game/ALIENS';
 import { formatNum } from '../game/formatNum';
-import { METALS, PLANET_DROP_TABLE } from '../game/METALS';
+import { getMetals, getPlanetDropTable } from '../game/METALS';
 import { getPlanets, type PlanetDefinition, type PlanetId } from '../game/PLANETS';
 import {
-  SECTORS,
+  getSectors,
   getSectorLockReason,
   isSectorUnlocked,
 } from '../game/SECTORS';
@@ -26,6 +26,7 @@ export type PlanetsScreenProps = {
   shipDamage: number;
   energy: number;
   playerLevel: number;
+  characterChosen: boolean;
   onAttackPlanet: (id: PlanetId) => void;
   onChoosePlanet: (id: PlanetId) => void;
 };
@@ -37,9 +38,12 @@ export function PlanetsScreen({
   shipDamage,
   energy,
   playerLevel,
+  characterChosen,
   onAttackPlanet,
   onChoosePlanet,
 }: PlanetsScreenProps) {
+  const METALS = getMetals();
+  const PLANET_DROP_TABLE = getPlanetDropTable();
   const [selPlanet, setSelPlanet] = useState<PlanetDefinition | null>(null);
   const unlockedSet = useMemo(
     () => new Set(unlockedPlanetIds),
@@ -47,7 +51,7 @@ export function PlanetsScreen({
   );
   const sections = useMemo(
     () =>
-      [...SECTORS]
+      [...getSectors()]
         .filter((sector) =>
           isSectorUnlocked(sector.id, unlockedPlanetIds, playerLevel),
         )
@@ -71,6 +75,7 @@ export function PlanetsScreen({
       unlockedPlanetIds,
       playerLevel,
     );
+    const characterLocked = !characterChosen && selPlanet.id >= (10 as PlanetId);
 
     return (
       <View style={styles.screen}>
@@ -185,6 +190,25 @@ export function PlanetsScreen({
             >
               <Text style={styles.chooseBtnText}>✓ ВЫБРАТЬ ЭТУ ЛОКАЦИЮ</Text>
             </Pressable>
+          ) : characterLocked ? (
+            <View
+              style={[
+                styles.attackingBox,
+                { borderColor: 'rgba(0,212,255,0.25)' },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.attackingText,
+                  { color: 'rgba(0,212,255,0.7)' },
+                ]}
+              >
+                📡 НУЖЕН ПЕРСОНАЖ
+              </Text>
+              <Text style={styles.attackingHint}>
+                Сначала выберите адресата в «КАНАЛЕ СВЯЗИ»
+              </Text>
+            </View>
           ) : alreadyBattling ? (
             <View style={styles.attackingBox}>
               <Text style={styles.attackingText}>⚔️ БОЙ В ПРОЦЕССЕ</Text>
@@ -332,7 +356,8 @@ export function PlanetsScreen({
             !unlocked &&
             sectorUnlocked &&
             !isBattling &&
-            energy >= alien.attackEnergyCost;
+            energy >= alien.attackEnergyCost &&
+            (characterChosen || p.id < (10 as PlanetId));
 
           return (
             <Pressable

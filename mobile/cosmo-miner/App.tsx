@@ -33,7 +33,6 @@ import { ResearchScreen } from './src/screens/ResearchScreen';
 import { ShipyardScreen } from './src/screens/shipyard';
 import { ShopScreen } from './src/screens/ShopScreen';
 import { UpgradesScreen } from './src/screens/UpgradesScreen';
-import { CharacterSelectFlow } from './src/ui/CharacterSelectFlow';
 import { CharacterCommunicationChannel } from './src/ui/CharacterCommunicationChannel';
 import { IntroOverlay } from './src/ui/IntroOverlay';
 import { ModalSheet } from './src/ui/ModalSheet';
@@ -134,6 +133,7 @@ function GameApp({
   const [resetShowIntro, setResetShowIntro] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [analyticsSizeKb, setAnalyticsSizeKb] = useState(0);
+  const prevCharacterMessageRef = useRef<string | null>(null);
 
   useEffect(() => {
     getAnalyticsSizeKb()
@@ -248,6 +248,14 @@ function GameApp({
   useEffect(() => {
     latestRef.current = game;
   });
+
+  // Auto-open channel when a new character message arrives
+  useEffect(() => {
+    if (game.characterMessage && game.characterMessage !== prevCharacterMessageRef.current) {
+      setChannelOpen(true);
+    }
+    prevCharacterMessageRef.current = game.characterMessage ?? null;
+  }, [game.characterMessage]);
 
   // Save every 3 seconds — full V2 envelope, same format for local and cloud
   useEffect(() => {
@@ -406,7 +414,8 @@ function GameApp({
           }}
           characterChannelUnlocked={
             game.unlockedPlanetIds.includes(getAliens()[7].planetId as any) ||
-            !!game.characterMessage
+            !!game.characterMessage ||
+            game.characterFlowStep === 'select'
           }
         />
       );
@@ -429,6 +438,7 @@ function GameApp({
           shipDamage={game.totalDamage}
           energy={game.energy}
           playerLevel={game.playerLevel}
+          characterChosen={!!game.chosenCharacterId}
           onAttackPlanet={(id) => {
             game.startBattle(id);
             onSetTab('battle');
@@ -749,37 +759,30 @@ function GameApp({
           });
           goToTab('game');
         }}
-      />      <CharacterSelectFlow
-        characters={dialogues.characters}
-        step={game.characterFlowStep}
-        chosenCharacterId={game.chosenCharacterId}
-        onChoose={game.chooseCharacter}
-        onAdvance={game.advanceCharacterFlow}
-        onClose={game.closeCharacterFlow}
-        onAcceptMetalDeal={game.acceptMetalDeal}
-        canAffordMetalDeal={game.canAffordMetalDeal}
-        metalDealEnergyCost={game.metalDealEnergyCost}
-        onEarnEnergy={() => {
-          game.closeCharacterFlow();
-          goToTab('game');
-        }}
       />
 
-      {game.chosenCharacter && (
-        <CharacterCommunicationChannel
-          visible={channelOpen}
-          onClose={() => setChannelOpen(false)}
-          chosenCharacter={game.chosenCharacter}
-          character={game.chosenCharacter}
-          planet10Unlocked={game.unlockedPlanetIds.includes(10 as any)}
-          characterMessage={game.characterMessage}
-          hasMoreDialogueLines={game.characterDialogueQueue.length > 0}
-          onCloseCharacterMessage={() => {
-            logEvent('toast_close', { toast: 'character_message' });
-            game.closeCharacterMessage();
-          }}
-        />
-      )}
+      <CharacterCommunicationChannel
+        visible={channelOpen || game.characterFlowStep === 'select'}
+        onClose={() => {
+          setChannelOpen(false);
+          if (game.characterFlowStep === 'select') game.closeCharacterFlow();
+        }}
+        chosenCharacter={game.chosenCharacter}
+        character={game.chosenCharacter}
+        characters={dialogues.characters}
+        onChoose={(id) => {
+          game.chooseCharacter(id);
+          setChannelOpen(true);
+        }}
+        planet10Unlocked={game.unlockedPlanetIds.includes(10 as any)}
+        characterMessage={game.characterMessage}
+        characterMessageHistory={game.characterMessageHistory}
+        hasMoreDialogueLines={game.characterDialogueQueue.length > 0}
+        onCloseCharacterMessage={() => {
+          logEvent('toast_close', { toast: 'character_message' });
+          game.closeCharacterMessage();
+        }}
+      />
 
       <Popup
         visible={clickPowerInfoOpen}
@@ -1014,23 +1017,13 @@ function GameApp({
         </Pressable>
         <Pressable
           onPress={() => {
-            logEvent('modal_open', { modal: 'character_select' });
-            game.openCharacterSelectFlow();
+            logEvent('modal_open', { modal: 'character_channel' });
+            setChannelOpen(true);
           }}
           style={styles.editorBtn}
         >
-          <Text style={styles.editorIcon}>👤</Text>
-          <Text style={styles.editorLabel}>ПЕРС.</Text>
-        </Pressable>
-        <Pressable
-          onPress={() => {
-            logEvent('modal_open', { modal: 'metal_deal' });
-            game.openMetalDealFlow();
-          }}
-          style={styles.editorBtn}
-        >
-          <Text style={styles.editorIcon}>🤝</Text>
-          <Text style={styles.editorLabel}>СДЕЛКА</Text>
+          <Text style={styles.editorIcon}>📡</Text>
+          <Text style={styles.editorLabel}>КАНАЛ</Text>
         </Pressable>
         <Pressable onPress={handleExportAnalytics} style={styles.editorBtn}>
           <Text style={styles.editorIcon}>📊</Text>
@@ -1257,14 +1250,17 @@ export default function App() {
     let mounted = true;
     (async () => {
       const cached = await loadRemoteConfigFromCache();
-      if (cached && mounted) setConfigReady(true);
       try {
         await fetchAndCacheRemoteConfig();
         if (mounted) { setConfigReady(true); setConfigError(null); }
       } catch (err: any) {
         if (!mounted) return;
-        if (!cached) setConfigError(err?.message ?? 'Не удалось загрузить конфиг');
-        // if cached config was loaded, silently ignore fetch error
+        if (cached) {
+          // Network failed but cache is available — use it as fallback
+          setConfigReady(true);
+        } else {
+          setConfigError(err?.message ?? 'Не удалось загрузить конфиг');
+        }
       }
     })();
     return () => { mounted = false; };

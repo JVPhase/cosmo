@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { logEvent } from './analytics';
-import type { CharacterId } from './CHARACTERS';
+import { getCharacterById as getStaticCharacterById, type CharacterId } from './CHARACTERS';
 import { getCharacterById, getRandomMessage, type DialoguesPayload } from './dialogues';
 import { CLERK_MESSAGES, type ClerkTrigger } from './CLERK_MESSAGES';
 import {
@@ -37,7 +37,6 @@ import {
   computeModuleUpgradeCost,
   getMaxModuleLevel,
   getModuleById,
-  getModules,
   type ModuleId
 } from './MODULES';
 import {
@@ -158,7 +157,6 @@ function computeBaseShipDamage(fleet: GameState['fleet']): number {
   return Math.floor((1 + cannonDamage) * shipDef.damageMultiplier);
 }
 
-const BASE_PLANET_ID = getPlanets()[0].id;
 export const TIMELY_CLAIM_WINDOW_MS = 10 * 60 * 1000; // 10 min timely claim window
 
 function mergeDiscovered(
@@ -172,6 +170,7 @@ function mergeDiscovered(
 }
 
 export function useGame(initial: GameStateInit | undefined, dialogues: DialoguesPayload) {
+  const BASE_PLANET_ID = getPlanets()[0].id;
   const defaultState = useMemo<GameState>(
     () => ({
       energy: 0,
@@ -194,7 +193,9 @@ export function useGame(initial: GameStateInit | undefined, dialogues: Dialogues
       battlesWon: 0,
       battleWinStreak: 0,
       credits: 0,
-      activeBoosts: []
+      activeBoosts: [],
+      characterMessageHistory: [],
+      greetingShown: false
     }),
     []
   );
@@ -285,7 +286,9 @@ export function useGame(initial: GameStateInit | undefined, dialogues: Dialogues
       battlesWon: initial?.battlesWon ?? 0,
       battleWinStreak: initial?.battleWinStreak ?? 0,
       credits: initial?.credits ?? 0,
-      activeBoosts: initial?.activeBoosts ?? []
+      activeBoosts: initial?.activeBoosts ?? [],
+      characterMessageHistory: initial?.characterMessageHistory ?? [],
+      greetingShown: initial?.greetingShown ?? false
     };
   });
 
@@ -339,6 +342,7 @@ export function useGame(initial: GameStateInit | undefined, dialogues: Dialogues
   const [clerkMessage, setClerkMessage] = useState<string | null>(null);
   const [characterMessage, setCharacterMessage] = useState<string | null>(null);
   const [characterDialogueQueue, setCharacterDialogueQueue] = useState<string[]>([]);
+  const characterMessageHistory = state.characterMessageHistory;
   const [achievementToast, setAchievementToast] = useState<
     ReturnType<typeof getAchievements>[number] | null
   >(null);
@@ -400,17 +404,16 @@ export function useGame(initial: GameStateInit | undefined, dialogues: Dialogues
   // Character select flow — triggered after planet 9 unlocked
   const [characterFlowStep, setCharacterFlowStep] = useState<
     | 'select'
-    | 'garbled'
-    | 'explain'
-    | 'greeting'
-    | 'metalDeal_intro'
-    | 'metalDeal_offer'
     | null
   >(null);
   const characterFlowShownRef = useRef(
     (initial?.chosenCharacterId ?? null) !== null ||
       (initial?.unlockedPlanetIds ?? []).includes(10 as PlanetId)
   );
+  const greetingShownRef = useRef(false);
+  useEffect(() => {
+    greetingShownRef.current = state.greetingShown;
+  }, [state.greetingShown]);
 
   // Reactor boost — x5 clicks for the first 10 seconds of each session
   const [reactorBoostActive, setReactorBoostActive] = useState(false);
@@ -428,6 +431,28 @@ export function useGame(initial: GameStateInit | undefined, dialogues: Dialogues
       setCharacterMessage(null);
     }
   }, [characterDialogueQueue]);
+
+  // Reset history only when персонаж реально меняется
+  const prevChosenRef = useRef<CharacterId | null>(state.chosenCharacterId);
+  useEffect(() => {
+    if (prevChosenRef.current !== state.chosenCharacterId) {
+      prevChosenRef.current = state.chosenCharacterId;
+      setState((prev) => ({ ...prev, characterMessageHistory: [] }));
+    }
+  }, [state.chosenCharacterId]);
+
+  const appendHistory = useCallback((messages: readonly string[]) => {
+    setState((prev) => {
+      if (messages.length === 0) return prev;
+      const prevHistory = prev.characterMessageHistory;
+      const next = [...prevHistory];
+      for (const msg of messages) {
+        if (next[next.length - 1] === msg) continue;
+        next.push(msg);
+      }
+      return next === prevHistory ? prev : { ...prev, characterMessageHistory: next };
+    });
+  }, []);
   const closeAchievementToast = useCallback(
     () => setAchievementToast(null),
     []
@@ -916,10 +941,41 @@ export function useGame(initial: GameStateInit | undefined, dialogues: Dialogues
         const lines = Array.isArray(raw) ? raw : [raw];
         setCharacterMessage(lines[0]!);
         setCharacterDialogueQueue(lines.slice(1));
+        appendHistory(lines);
         break;
       }
     }
-  }, [state.unlockedPlanetIds, state.chosenCharacterId, dialogues]);
+  }, [state.unlockedPlanetIds, state.chosenCharacterId, dialogues, appendHistory]);
+
+  // Greeting message after Sector 2 is fully conquered (once)
+  useEffect(() => {
+    if (greetingShownRef.current) return;
+    if (!state.chosenCharacterId) return;
+    const sector2Complete = getPlanetIdsForSector(2).every((id) =>
+      state.unlockedPlanetIds.includes(id as PlanetId)
+    );
+    if (!sector2Complete) return;
+    const character = getCharacterById(dialogues, state.chosenCharacterId);
+    const fallback = getStaticCharacterById(state.chosenCharacterId);
+    const greeting =
+      character?.greeting?.trim() ? character.greeting : fallback.greeting;
+    greetingShownRef.current = true;
+    setState((prev) => ({ ...prev, greetingShown: true }));
+    if (characterMessage) {
+      setCharacterDialogueQueue((prev) => [...prev, greeting]);
+      appendHistory([greeting]);
+    } else {
+      setCharacterMessage(greeting);
+      setCharacterDialogueQueue([]);
+      appendHistory([greeting]);
+    }
+  }, [
+    state.unlockedPlanetIds,
+    state.chosenCharacterId,
+    dialogues,
+    characterMessage,
+    appendHistory
+  ]);
 
   // Battle timer — schedule defeat exactly at expiresAt instead of polling.
   useEffect(() => {
@@ -965,9 +1021,6 @@ export function useGame(initial: GameStateInit | undefined, dialogues: Dialogues
         if (prev.planetId === 9 && !characterFlowShownRef.current) {
           characterFlowShownRef.current = true;
           setCharacterFlowStep('select');
-        }
-        if (prev.planetId === 10 && state.chosenCharacterId) {
-          setCharacterFlowStep('greeting');
         }
       } else {
         logEvent('battle_result', {
@@ -1599,50 +1652,23 @@ export function useGame(initial: GameStateInit | undefined, dialogues: Dialogues
   const chooseCharacter = useCallback((id: CharacterId) => {
     logEvent('choose_character', { characterId: id });
     setState((prev) => ({ ...prev, chosenCharacterId: id }));
-    setCharacterFlowStep('garbled');
-  }, []);
+    const character = getCharacterById(dialogues, id);
+    const fallback = getStaticCharacterById(id);
+    const garbled =
+      character?.garbledMessage?.trim() ? character.garbledMessage : fallback.garbledMessage;
+    if (garbled) {
+      setCharacterMessage(garbled);
+      setCharacterDialogueQueue([]);
+      appendHistory([garbled]);
+    }
+    setCharacterFlowStep(null);
+  }, [dialogues, appendHistory]);
 
   const advanceCharacterFlow = useCallback(() => {
-    setCharacterFlowStep((prev) => {
-      if (prev === 'garbled') return 'explain';
-      if (prev === 'greeting') return 'metalDeal_intro';
-      if (prev === 'metalDeal_intro') return 'metalDeal_offer';
-      return null;
-    });
+    setCharacterFlowStep(null);
   }, []);
 
   const closeCharacterFlow = useCallback(() => {
-    setCharacterFlowStep(null);
-  }, []);
-
-  const METAL_DEAL_ENERGY_COST = 500000;
-  const METAL_DEAL_REWARD = {
-    voidCrystal: getModules()[0].cost.voidCrystal || 15,
-    echoShard: 15
-  } as const;
-
-  const acceptMetalDeal = useCallback(() => {
-    logEvent('accept_metal_deal', {});
-    setState((prev) => {
-      if (prev.energy < METAL_DEAL_ENERGY_COST) return prev;
-      return {
-        ...prev,
-        energy: prev.energy - METAL_DEAL_ENERGY_COST,
-        metals: addMetals(prev.metals, {
-          ...createDefaultMetalsState(),
-          ...METAL_DEAL_REWARD
-        }),
-        discoveredMetals: mergeDiscovered(
-          prev.discoveredMetals,
-          METAL_DEAL_REWARD
-        ),
-      };
-    });
-    setCharacterFlowStep(null);
-  }, []);
-
-  const declineMetalDeal = useCallback(() => {
-    logEvent('decline_metal_deal', {});
     setCharacterFlowStep(null);
   }, []);
 
@@ -1706,6 +1732,7 @@ export function useGame(initial: GameStateInit | undefined, dialogues: Dialogues
     clerkMessage,
     characterMessage,
     characterDialogueQueue,
+    characterMessageHistory,
     closeCharacterMessage,
     chosenCharacter: state.chosenCharacterId
       ? getCharacterById(dialogues, state.chosenCharacterId)
@@ -1768,17 +1795,9 @@ export function useGame(initial: GameStateInit | undefined, dialogues: Dialogues
       () => setCharacterFlowStep('select'),
       []
     ),
-    openMetalDealFlow: useCallback(
-      () => setCharacterFlowStep('metalDeal_intro'),
-      []
-    ),
     chooseCharacter,
     advanceCharacterFlow,
     closeCharacterFlow,
-    acceptMetalDeal,
-    declineMetalDeal,
-    canAffordMetalDeal: state.energy >= METAL_DEAL_ENERGY_COST,
-    metalDealEnergyCost: METAL_DEAL_ENERGY_COST,
     credits: state.credits,
     activeBoosts: state.activeBoosts,
     addCredits,

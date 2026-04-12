@@ -9,11 +9,11 @@ import {
   Text,
   View,
 } from 'react-native';
-import { SHOP, type ShopCategory, type ShopItemId } from '../game/SHOP';
+import { getShopItems, type ShopCategory, type ShopItemId } from '../game/SHOP';
 import { CREDIT_PACKS } from '../game/CREDIT_PACKS';
 import type { ActiveBoost } from '../game/types';
 import type { MetalId } from '../game/METALS';
-import { METALS } from '../game/METALS';
+import { getMetals } from '../game/METALS';
 import { watchRewardedAd } from '../services/ads';
 import {
   initIAP,
@@ -75,6 +75,7 @@ function formatMs(ms: number): string {
 // ─── Active boosts banner ─────────────────────────────────────────────────────
 
 function ActiveBoostsBanner({ boosts }: { boosts: ActiveBoost[] }) {
+  const SHOP = getShopItems();
   const [, setTick] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -372,6 +373,8 @@ export function ShopScreen({
   onAddCredits,
   onStarsPurchaseApplied,
 }: ShopScreenProps) {
+  const METALS = getMetals();
+  const SHOP = getShopItems();
   const monetizationEnabled =
     getCachedRemoteConfig()?.monetizationEnabled ?? false;
   const inTelegram = isTelegramRuntime();

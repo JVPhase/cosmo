@@ -27,6 +27,7 @@ async function ensureCrmAccess(userId: string) {
 
 export async function crmRoutes(app: FastifyInstance) {
   app.addHook('preHandler', async (req, reply) => {
+    if (req.method === 'OPTIONS') return
     await app.authenticate(req, reply)
     const { userId } = req.user as JwtPayload
     await ensureCrmAccess(userId)

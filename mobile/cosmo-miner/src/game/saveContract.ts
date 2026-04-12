@@ -43,6 +43,8 @@ export function serializeGameplaySaveV2(
       battleWinStreak: state.battleWinStreak,
       credits: state.credits,
       activeBoosts: state.activeBoosts,
+      characterMessageHistory: state.characterMessageHistory,
+      greetingShown: state.greetingShown,
     },
   };
 }
