@@ -575,7 +575,12 @@ function effectLabel(stat: string): string {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#050918', userSelect: 'none' },
+  screen: {
+    flex: 1,
+    minHeight: 0,
+    backgroundColor: '#050918',
+    userSelect: 'none'
+  },
 
   header: {
     flexDirection: 'row',
@@ -601,9 +606,21 @@ const styles = StyleSheet.create({
   },
   creditsChipText: { fontSize: 14, fontWeight: '700', color: '#00d4ff' },
 
-  tabsScroll: { flexGrow: 0 },
-  tabsRow: { paddingHorizontal: 12, paddingVertical: 6, gap: 6 },
+  tabsScroll: {
+    flexGrow: 0,
+    flexShrink: 0,
+    minHeight: 48
+  },
+  tabsRow: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    gap: 6,
+    alignItems: 'center'
+  },
   tab: {
+    flexShrink: 0,
+    minHeight: 34,
+    justifyContent: 'center',
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
