@@ -8,6 +8,9 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 
 COPY packages/game-config ./packages/game-config
+COPY mobile/cosmo-miner/src/game/CHARACTERS.ts ./mobile/cosmo-miner/src/game/CHARACTERS.ts
+COPY mobile/cosmo-miner/src/game/STORY_DIALOGUES.ts ./mobile/cosmo-miner/src/game/STORY_DIALOGUES.ts
+COPY mobile/cosmo-miner/assets ./mobile/cosmo-miner/assets
 
 COPY server/package.json server/package-lock.json ./server/
 
