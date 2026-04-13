@@ -208,27 +208,27 @@ export function useGame(initial: GameStateInit | undefined, dialogues: Dialogues
     []
   );
 
-  const [state, setState] = useState<GameState>(() => {
+  const hydrateState = useCallback((nextInitial?: GameStateInit): GameState => {
     const upgrades = {
       ...createDefaultUpgradesState(),
-      ...(initial?.upgrades ?? {})
+      ...(nextInitial?.upgrades ?? {})
     } as UpgradesState;
     const unlockedSet = new Set<PlanetId>(
-      initial?.unlockedPlanetIds ?? [BASE_PLANET_ID]
+      nextInitial?.unlockedPlanetIds ?? [BASE_PLANET_ID]
     );
     unlockedSet.add(BASE_PLANET_ID);
     const metals = {
       ...createDefaultMetalsState(),
-      ...(initial?.metals ?? {})
+      ...(nextInitial?.metals ?? {})
     };
     // Restore discovered metals from save, or derive from current amounts + ship costs for backwards compat
     const discoveredMetals: MetalId[] =
-      initial?.discoveredMetals ??
+      nextInitial?.discoveredMetals ??
       (() => {
         const set = new Set<MetalId>(
           (Object.keys(metals) as MetalId[]).filter((k) => metals[k] > 0)
         );
-        for (const owned of initial?.fleet?.ownedShips ?? []) {
+        for (const owned of nextInitial?.fleet?.ownedShips ?? []) {
           const ship = getShips().find((s) => s.id === owned.shipId);
           if (ship)
             Object.keys(ship.baseCost).forEach((k) => set.add(k as MetalId));
@@ -236,15 +236,15 @@ export function useGame(initial: GameStateInit | undefined, dialogues: Dialogues
         return Array.from(set);
       })();
     const fleet = {
-      ownedShips: (initial?.fleet?.ownedShips ?? []).map((s) => ({
+      ownedShips: (nextInitial?.fleet?.ownedShips ?? []).map((s) => ({
         shipId: s.shipId,
         broken: s.broken ?? false,
         cannons: { ...createDefaultCannons(), ...(s.cannons ?? {}) },
         equippedModuleId: s.equippedModuleId ?? null
       })),
       selectedShipId: (() => {
-        const saved = initial?.fleet?.selectedShipId ?? null;
-        const ships = initial?.fleet?.ownedShips ?? [];
+        const saved = nextInitial?.fleet?.selectedShipId ?? null;
+        const ships = nextInitial?.fleet?.ownedShips ?? [];
         if (saved === null && ships.length === 1) return ships[0].shipId;
         return saved;
       })()
@@ -252,55 +252,57 @@ export function useGame(initial: GameStateInit | undefined, dialogues: Dialogues
 
     return {
       ...defaultState,
-      energy: initial?.energy ?? 0,
-      totalEarned: initial?.totalEarned ?? 0,
-      clicks: initial?.clicks ?? 0,
+      energy: nextInitial?.energy ?? 0,
+      totalEarned: nextInitial?.totalEarned ?? 0,
+      clicks: nextInitial?.clicks ?? 0,
       upgrades,
       unlockedPlanetIds: Array.from(unlockedSet),
-      selectedPlanetId: initial?.selectedPlanetId ?? BASE_PLANET_ID,
+      selectedPlanetId: nextInitial?.selectedPlanetId ?? BASE_PLANET_ID,
       achievements: {
-        unlockedIds: initial?.achievements?.unlockedIds ?? [],
-        claimedIds: initial?.achievements?.claimedIds ?? []
+        unlockedIds: nextInitial?.achievements?.unlockedIds ?? [],
+        claimedIds: nextInitial?.achievements?.claimedIds ?? []
       },
       metals,
       discoveredMetals,
       fleet,
-      battle: initial?.battle ?? null,
-      playerXP: initial?.playerXP ?? 0,
-      research: initial?.research ?? {},
-      expeditions: initial?.expeditions ?? [],
+      battle: nextInitial?.battle ?? null,
+      playerXP: nextInitial?.playerXP ?? 0,
+      research: nextInitial?.research ?? {},
+      expeditions: nextInitial?.expeditions ?? [],
       tabsUnlocked: {
         shipyard:
-          initial?.tabsUnlocked?.shipyard ??
-          ((initial?.fleet?.ownedShips?.length ?? 0) > 0 ||
+          nextInitial?.tabsUnlocked?.shipyard ??
+          ((nextInitial?.fleet?.ownedShips?.length ?? 0) > 0 ||
             hasEnoughMetals(
-              { ...createDefaultMetalsState(), ...(initial?.metals ?? {}) },
+              { ...createDefaultMetalsState(), ...(nextInitial?.metals ?? {}) },
               getShips()[0].baseCost
             )),
         upgrades:
-          initial?.tabsUnlocked?.upgrades ??
-          ((initial?.totalEarned ?? 0) >= getUpgrades()[0].baseCost ||
-            Object.values(initial?.upgrades ?? {}).some(
+          nextInitial?.tabsUnlocked?.upgrades ??
+          ((nextInitial?.totalEarned ?? 0) >= getUpgrades()[0].baseCost ||
+            Object.values(nextInitial?.upgrades ?? {}).some(
               (v) => (v as number) > 0
             )),
         planets:
-          initial?.tabsUnlocked?.planets ??
-          ((initial?.unlockedPlanetIds?.length ?? 0) > 1 ||
-            (initial?.energy ?? 0) >=
+          nextInitial?.tabsUnlocked?.planets ??
+          ((nextInitial?.unlockedPlanetIds?.length ?? 0) > 1 ||
+            (nextInitial?.energy ?? 0) >=
               Math.min(...getAliens().map((a) => a.attackEnergyCost)))
       },
-      moduleLevels: initial?.moduleLevels ?? {},
-      chosenCharacterId: initial?.chosenCharacterId ?? null,
-      battlesWon: initial?.battlesWon ?? 0,
-      battleWinStreak: initial?.battleWinStreak ?? 0,
-      credits: initial?.credits ?? 0,
-      activeBoosts: initial?.activeBoosts ?? [],
-      characterMessageHistory: initial?.characterMessageHistory ?? [],
-      greetingShown: initial?.greetingShown ?? false,
+      moduleLevels: nextInitial?.moduleLevels ?? {},
+      chosenCharacterId: nextInitial?.chosenCharacterId ?? null,
+      battlesWon: nextInitial?.battlesWon ?? 0,
+      battleWinStreak: nextInitial?.battleWinStreak ?? 0,
+      credits: nextInitial?.credits ?? 0,
+      activeBoosts: nextInitial?.activeBoosts ?? [],
+      characterMessageHistory: nextInitial?.characterMessageHistory ?? [],
+      greetingShown: nextInitial?.greetingShown ?? false,
       // Soft-migrate old saves: if prestige field is missing, default to count=0
-      prestige: initial?.prestige ?? DEFAULT_PRESTIGE_STATE,
+      prestige: nextInitial?.prestige ?? DEFAULT_PRESTIGE_STATE,
     };
-  });
+  }, [BASE_PLANET_ID, defaultState]);
+
+  const [state, setState] = useState<GameState>(() => hydrateState(initial));
 
   const derived = useMemo(
     () =>
@@ -1897,6 +1899,12 @@ export function useGame(initial: GameStateInit | undefined, dialogues: Dialogues
         }));
       },
       []
+    ),
+    replaceStateFromSync: useCallback(
+      (nextState: GameStateInit) => {
+        setState(hydrateState(nextState));
+      },
+      [hydrateState]
     )
   };
 }

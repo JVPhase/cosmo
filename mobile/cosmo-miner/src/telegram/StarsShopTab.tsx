@@ -46,6 +46,7 @@ interface StarShopItem {
 
 export interface StarsPurchaseResult {
   purchaseId: string;
+  status?: string;
   type: string;
   shopItemId: string;
   /** Purchase-level metadata (e.g. rolledMetals, appliedPlanets, energyRefund) */
@@ -59,12 +60,13 @@ export interface StarsPurchasedItem {
   id: string;
   type: string;
   metadata: Record<string, unknown>;
+  purchaseId?: string;
   /** Only set after server result is fetched (loot_box / premium_unlock) */
   purchaseResult?: StarsPurchaseResult;
 }
 
 interface StarsShopTabProps {
-  onPurchaseApplied: (item: StarsPurchasedItem) => void;
+  onPurchaseApplied: (item: StarsPurchasedItem) => Promise<boolean> | boolean;
 }
 
 // ── API helper with single token-refresh retry on 401 ──────────────────────
@@ -130,6 +132,29 @@ function grantPendingMessage(item: StarShopItem): string {
   }
 }
 
+function grantAppliedMessage(item: StarShopItem): string {
+  const meta = item.metadata;
+
+  switch (item.type) {
+    case 'currency_pack':
+      return `+${meta.creditAmount as number} credits were added to your balance.`;
+
+    case 'metal_pack': {
+      const icon = METAL_ICONS[meta.metalId as string] ?? '🔩';
+      return `${icon} ${meta.quantity as number} ${(meta.metalId as string) ?? 'metals'} were added to your inventory.`;
+    }
+
+    case 'booster':
+      return `${item.name} was delivered and activated immediately.`;
+
+    case 'loot_box':
+      return `${item.name} was delivered to your account.`;
+
+    default:
+      return `${item.name} was delivered to your account.`;
+  }
+}
+
 // ── Component ──────────────────────────────────────────────────────────────
 
 export function StarsShopTab({ onPurchaseApplied }: StarsShopTabProps) {
@@ -189,11 +214,17 @@ export function StarsShopTab({ onPurchaseApplied }: StarsShopTabProps) {
 
           // Delivery is via grant sync — no immediate local apply.
           // The grant will be applied on the next app launch or manual sync.
-          onPurchaseApplied({
+          const appliedImmediately = await onPurchaseApplied({
             id: item.id,
             type: item.type,
             metadata: item.metadata,
+            purchaseId,
           });
+          if (appliedImmediately) {
+            Alert.alert('Purchase complete', grantAppliedMessage(item));
+            setBuying(null);
+            return;
+          }
 
           Alert.alert('Покупка завершена', grantPendingMessage(item));
         } else if (status !== 'cancelled') {
