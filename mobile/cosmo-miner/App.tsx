@@ -84,7 +84,7 @@ import {
   UpgradeId
 } from './src/game/UPGRADES';
 import { getResearchNodes } from './src/game/RESEARCH';
-import type { GameStateInit } from './src/game/types';
+import type { GameState, GameStateInit } from './src/game/types';
 
 // Feature flag: set EXPO_PUBLIC_GRANT_SYNC_ENABLED=false in .env to disable
 // grant-sync bootstrap without a new release. Mirrors GRANT_SYNC_ENABLED on the server.
@@ -255,6 +255,76 @@ function GameApp({
   useEffect(() => {
     latestRef.current = game;
   });
+
+  const syncPendingGrantsNow = useCallback(async (): Promise<boolean> => {
+    if (!GRANT_SYNC_ENABLED) return false;
+
+    const token = await getAccessToken();
+    if (!token) return false;
+
+    const baseSeq = appliedGrantSeqRef.current;
+    const baseState = serializeGameplaySaveV2(
+      latestRef.current as unknown as GameState,
+      baseSeq,
+    ).state;
+
+    let grants = await fetchPendingGrants(baseSeq);
+    for (let attempt = 0; grants.length === 0 && attempt < 9; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      grants = await fetchPendingGrants(baseSeq);
+    }
+
+    if (grants.length === 0) return false;
+
+    const { state: stateWithGrants, appliedGrantSeq: newSeq } = applyGrants(
+      baseState,
+      grants,
+      baseSeq,
+    );
+
+    if (newSeq <= baseSeq) return false;
+
+    const envelope = {
+      version: 2 as const,
+      savedAt: Date.now(),
+      appliedGrantSeq: newSeq,
+      state: stateWithGrants,
+    };
+
+    try {
+      await saveGameEnvelope(envelope);
+    } catch {
+      return false;
+    }
+
+    const replaceStateFromSync = latestRef.current.replaceStateFromSync;
+    appliedGrantSeqRef.current = newSeq;
+    latestRef.current = {
+      ...latestRef.current,
+      ...stateWithGrants,
+    } as typeof latestRef.current;
+    replaceStateFromSync(stateWithGrants);
+
+    try {
+      const currentRev = await getCloudRev();
+      try {
+        await pushCloudSave(envelope, currentRev ?? undefined);
+      } catch (error: any) {
+        if (error?.status === 409) {
+          await pushCloudSave(envelope);
+        } else {
+          throw error;
+        }
+      }
+
+      await ackGrants(newSeq);
+    } catch {
+      // Local save already succeeded. Leave the grant unacked; the next sync
+      // can safely retry server-side persistence without reapplying locally.
+    }
+
+    return true;
+  }, []);
 
   // Auto-open channel when a new character message arrives
   useEffect(() => {
@@ -517,6 +587,7 @@ function GameApp({
           onBuyShopItem={game.buyShopItem}
           onAddCredits={game.addCredits}
           onStarsPurchaseApplied={() => {
+            return syncPendingGrantsNow();
             // No immediate local apply — rewards are delivered exclusively via
             // grant sync on next app launch (or next bootstrap).
             // StarsShopTab already shows a "will be applied on next launch" message.

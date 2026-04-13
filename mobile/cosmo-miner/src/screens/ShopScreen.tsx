@@ -43,7 +43,7 @@ export type ShopScreenProps = {
   ) => void;
   onAddCredits: (amount: number) => void;
   /** Called after a successful Telegram Stars purchase to apply the effect to game state. */
-  onStarsPurchaseApplied?: (item: StarsPurchasedItem) => void;
+  onStarsPurchaseApplied?: (item: StarsPurchasedItem) => Promise<boolean> | boolean;
 };
 
 type ShopTab = ShopCategory | 'credits' | 'stars';
@@ -478,7 +478,7 @@ export function ShopScreen({
       {/* Telegram Stars tab */}
       {tab === 'stars' && (
         <StarsShopTab
-          onPurchaseApplied={onStarsPurchaseApplied ?? (() => {})}
+          onPurchaseApplied={onStarsPurchaseApplied ?? (() => false)}
         />
       )}
 
