@@ -1,9 +1,11 @@
-﻿import { Link, NavLink, Outlet } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { Link, NavLink, Outlet } from 'react-router-dom'
 import { Gamepad2, Layers, LifeBuoy, Sparkles, Target, TrendingUp, UserRound, Users, ShoppingBag } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { clearTokens } from '@/lib/api'
+import { clearTokens, fetchMe } from '@/lib/api'
 
-const nav = [
+const baseNav = [
   { label: 'Overview', to: '/', icon: Target },
   { label: 'Accounts', to: '/accounts', icon: UserRound },
   { label: 'Leads', to: '/leads', icon: Sparkles },
@@ -14,7 +16,39 @@ const nav = [
   { label: 'Players', to: '/players', icon: Users }
 ]
 
+type SessionState = {
+  email: string | null
+  role: string | null
+}
+
+function sessionLabel(role: string | null) {
+  if (role === 'admin') return 'Admin'
+  if (role === 'viewer') return 'Viewer'
+  if (role === 'member') return 'Member'
+  return 'CRM'
+}
+
 export function Layout() {
+  const [session, setSession] = useState<SessionState | null>(null)
+
+  useEffect(() => {
+    fetchMe()
+      .then((data) => {
+        setSession({
+          email: data.user.email,
+          role: data.crm?.role ?? null
+        })
+      })
+      .catch(() => setSession(null))
+  }, [])
+
+  const nav = useMemo(() => {
+    if (session?.role === 'admin') {
+      return [...baseNav.slice(0, 7), { label: 'Users', to: '/users', icon: UserRound }, baseNav[7]]
+    }
+    return baseNav
+  }, [session?.role])
+
   return (
     <div className="min-h-screen">
       <div className="mx-auto grid max-w-[1400px] grid-cols-1 gap-6 px-6 py-6 lg:grid-cols-[260px_1fr]">
@@ -51,13 +85,18 @@ export function Layout() {
 
           <div className="rounded-xl border border-crm-ink/10 bg-white/80 p-4">
             <p className="text-xs uppercase tracking-wide text-crm-ink/50">Session</p>
-            <p className="mt-2 text-sm">Signed in</p>
+            <div className="mt-2 space-y-2">
+              <p className="text-sm font-medium">{session?.email ?? 'Signed in'}</p>
+              <Badge variant={session?.role === 'admin' ? 'warm' : 'cool'}>
+                {sessionLabel(session?.role ?? null)}
+              </Badge>
+            </div>
             <Button
               variant="outline"
               className="mt-3 w-full"
               onClick={() => {
                 clearTokens()
-                window.location.href = '/login'
+                window.location.href = `${import.meta.env.BASE_URL}login`
               }}
             >
               Sign out

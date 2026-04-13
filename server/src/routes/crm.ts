@@ -1,7 +1,11 @@
-﻿import type { FastifyInstance } from 'fastify'
+import type { FastifyInstance, FastifyReply } from 'fastify'
+import * as argon2 from 'argon2'
 import prisma from '../lib/prisma'
 import type { JwtPayload } from '../plugins/jwt'
 import { registerCrmGameAdminRoutes } from './crmGameAdmin'
+
+const CRM_ROLES = ['admin', 'member', 'viewer'] as const
+type CrmRole = (typeof CRM_ROLES)[number]
 
 function asString(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null
@@ -17,12 +21,54 @@ function asNumber(value: unknown): number | null {
   return null
 }
 
-async function ensureCrmAccess(userId: string) {
-  await prisma.crmUser.upsert({
+function normalizeEmail(value: unknown): string | null {
+  if (typeof value !== 'string') return null
+  const email = value.trim().toLowerCase()
+  if (!email) return null
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : null
+}
+
+function readPassword(value: unknown): string | null {
+  if (typeof value !== 'string') return null
+  return value.length >= 8 ? value : null
+}
+
+function readCrmRole(value: unknown): CrmRole | null {
+  if (typeof value !== 'string') return null
+  return CRM_ROLES.includes(value as CrmRole) ? (value as CrmRole) : null
+}
+
+async function requireCrmAccess(userId: string, reply: FastifyReply): Promise<boolean> {
+  const crmUser = await prisma.crmUser.findUnique({
     where: { userId },
-    update: {},
-    create: { userId, role: 'member' }
+    select: { role: true }
   })
+
+  if (!crmUser) {
+    await reply.status(403).send({ error: 'crm_access_required' })
+    return false
+  }
+
+  return true
+}
+
+async function requireCrmAdmin(userId: string, reply: FastifyReply): Promise<boolean> {
+  const crmUser = await prisma.crmUser.findUnique({
+    where: { userId },
+    select: { role: true }
+  })
+
+  if (!crmUser) {
+    await reply.status(403).send({ error: 'crm_access_required' })
+    return false
+  }
+
+  if (crmUser?.role !== 'admin') {
+    await reply.status(403).send({ error: 'admin_only' })
+    return false
+  }
+
+  return true
 }
 
 export async function crmRoutes(app: FastifyInstance) {
@@ -30,7 +76,7 @@ export async function crmRoutes(app: FastifyInstance) {
     if (req.method === 'OPTIONS') return
     await app.authenticate(req, reply)
     const { userId } = req.user as JwtPayload
-    await ensureCrmAccess(userId)
+    if (!(await requireCrmAccess(userId, reply))) return
   })
 
   app.get('/me', async (req) => {
@@ -41,6 +87,80 @@ export async function crmRoutes(app: FastifyInstance) {
       select: { id: true, email: true, createdAt: true }
     })
     return { user, crm: crmUser }
+  })
+
+  app.get('/users', async (req, reply) => {
+    const { userId } = req.user as JwtPayload
+    if (!(await requireCrmAdmin(userId, reply))) return
+
+    const users = await prisma.crmUser.findMany({
+      orderBy: [{ role: 'asc' }, { createdAt: 'asc' }],
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            createdAt: true
+          }
+        }
+      }
+    })
+
+    return {
+      items: users.map((entry) => ({
+        userId: entry.userId,
+        email: entry.user.email,
+        role: entry.role,
+        createdAt: entry.user.createdAt.toISOString()
+      }))
+    }
+  })
+
+  app.post('/users', async (req, reply) => {
+    const { userId } = req.user as JwtPayload
+    if (!(await requireCrmAdmin(userId, reply))) return
+
+    const body = (req.body ?? {}) as Record<string, unknown>
+    const email = normalizeEmail(body.email)
+    if (!email) return reply.status(400).send({ error: 'invalid email format' })
+
+    const password = readPassword(body.password)
+    if (!password) {
+      return reply.status(400).send({ error: 'password must be at least 8 characters' })
+    }
+
+    const role = readCrmRole(body.role) ?? 'member'
+
+    const existing = await prisma.user.findUnique({ where: { email } })
+    if (existing) {
+      return reply.status(409).send({ error: 'email already registered' })
+    }
+
+    const passwordHash = await argon2.hash(password)
+    const created = await prisma.user.create({
+      data: {
+        email,
+        passwordHash,
+        crmUser: {
+          create: { role }
+        }
+      },
+      select: {
+        id: true,
+        email: true,
+        createdAt: true,
+        crmUser: {
+          select: { role: true }
+        }
+      }
+    })
+
+    return reply.status(201).send({
+      userId: created.id,
+      email: created.email,
+      role: created.crmUser?.role ?? role,
+      createdAt: created.createdAt.toISOString()
+    })
   })
 
   app.get('/overview', async () => {

@@ -1,4 +1,4 @@
-﻿import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes } from 'react-router-dom'
 import { Layout } from '@/components/Layout'
 import { getAccessToken } from '@/lib/api'
 import AccountsPage from '@/pages/Accounts'
@@ -10,6 +10,7 @@ import GameConfigPage from '@/pages/GameConfig'
 import OverviewPage from '@/pages/Overview'
 import PlayerGamePage from '@/pages/PlayerGame'
 import StarsShopPage from '@/pages/StarsShop'
+import UsersPage from '@/pages/Users'
 
 function RequireAuth({ children }: { children: JSX.Element }) {
   if (!getAccessToken()) return <Navigate to="/login" replace />
@@ -37,6 +38,7 @@ export default function App() {
         <Route path="game-config/:key" element={<GameConfigPage />} />
         <Route path="stars-shop" element={<StarsShopPage />} />
         <Route path="stars-shop/:itemId" element={<StarsShopPage />} />
+        <Route path="users" element={<UsersPage />} />
         <Route path="players" element={<PlayerGamePage />} />
         <Route path="players/:userId" element={<PlayerGamePage />} />
       </Route>

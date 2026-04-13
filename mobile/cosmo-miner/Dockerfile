@@ -1,5 +1,5 @@
 # Build context: repository root (see docker-compose.yml).
-# Игра (Expo Web) — корень сайта; CRM (Vite) — префикс /crm/
+# Game (Expo Web) is served from the site root; CRM (Vite) can be embedded under /crm/.
 
 FROM node:22-bookworm-slim AS game-builder
 
@@ -47,13 +47,15 @@ RUN npm ci
 
 COPY crm/ ./
 
-# UTF-8 BOM в JSON ломает загрузку PostCSS/Vite на некоторых копиях файлов с Windows
+# Strip BOM from JSON files because PostCSS/Vite may choke on Windows copies.
 RUN for f in package.json components.json package-lock.json; do \
       [ -f "$$f" ] && sed -i '1s/^\xEF\xBB\xBF//' "$$f" || true; \
     done
 
 ARG VITE_API_URL=http://localhost:3000
+ARG VITE_APP_BASE=/crm/
 ENV VITE_API_URL=$VITE_API_URL
+ENV VITE_APP_BASE=$VITE_APP_BASE
 
 RUN npm run build
 
