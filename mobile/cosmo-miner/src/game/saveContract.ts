@@ -45,6 +45,7 @@ export function serializeGameplaySaveV2(
       activeBoosts: state.activeBoosts,
       characterMessageHistory: state.characterMessageHistory,
       greetingShown: state.greetingShown,
+      prestige: state.prestige,
     },
   };
 }

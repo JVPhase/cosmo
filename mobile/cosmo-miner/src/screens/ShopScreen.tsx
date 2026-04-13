@@ -387,7 +387,7 @@ export function ShopScreen({
     : ALL_TABS.filter((t) => t.id !== 'credits');
   const TABS = inTelegram ? [STARS_TAB, ...baseTabs] : baseTabs;
   const [tab, setTab] = useState<ShopTab>(
-    monetizationEnabled ? 'credits' : 'boosters'
+    monetizationEnabled ? (inTelegram ? 'stars' : 'credits') : 'boosters'
   );
   const [lootResult, setLootResult] = useState<Partial<
     Record<MetalId, number>

@@ -4,7 +4,7 @@ import { getPlanetById, type PlanetDefinition, type PlanetId } from "./PLANETS";
 import { computeResearchEffects, type ResearchState } from "./RESEARCH";
 import { getUpgrades, type UpgradeId } from "./UPGRADES";
 import type { MetalId } from "./METALS";
-import type { ActiveBoost, UpgradesState } from "./types";
+import type { ActiveBoost, PrestigeState, UpgradesState } from "./types";
 
 function getBoostMultiplier(boosts: ActiveBoost[], stat: ActiveBoost["effect"]["stat"]): number {
   const now = Date.now();
@@ -66,8 +66,9 @@ export function computeStats(args: {
   selectedPlanetId: PlanetId;
   research: ResearchState;
   activeBoosts?: ActiveBoost[];
+  prestige?: PrestigeState;
 }): DerivedStats {
-  const { upgrades, selectedPlanetId, research, activeBoosts = [] } = args;
+  const { upgrades, selectedPlanetId, research, activeBoosts = [], prestige } = args;
 
   let baseClickPower = 1;
   let basePassiveRate = 0;
@@ -87,16 +88,21 @@ export function computeStats(args: {
 
   const fx = computeResearchEffects(research);
 
+  // Prestige multipliers (default to 1× / 0 when no prestige)
+  const prestigeEnergyMult = prestige ? (1 + prestige.energyBonus) : 1;
+  const prestigeAttackMult = prestige ? (1 + prestige.attackBonus)  : 1;
+  const prestigeMetalDrop  = prestige ? prestige.metalDropBonus      : 0;
+
   return {
-    clickPower: baseClickPower * (1 + fx.clickMultiplierBonus) * getBoostMultiplier(activeBoosts, "clickMultiplier"),
-    passiveRate: basePassiveRate * (1 + fx.passiveMultiplierBonus) * getBoostMultiplier(activeBoosts, "passiveMultiplier"),
+    clickPower: baseClickPower * (1 + fx.clickMultiplierBonus) * getBoostMultiplier(activeBoosts, "clickMultiplier") * prestigeEnergyMult,
+    passiveRate: basePassiveRate * (1 + fx.passiveMultiplierBonus) * getBoostMultiplier(activeBoosts, "passiveMultiplier") * prestigeEnergyMult,
     baseClickPower,
     basePassiveRate,
     planetBonus,
-    metalDropBonus: fx.metalDropBonus + getBoostAdditive(activeBoosts, "metalDropBonus"),
+    metalDropBonus: fx.metalDropBonus + getBoostAdditive(activeBoosts, "metalDropBonus") + prestigeMetalDrop,
     specificMetalDropBonus: fx.specificMetalDropBonus,
     battleTimerMs: getBattleDurationMs(),
-    damageResearchMultiplier: (1 + fx.damageMultiplierBonus) * getBoostMultiplier(activeBoosts, "damageMultiplier"),
+    damageResearchMultiplier: (1 + fx.damageMultiplierBonus) * getBoostMultiplier(activeBoosts, "damageMultiplier") * prestigeAttackMult,
     battleRegenBlockMs: fx.battleRegenBlockMs,
     critChance: fx.critChance,
     critMultiplier: fx.critMultiplier,
