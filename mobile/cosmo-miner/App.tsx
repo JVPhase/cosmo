@@ -2,7 +2,7 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   SafeAreaProvider,
-  SafeAreaView as RNSAView,
+  SafeAreaView as RNSAView
 } from 'react-native-safe-area-context';
 import {
   Alert,
@@ -13,7 +13,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  View,
+  View
 } from 'react-native';
 import {
   clearAnalytics,
@@ -22,7 +22,7 @@ import {
   getAnalyticsSizeKb,
   initAnalytics,
   logError,
-  logEvent,
+  logEvent
 } from './src/game/analytics';
 import { AchievementsScreen } from './src/screens/AchievementsScreen';
 import { StoryLogScreen } from './src/screens/StoryLogScreen';
@@ -37,6 +37,7 @@ import { CharacterCommunicationChannel } from './src/ui/CharacterCommunicationCh
 import { IntroOverlay } from './src/ui/IntroOverlay';
 import { ModalSheet } from './src/ui/ModalSheet';
 import { Popup } from './src/ui/Popup';
+import { PrestigePopup } from './src/ui/PrestigePopup';
 import { formatNum } from './src/game/formatNum';
 import { getMetals, type MetalId } from './src/game/METALS';
 import { getModuleById } from './src/game/MODULES';
@@ -48,7 +49,7 @@ import {
   loadIntroSeen,
   saveGame,
   saveGameEnvelope,
-  saveIntroSeen,
+  saveIntroSeen
 } from './src/game/storage';
 import { getAliens } from './src/game/ALIENS';
 import { STORY_LOG } from './src/game/STORY_LOG';
@@ -56,7 +57,7 @@ import { isSectorUnlocked } from './src/game/SECTORS';
 import { fetchDialogues, type DialoguesPayload } from './src/game/dialogues';
 import {
   loadRemoteConfigFromCache,
-  fetchAndCacheRemoteConfig,
+  fetchAndCacheRemoteConfig
 } from './src/game/remoteConfig';
 import {
   fetchCloudSave,
@@ -64,9 +65,13 @@ import {
   getCloudRev,
   pushCloudSave,
   fetchPendingGrants,
-  ackGrants,
+  ackGrants
 } from './src/game/cloudSave';
-import { serializeGameplaySaveV2, deserializeGameplaySaveEnvelope, pickNewerEnvelope } from './src/game/saveContract';
+import {
+  serializeGameplaySaveV2,
+  deserializeGameplaySaveEnvelope,
+  pickNewerEnvelope
+} from './src/game/saveContract';
 import { applyGrants } from './src/game/grants';
 import { bootstrapTelegram } from './src/telegram/runtime';
 import { telegramAuthIfNeeded } from './src/telegram/auth';
@@ -76,14 +81,15 @@ import { getCannons, computeCannonCost } from './src/game/CANNONS';
 import {
   computeUpgradeCost,
   getUpgrades,
-  UpgradeId,
+  UpgradeId
 } from './src/game/UPGRADES';
 import { getResearchNodes } from './src/game/RESEARCH';
 import type { GameStateInit } from './src/game/types';
 
 // Feature flag: set EXPO_PUBLIC_GRANT_SYNC_ENABLED=false in .env to disable
 // grant-sync bootstrap without a new release. Mirrors GRANT_SYNC_ENABLED on the server.
-const GRANT_SYNC_ENABLED = (process.env.EXPO_PUBLIC_GRANT_SYNC_ENABLED ?? 'true') !== 'false';
+const GRANT_SYNC_ENABLED =
+  (process.env.EXPO_PUBLIC_GRANT_SYNC_ENABLED ?? 'true') !== 'false';
 
 type TabId = 'game' | 'upgrades' | 'planets' | 'shipyard' | 'battle' | 'shop';
 
@@ -93,7 +99,7 @@ const TABS: Array<{ id: TabId; icon: string; label: string }> = [
   { id: 'planets', icon: '🌍', label: 'ПЛАН.' },
   { id: 'shipyard', icon: '🛠️', label: 'ВЕРФЬ' },
   { id: 'battle', icon: '⚔️', label: 'БОЙ' },
-  { id: 'shop', icon: '🛒', label: 'МАГАЗ.' },
+  { id: 'shop', icon: '🛒', label: 'МАГАЗ.' }
 ];
 
 function GameApp({
@@ -102,7 +108,7 @@ function GameApp({
   dialogues,
   tab,
   onSetTab,
-  onReset,
+  onReset
 }: {
   initial: GameStateInit;
   initialAppliedGrantSeq: number;
@@ -118,12 +124,13 @@ function GameApp({
   const appliedGrantSeqRef = useRef(initialAppliedGrantSeq);
   const game = useGame(initial, dialogues);
   const minAttackEnergy = Math.min(
-    ...getAliens().map((a) => a.attackEnergyCost),
+    ...getAliens().map((a) => a.attackEnergyCost)
   );
   const screenGreetedRef = useRef<Set<string>>(new Set());
   const [researchOpen, setResearchOpen] = useState(false);
   const [achievementsOpen, setAchievementsOpen] = useState(false);
   const [storyLogOpen, setStoryLogOpen] = useState(false);
+  const [prestigeOpen, setPrestigeOpen] = useState(false);
   const [channelOpen, setChannelOpen] = useState(false);
   const [seenStoryCount, setSeenStoryCount] = useState(0);
   const [clickPowerInfoOpen, setClickPowerInfoOpen] = useState(false);
@@ -167,8 +174,8 @@ function GameApp({
         onPress: async () => {
           await clearAnalytics();
           setAnalyticsSizeKb(0);
-        },
-      },
+        }
+      }
     ]);
   }, []);
   const [editorFields, setEditorFields] = useState({
@@ -176,12 +183,12 @@ function GameApp({
     iron: '0',
     titan: '0',
     iridium: '0',
-    playerXP: '0',
+    playerXP: '0'
   });
   const [editorToggles, setEditorToggles] = useState({
     unlockUpgrades: false,
     unlockShipyard: false,
-    unlockPlanets: false,
+    unlockPlanets: false
   });
 
   // Show CLERK-7 onboarding hint the first time each screen is opened
@@ -190,7 +197,7 @@ function GameApp({
       upgrades: 'screen_upgrades',
       battle: 'screen_battle',
       shipyard: 'screen_shipyard',
-      planets: 'screen_planets',
+      planets: 'screen_planets'
     };
     const trigger = screenTriggers[tab];
     if (trigger && !screenGreetedRef.current.has(tab)) {
@@ -212,12 +219,12 @@ function GameApp({
       iron: String(game.metals.iron),
       titan: String(game.metals.titan),
       iridium: String(game.metals.iridium),
-      playerXP: String(game.playerXP),
+      playerXP: String(game.playerXP)
     });
     setEditorToggles({
       unlockUpgrades: upgradesUnlocked,
       unlockShipyard: shipyardUnlocked,
-      unlockPlanets: planetsUnlocked,
+      unlockPlanets: planetsUnlocked
     });
     setEditorOpen(true);
   };
@@ -238,8 +245,8 @@ function GameApp({
       tabsUnlocked: {
         upgrades: editorToggles.unlockUpgrades,
         shipyard: editorToggles.unlockShipyard,
-        planets: editorToggles.unlockPlanets,
-      },
+        planets: editorToggles.unlockPlanets
+      }
     });
     setEditorOpen(false);
   };
@@ -251,7 +258,10 @@ function GameApp({
 
   // Auto-open channel when a new character message arrives
   useEffect(() => {
-    if (game.characterMessage && game.characterMessage !== prevCharacterMessageRef.current) {
+    if (
+      game.characterMessage &&
+      game.characterMessage !== prevCharacterMessageRef.current
+    ) {
       setChannelOpen(true);
     }
     prevCharacterMessageRef.current = game.characterMessage ?? null;
@@ -272,7 +282,7 @@ function GameApp({
       getAccessToken().then((token) => {
         if (!token) return;
         getCloudRev().then((rev) =>
-          pushCloudSave(envelope, rev ?? undefined).catch(() => {}),
+          pushCloudSave(envelope, rev ?? undefined).catch(() => {})
         );
       });
     }, 3000);
@@ -336,7 +346,7 @@ function GameApp({
                   id: game.achievementToast.id,
                   name: game.achievementToast.name,
                   icon: game.achievementToast.icon,
-                  lore: game.achievementToast.lore,
+                  lore: game.achievementToast.lore
                 }
               : null
           }
@@ -359,7 +369,7 @@ function GameApp({
               game.energy >= n.energyCost &&
               (n.branch === 'mining' ||
                 (n.branch === 'battle' && battleUnlocked) ||
-                (n.branch === 'expedition' && shipyardUnlocked)),
+                (n.branch === 'expedition' && shipyardUnlocked))
           )}
           onOpenResearch={() => {
             if (!screenGreetedRef.current.has('research')) {
@@ -390,20 +400,37 @@ function GameApp({
           onOpenStoryLog={() => {
             const ctx = {
               unlockedPlanetIds: game.unlockedPlanetIds,
-              chosenCharacterId: game.chosenCharacterId,
+              chosenCharacterId: game.chosenCharacterId
             };
             setSeenStoryCount(
-              STORY_LOG.filter((e) => e.isUnlocked(ctx)).length,
+              STORY_LOG.filter((e) => e.isUnlocked(ctx)).length
             );
             logEvent('modal_open', { modal: 'story_log' });
             setStoryLogOpen(true);
           }}
+          onOpenPrestige={() => {
+            logEvent('prestige_popup_open', {
+              playerLevel: game.playerLevel,
+              prestigeCount: game.prestige.count,
+              blocked: !game.canPrestige,
+              blockedReason: game.prestigeBlockedReason ?? undefined,
+            });
+            if (!game.canPrestige && game.prestigeBlockedReason === 'level_too_low') {
+              logEvent('prestige_popup_blocked', {
+                playerLevel: game.playerLevel,
+                blockedReason: 'level_too_low',
+              });
+            }
+            setPrestigeOpen(true);
+          }}
+          isPrestigeAvailable={game.canPrestige}
+          prestigeCount={game.prestige.count}
           hasNewStoryEntry={
             STORY_LOG.filter((e) =>
               e.isUnlocked({
                 unlockedPlanetIds: game.unlockedPlanetIds,
-                chosenCharacterId: game.chosenCharacterId,
-              }),
+                chosenCharacterId: game.chosenCharacterId
+              })
             ).length > seenStoryCount
           }
           hasUnreadChannelMessage={!!game.characterMessage}
@@ -506,7 +533,7 @@ function GameApp({
           equippedModule={(() => {
             const shipId = game.battle?.shipId ?? game.fleet.selectedShipId;
             const owned = game.fleet.ownedShips.find(
-              (s) => s.shipId === shipId,
+              (s) => s.shipId === shipId
             );
             const modId = owned?.equippedModuleId ?? null;
             return modId ? getModuleById(modId) : null;
@@ -514,7 +541,7 @@ function GameApp({
           equippedModuleLevel={(() => {
             const shipId = game.battle?.shipId ?? game.fleet.selectedShipId;
             const owned = game.fleet.ownedShips.find(
-              (s) => s.shipId === shipId,
+              (s) => s.shipId === shipId
             );
             const modId = owned?.equippedModuleId ?? null;
             return modId ? (game.moduleLevels[modId] ?? 0) : 0;
@@ -574,6 +601,24 @@ function GameApp({
         />
       </ModalSheet>
 
+      <PrestigePopup
+        visible={prestigeOpen}
+        onClose={() => {
+          logEvent('modal_close', { modal: 'prestige' });
+          setPrestigeOpen(false);
+        }}
+        playerLevel={game.playerLevel}
+        prestige={game.prestige}
+        blockedReason={game.prestigeBlockedReason}
+        onConfirm={() => {
+          logEvent('prestige_confirm', {
+            playerLevel: game.playerLevel,
+            prestigeCountBefore: game.prestige.count,
+          });
+          game.performPrestige();
+        }}
+      />
+
       <ModalSheet
         visible={achievementsOpen}
         title="◈ ЛИЧНОЕ ДЕЛО ◈"
@@ -618,7 +663,7 @@ function GameApp({
         onAction={() => {
           logEvent('toast_action', {
             toast: 'achievements_unlock',
-            action: 'open_achievements',
+            action: 'open_achievements'
           });
           setAchievementsOpen(true);
         }}
@@ -640,7 +685,7 @@ function GameApp({
         onAction={() => {
           logEvent('toast_action', {
             toast: 'upgrades_unlock',
-            action: 'open_upgrades',
+            action: 'open_upgrades'
           });
           goToTab('upgrades');
         }}
@@ -652,7 +697,7 @@ function GameApp({
         onClose={() => {
           logEvent('toast_close', {
             toast: 'unlock',
-            id: game.currentUnlockToast?.id,
+            id: game.currentUnlockToast?.id
           });
           game.dismissUnlockToast();
         }}
@@ -682,7 +727,7 @@ function GameApp({
         onAction={() => {
           logEvent('toast_action', {
             toast: 'first_ship',
-            action: planetsUnlocked ? 'go_planets' : 'go_game',
+            action: planetsUnlocked ? 'go_planets' : 'go_game'
           });
           game.closeFirstShipToast();
           goToTab(planetsUnlocked ? 'planets' : 'game');
@@ -705,7 +750,7 @@ function GameApp({
         onAction={() => {
           logEvent('toast_action', {
             toast: 'planets_unlock',
-            action: 'open_planets',
+            action: 'open_planets'
           });
           goToTab('planets');
         }}
@@ -727,7 +772,7 @@ function GameApp({
         onAction={() => {
           logEvent('toast_action', {
             toast: 'shipyard_unlock',
-            action: 'open_shipyard',
+            action: 'open_shipyard'
           });
           goToTab('shipyard');
         }}
@@ -739,7 +784,7 @@ function GameApp({
         onClose={() => {
           logEvent('toast_close', {
             toast: 'planet_unlock',
-            planetId: game.planetUnlockToast?.id,
+            planetId: game.planetUnlockToast?.id
           });
           game.closePlanetUnlockToast();
         }}
@@ -755,7 +800,7 @@ function GameApp({
           logEvent('toast_action', {
             toast: 'planet_unlock',
             action: 'start_mining',
-            planetId: game.planetUnlockToast?.id,
+            planetId: game.planetUnlockToast?.id
           });
           goToTab('game');
         }}
@@ -812,24 +857,24 @@ function GameApp({
         const METAL_INFO: Record<MetalId, { title: string; text: string }> = {
           iron: {
             title: '◈ ЖЕЛЕЗО™ · КЛЕРК-7 ◈',
-            text: 'Железо — базовый промышленный металл. Добывайте его как можно больше.\n\nПо регламенту МММРДР, минимальная норма сбора не установлена. Это не значит, что её нет — просто форма МН-2 «Установление нормы» находится на согласовании с 2341 года.\n\nВывод: добывайте. Много. Пока не спросили.',
+            text: 'Железо — базовый промышленный металл. Добывайте его как можно больше.\n\nПо регламенту МММРДР, минимальная норма сбора не установлена. Это не значит, что её нет — просто форма МН-2 «Установление нормы» находится на согласовании с 2341 года.\n\nВывод: добывайте. Много. Пока не спросили.'
           },
           titan: {
             title: '◈ ТИТАН · КЛЕРК-7 ◈',
-            text: 'Титан — металл с исключительно высокой прочностью. Применяется в обшивке боевых кораблей и производстве пушечных компонентов.\n\nСогласно директиве МММРДР № 7.4.2, каждый образец подлежит взвешиванию, маркировке и трёхкратной инвентаризации. Форма ТТ-19 «Учёт титана» выдаётся в окошке 3. Окошко 3 закрыто на переучёт.\n\nВывод: полезный металл. Добывайте, пока никто не взвешивает.',
+            text: 'Титан — металл с исключительно высокой прочностью. Применяется в обшивке боевых кораблей и производстве пушечных компонентов.\n\nСогласно директиве МММРДР № 7.4.2, каждый образец подлежит взвешиванию, маркировке и трёхкратной инвентаризации. Форма ТТ-19 «Учёт титана» выдаётся в окошке 3. Окошко 3 закрыто на переучёт.\n\nВывод: полезный металл. Добывайте, пока никто не взвешивает.'
           },
           iridium: {
             title: '◈ ИРИДИЙ · КЛЕРК-7 ◈',
-            text: 'Иридий — редкоземельный металл с повышенной устойчивостью к внешним воздействиям. Применяется в высокотехнологичных компонентах орудий и корпусных усилителей.\n\nВстречается реже, чем железо или титан. По мнению МММРДР, это «не баг, а особенность распределения ресурсов». Форма ИР-7 «Жалоба на редкость иридия» официально не рассматривается.\n\nВывод: ценнее, чем кажется. Копите.',
+            text: 'Иридий — редкоземельный металл с повышенной устойчивостью к внешним воздействиям. Применяется в высокотехнологичных компонентах орудий и корпусных усилителей.\n\nВстречается реже, чем железо или титан. По мнению МММРДР, это «не баг, а особенность распределения ресурсов». Форма ИР-7 «Жалоба на редкость иридия» официально не рассматривается.\n\nВывод: ценнее, чем кажется. Копите.'
           },
           voidCrystal: {
             title: '◈ КРИСТАЛЛ ПУСТОТЫ · КЛЕРК-7 ◈',
-            text: 'Кристалл Пустоты — экзотический материал, обнаруженный исключительно в Секторе 3. Природа его образования не изучена. МММРДР не спешит изучать.\n\nОфициальная классификация: «объект неустановленной категории». Форма КП-0 «Идентификация неизвестного вещества» находится в разработке с момента открытия Сектора 3.\n\nВывод: что-то важное. Точно.',
+            text: 'Кристалл Пустоты — экзотический материал, обнаруженный исключительно в Секторе 3. Природа его образования не изучена. МММРДР не спешит изучать.\n\nОфициальная классификация: «объект неустановленной категории». Форма КП-0 «Идентификация неизвестного вещества» находится в разработке с момента открытия Сектора 3.\n\nВывод: что-то важное. Точно.'
           },
           echoShard: {
             title: '◈ ОСКОЛОК ЭХА · КЛЕРК-7 ◈',
-            text: 'Осколок Эха — фрагментарный материал, излучающий слабый резонансный сигнал. Встречается в глубинах Сектора 3.\n\nПо непроверенным данным, звук, исходящий от осколка — это отголоски сигналов, поглощённых Пустотой. МММРДР официально опровергает эту теорию, не приводя альтернативной.\n\nВывод: берите. Пригодится.',
-          },
+            text: 'Осколок Эха — фрагментарный материал, излучающий слабый резонансный сигнал. Встречается в глубинах Сектора 3.\n\nПо непроверенным данным, звук, исходящий от осколка — это отголоски сигналов, поглощённых Пустотой. МММРДР официально опровергает эту теорию, не приводя альтернативной.\n\nВывод: берите. Пригодится.'
+          }
         };
         const metal = metalInfoOpenId
           ? getMetals().find((m) => m.id === metalInfoOpenId)
@@ -842,7 +887,7 @@ function GameApp({
             onClose={() => {
               logEvent('toast_close', {
                 toast: 'metal_info',
-                metalId: metalInfoOpenId,
+                metalId: metalInfoOpenId
               });
               setMetalInfoOpenId(null);
             }}
@@ -873,7 +918,7 @@ function GameApp({
                 const hasExpeditionDone =
                   t.id === 'shipyard' &&
                   game.expeditions.some(
-                    (e) => (game.expeditionRemainingMap[e.shipId] ?? 1) === 0,
+                    (e) => (game.expeditionRemainingMap[e.shipId] ?? 1) === 0
                   );
                 const hasAffordableUpgrade =
                   t.id === 'upgrades' &&
@@ -883,15 +928,15 @@ function GameApp({
                       game.energy >=
                       computeUpgradeCost(
                         u,
-                        game.upgrades[u.id as UpgradeId] ?? 0,
-                      ),
+                        game.upgrades[u.id as UpgradeId] ?? 0
+                      )
                   );
                 const hasAttackablePlanet =
                   t.id === 'planets' &&
                   tab !== 'planets' &&
                   getAliens().some((alien) => {
                     const planet = getPlanets().find(
-                      (p) => p.id === alien.planetId,
+                      (p) => p.id === alien.planetId
                     );
                     if (!planet) return false;
                     return (
@@ -899,7 +944,7 @@ function GameApp({
                       isSectorUnlocked(
                         planet.sectorId,
                         game.unlockedPlanetIds,
-                        game.playerLevel,
+                        game.playerLevel
                       ) &&
                       game.battle?.planetId !== alien.planetId &&
                       game.energy >= alien.attackEnergyCost
@@ -911,13 +956,13 @@ function GameApp({
                   (getShips().some(
                     (ship) =>
                       !game.fleet.ownedShips.some(
-                        (o) => o.shipId === ship.id,
+                        (o) => o.shipId === ship.id
                       ) &&
                       Object.entries(ship.baseCost).every(
                         ([m, qty]) =>
                           (game.metals[m as keyof typeof game.metals] ?? 0) >=
-                          (qty ?? 0),
-                      ),
+                          (qty ?? 0)
+                      )
                   ) ||
                     (game.fleet.ownedShips.length > 0 &&
                       getCannons().some((cannon) =>
@@ -925,20 +970,20 @@ function GameApp({
                           .filter(
                             (ship) =>
                               !game.expeditions.some(
-                                (e) => e.shipId === ship.shipId,
-                              ),
+                                (e) => e.shipId === ship.shipId
+                              )
                           )
                           .some((ship) => {
                             const cost = computeCannonCost(
                               cannon,
-                              ship.cannons[cannon.id] ?? 0,
+                              ship.cannons[cannon.id] ?? 0
                             );
                             return Object.entries(cost).every(
                               ([m, qty]) =>
                                 (game.metals[m as keyof typeof game.metals] ??
-                                  0) >= (qty ?? 0),
+                                  0) >= (qty ?? 0)
                             );
-                          }),
+                          })
                       )));
 
                 return (
@@ -954,7 +999,7 @@ function GameApp({
                     <Text
                       style={[
                         styles.tabLabel,
-                        active ? styles.tabLabelActive : null,
+                        active ? styles.tabLabelActive : null
                       ]}
                     >
                       {t.label}
@@ -964,7 +1009,7 @@ function GameApp({
                       <View
                         style={[
                           styles.tabBadge,
-                          hasDefeat ? { backgroundColor: '#ff9900' } : {},
+                          hasDefeat ? { backgroundColor: '#ff9900' } : {}
                         ]}
                       />
                     ) : null}
@@ -972,7 +1017,7 @@ function GameApp({
                       <View
                         style={[
                           styles.tabBadge,
-                          { backgroundColor: '#ff3b3b' },
+                          { backgroundColor: '#ff3b3b' }
                         ]}
                       />
                     ) : null}
@@ -980,7 +1025,7 @@ function GameApp({
                       <View
                         style={[
                           styles.tabBadge,
-                          { backgroundColor: '#ff3b3b' },
+                          { backgroundColor: '#ff3b3b' }
                         ]}
                       />
                     ) : null}
@@ -988,7 +1033,7 @@ function GameApp({
                       <View
                         style={[
                           styles.tabBadge,
-                          { backgroundColor: '#ff3b30' },
+                          { backgroundColor: '#ff3b30' }
                         ]}
                       />
                     ) : null}
@@ -1015,26 +1060,6 @@ function GameApp({
           <Text style={styles.editorIcon}>✎</Text>
           <Text style={styles.editorLabel}>ПРОГ.</Text>
         </Pressable>
-        <Pressable
-          onPress={() => {
-            logEvent('modal_open', { modal: 'character_channel' });
-            setChannelOpen(true);
-          }}
-          style={styles.editorBtn}
-        >
-          <Text style={styles.editorIcon}>📡</Text>
-          <Text style={styles.editorLabel}>КАНАЛ</Text>
-        </Pressable>
-        <Pressable onPress={handleExportAnalytics} style={styles.editorBtn}>
-          <Text style={styles.editorIcon}>📊</Text>
-          <Text style={styles.editorLabel}>
-            {analyticsSizeKb > 0 ? `${analyticsSizeKb}КБ` : 'ЛОГ'}
-          </Text>
-        </Pressable>
-        <Pressable onPress={handleClearAnalytics} style={styles.editorBtn}>
-          <Text style={styles.editorIcon}>🗑️</Text>
-          <Text style={styles.editorLabel}>ОЧИСТ.</Text>
-        </Pressable>
       </View>
 
       <Modal
@@ -1059,7 +1084,7 @@ function GameApp({
                   { key: 'playerXP', label: 'Опыт (XP)' },
                   { key: 'iron', label: 'Железо' },
                   { key: 'titan', label: 'Титан' },
-                  { key: 'iridium', label: 'Иридий' },
+                  { key: 'iridium', label: 'Иридий' }
                 ] as { key: keyof typeof editorFields; label: string }[]
               ).map(({ key, label }) => (
                 <View key={key} style={styles.editorRow}>
@@ -1080,7 +1105,7 @@ function GameApp({
                 [
                   { key: 'unlockUpgrades', label: 'Апгрейды открыты' },
                   { key: 'unlockShipyard', label: 'Верфь открыта' },
-                  { key: 'unlockPlanets', label: 'Планеты открыты' },
+                  { key: 'unlockPlanets', label: 'Планеты открыты' }
                 ] as { key: keyof typeof editorToggles; label: string }[]
               ).map(({ key, label }) => (
                 <View key={key} style={styles.editorRow}>
@@ -1093,13 +1118,13 @@ function GameApp({
                       styles.editorToggle,
                       editorToggles[key]
                         ? styles.editorToggleOn
-                        : styles.editorToggleOff,
+                        : styles.editorToggleOff
                     ]}
                   >
                     <Text
                       style={[
                         styles.editorToggleText,
-                        editorToggles[key] ? styles.editorToggleTextOn : null,
+                        editorToggles[key] ? styles.editorToggleTextOn : null
                       ]}
                     >
                       {editorToggles[key] ? 'ВКЛ' : 'ВЫКЛ'}
@@ -1145,7 +1170,7 @@ function GameApp({
               <View
                 style={[
                   styles.resetCheckbox,
-                  resetShowIntro && styles.resetCheckboxChecked,
+                  resetShowIntro && styles.resetCheckboxChecked
                 ]}
               >
                 {resetShowIntro ? (
@@ -1194,7 +1219,7 @@ export default function App() {
   const [configError, setConfigError] = useState<string | null>(null);
 
   const sessionIdRef = useRef(
-    Math.random().toString(36).slice(2) + Date.now().toString(36),
+    Math.random().toString(36).slice(2) + Date.now().toString(36)
   );
 
   const retryDialogues = useCallback(() => {
@@ -1252,7 +1277,10 @@ export default function App() {
       const cached = await loadRemoteConfigFromCache();
       try {
         await fetchAndCacheRemoteConfig();
-        if (mounted) { setConfigReady(true); setConfigError(null); }
+        if (mounted) {
+          setConfigReady(true);
+          setConfigError(null);
+        }
       } catch (err: any) {
         if (!mounted) return;
         if (cached) {
@@ -1263,7 +1291,9 @@ export default function App() {
         }
       }
     })();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -1276,13 +1306,18 @@ export default function App() {
       const [localLoaded, seen, token] = await Promise.all([
         loadGame(),
         loadIntroSeen(),
-        getAccessToken(),
+        getAccessToken()
       ]);
       if (!mounted) return;
 
       // Step 1-3: load local + cloud saves, pick newer envelope
       let localEnvelope = localLoaded
-        ? { version: 2 as const, savedAt: localLoaded.savedAt, appliedGrantSeq: localLoaded.appliedGrantSeq, state: localLoaded.state }
+        ? {
+            version: 2 as const,
+            savedAt: localLoaded.savedAt,
+            appliedGrantSeq: localLoaded.appliedGrantSeq,
+            state: localLoaded.state
+          }
         : null;
       let cloudRev: number | undefined;
 
@@ -1292,7 +1327,10 @@ export default function App() {
           // cloud.data may be V1 or V2 — deserialize to normalize
           const cloudResult = deserializeGameplaySaveEnvelope(cloud.data);
           if (cloudResult.ok) {
-            localEnvelope = pickNewerEnvelope(localEnvelope, cloudResult.envelope);
+            localEnvelope = pickNewerEnvelope(
+              localEnvelope,
+              cloudResult.envelope
+            );
             cloudRev = cloud.rev;
           }
         }
@@ -1311,18 +1349,15 @@ export default function App() {
           const grants = await fetchPendingGrants(grantBaseSeq);
           if (grants.length > 0) {
             const baseState = resolvedEnvelope?.state ?? ({} as GameStateInit);
-            const { state: stateWithGrants, appliedGrantSeq: newSeq } = applyGrants(
-              baseState,
-              grants,
-              grantBaseSeq,
-            );
+            const { state: stateWithGrants, appliedGrantSeq: newSeq } =
+              applyGrants(baseState, grants, grantBaseSeq);
 
             // Build new envelope with grant-applied state
             resolvedEnvelope = {
               version: 2,
               savedAt: Date.now(),
               appliedGrantSeq: newSeq,
-              state: stateWithGrants,
+              state: stateWithGrants
             };
             appliedGrantSeq = newSeq;
 
@@ -1372,11 +1407,11 @@ export default function App() {
           const planets = getPlanets();
           const planet =
             planets.find(
-              (p) => p.id === (state.selectedPlanetId ?? planets[0].id),
+              (p) => p.id === (state.selectedPlanetId ?? planets[0].id)
             ) ?? planets[0];
           const passiveRate = basePassive * planet.bonus;
           const earnings = Math.floor(
-            passiveRate * Math.min(elapsedSeconds, 8 * 3600),
+            passiveRate * Math.min(elapsedSeconds, 8 * 3600)
           );
           if (earnings > 0) {
             state.energy = (state.energy ?? 0) + earnings;
@@ -1426,12 +1461,15 @@ export default function App() {
           <Text style={[styles.loadingText, { marginTop: 8, opacity: 0.6 }]}>
             {configError}
           </Text>
-          <Pressable style={styles.retryBtn} onPress={() => {
-            setConfigError(null);
-            fetchAndCacheRemoteConfig()
-              .then(() => setConfigReady(true))
-              .catch((err: any) => setConfigError(err?.message ?? 'Ошибка'));
-          }}>
+          <Pressable
+            style={styles.retryBtn}
+            onPress={() => {
+              setConfigError(null);
+              fetchAndCacheRemoteConfig()
+                .then(() => setConfigReady(true))
+                .catch((err: any) => setConfigError(err?.message ?? 'Ошибка'));
+            }}
+          >
             <Text style={styles.retryBtnText}>Повторить</Text>
           </Pressable>
         </View>
@@ -1456,7 +1494,12 @@ export default function App() {
     );
   }
 
-  if (!configReady || initial === undefined || introSeen === undefined || !dialogues) {
+  if (
+    !configReady ||
+    initial === undefined ||
+    introSeen === undefined ||
+    !dialogues
+  ) {
     return (
       <View style={styles.container}>
         <StatusBar style="light" />
@@ -1503,16 +1546,23 @@ const styles = StyleSheet.create({
   content: { flex: 1 },
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   loadingText: { color: 'rgba(0,212,255,0.7)', fontWeight: '800' },
-  retryBtn: { marginTop: 16, paddingVertical: 8, paddingHorizontal: 16, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(0,212,255,0.4)' },
+  retryBtn: {
+    marginTop: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(0,212,255,0.4)'
+  },
   retryBtnText: { color: '#00d4ff', fontWeight: '800', fontSize: 12 },
   tabBarOuter: {
     borderTopWidth: 1,
     borderTopColor: 'rgba(0,212,255,0.15)',
-    backgroundColor: 'rgba(0,10,30,0.95)',
+    backgroundColor: 'rgba(0,10,30,0.95)'
   },
   tabBar: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'flex-start'
   },
   tabBtn: {
     flex: 1,
@@ -1520,7 +1570,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 1,
-    position: 'relative',
+    position: 'relative'
   },
   tabIcon: { fontSize: 14 },
   tabLabel: {
@@ -1528,7 +1578,7 @@ const styles = StyleSheet.create({
     fontSize: 7,
     letterSpacing: 0.3,
     color: 'rgba(255,255,255,0.3)',
-    fontWeight: '800',
+    fontWeight: '800'
   },
   tabLabelActive: { color: '#00d4ff' },
   tabActiveLine: {
@@ -1537,7 +1587,7 @@ const styles = StyleSheet.create({
     right: 6,
     bottom: 5,
     height: 2,
-    backgroundColor: '#00d4ff',
+    backgroundColor: '#00d4ff'
   },
   resetBtn: { alignItems: 'center', gap: 2 },
   resetIcon: { fontSize: 12, color: 'rgba(255,80,80,0.55)' },
@@ -1545,14 +1595,14 @@ const styles = StyleSheet.create({
     fontSize: 6,
     color: 'rgba(255,80,80,0.45)',
     fontWeight: '800',
-    letterSpacing: 0.3,
+    letterSpacing: 0.3
   },
   resetOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,5,20,0.75)',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 24,
+    padding: 24
   },
   resetCard: {
     width: '100%',
@@ -1561,25 +1611,25 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,80,80,0.3)',
     borderRadius: 16,
     padding: 20,
-    gap: 12,
+    gap: 12
   },
   resetCardTitle: {
     fontSize: 10,
     fontWeight: '900',
     color: 'rgba(255,80,80,0.85)',
     letterSpacing: 2,
-    textAlign: 'center',
+    textAlign: 'center'
   },
   resetCardText: {
     fontSize: 13,
     color: 'rgba(200,230,255,0.85)',
     lineHeight: 20,
-    textAlign: 'center',
+    textAlign: 'center'
   },
   resetCardButtons: {
     flexDirection: 'row',
     gap: 10,
-    marginTop: 4,
+    marginTop: 4
   },
   resetCardCancel: {
     flex: 1,
@@ -1587,12 +1637,12 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: 'rgba(0,212,255,0.3)',
-    alignItems: 'center',
+    alignItems: 'center'
   },
   resetCardCancelText: {
     color: 'rgba(0,212,255,0.8)',
     fontWeight: '700',
-    fontSize: 13,
+    fontSize: 13
   },
   resetCardConfirm: {
     flex: 1,
@@ -1601,18 +1651,18 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(180,30,30,0.6)',
     borderWidth: 1,
     borderColor: 'rgba(255,80,80,0.4)',
-    alignItems: 'center',
+    alignItems: 'center'
   },
   resetCardConfirmText: {
     color: 'rgba(255,120,120,0.95)',
     fontWeight: '700',
-    fontSize: 13,
+    fontSize: 13
   },
   resetCheckboxRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    paddingVertical: 2,
+    paddingVertical: 2
   },
   resetCheckbox: {
     width: 18,
@@ -1621,21 +1671,21 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(0,212,255,0.4)',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'center'
   },
   resetCheckboxChecked: {
     backgroundColor: 'rgba(0,212,255,0.15)',
-    borderColor: 'rgba(0,212,255,0.8)',
+    borderColor: 'rgba(0,212,255,0.8)'
   },
   resetCheckboxMark: {
     color: '#00d4ff',
     fontSize: 12,
     fontWeight: '900',
-    lineHeight: 14,
+    lineHeight: 14
   },
   resetCheckboxLabel: {
     fontSize: 13,
-    color: 'rgba(200,230,255,0.75)',
+    color: 'rgba(200,230,255,0.75)'
   },
   tabBadge: {
     position: 'absolute',
@@ -1644,7 +1694,7 @@ const styles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 4,
-    backgroundColor: '#ff4444',
+    backgroundColor: '#ff4444'
   },
   sideButtons: {
     position: 'absolute',
@@ -1652,7 +1702,7 @@ const styles = StyleSheet.create({
     top: '50%',
     transform: [{ translateY: -38 }],
     alignItems: 'center',
-    gap: 8,
+    gap: 8
   },
   editorBtn: { alignItems: 'center', gap: 2 },
   editorIcon: { fontSize: 14, color: 'rgba(0,212,255,0.55)' },
@@ -1660,7 +1710,7 @@ const styles = StyleSheet.create({
     fontSize: 6,
     color: 'rgba(0,212,255,0.45)',
     fontWeight: '800',
-    letterSpacing: 0.3,
+    letterSpacing: 0.3
   },
   editorCard: {
     width: '100%',
@@ -1669,14 +1719,14 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(0,212,255,0.3)',
     borderRadius: 16,
     padding: 20,
-    gap: 14,
+    gap: 14
   },
   editorCardTitle: {
     fontSize: 10,
     fontWeight: '900',
     color: 'rgba(0,212,255,0.85)',
     letterSpacing: 2,
-    textAlign: 'center',
+    textAlign: 'center'
   },
   editorScroll: { maxHeight: 280 },
   editorRow: {
@@ -1685,12 +1735,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 6,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,212,255,0.08)',
+    borderBottomColor: 'rgba(0,212,255,0.08)'
   },
   editorFieldLabel: {
     fontSize: 12,
     color: 'rgba(200,230,255,0.85)',
-    fontWeight: '600',
+    fontWeight: '600'
   },
   editorInput: {
     width: 130,
@@ -1703,37 +1753,33 @@ const styles = StyleSheet.create({
     color: '#00d4ff',
     fontSize: 13,
     fontWeight: '700',
-    textAlign: 'right',
+    textAlign: 'right'
   },
   editorDivider: {
     height: 1,
     backgroundColor: 'rgba(0,212,255,0.12)',
-    marginVertical: 6,
+    marginVertical: 6
   },
   editorToggle: {
     width: 70,
     paddingVertical: 5,
     borderRadius: 8,
     borderWidth: 1,
-    alignItems: 'center',
+    alignItems: 'center'
   },
   editorToggleOn: {
     backgroundColor: 'rgba(0,212,255,0.15)',
-    borderColor: 'rgba(0,212,255,0.5)',
+    borderColor: 'rgba(0,212,255,0.5)'
   },
   editorToggleOff: {
     backgroundColor: 'rgba(255,255,255,0.03)',
-    borderColor: 'rgba(255,255,255,0.12)',
+    borderColor: 'rgba(255,255,255,0.12)'
   },
   editorToggleText: {
     fontSize: 10,
     fontWeight: '800',
     letterSpacing: 0.5,
-    color: 'rgba(255,255,255,0.3)',
+    color: 'rgba(255,255,255,0.3)'
   },
-  editorToggleTextOn: { color: '#00d4ff' },
+  editorToggleTextOn: { color: '#00d4ff' }
 });
-
-
-
-
