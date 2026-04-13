@@ -73,7 +73,7 @@ import {
   pickNewerEnvelope
 } from './src/game/saveContract';
 import { applyGrants } from './src/game/grants';
-import { bootstrapTelegram } from './src/telegram/runtime';
+import { bootstrapTelegram, ensureTelegramWebApp } from './src/telegram/runtime';
 import { telegramAuthIfNeeded } from './src/telegram/auth';
 import { getPlanets } from './src/game/PLANETS';
 import { getShips } from './src/game/SHIPS';
@@ -1243,7 +1243,9 @@ export default function App() {
     });
 
     if (Platform.OS === 'web') {
-      bootstrapTelegram();
+      void ensureTelegramWebApp().then((tg) => {
+        if (tg) bootstrapTelegram();
+      });
 
       const onUnhandled = (event: PromiseRejectionEvent) => {
         logError(event.reason, { type: 'unhandledrejection' });
