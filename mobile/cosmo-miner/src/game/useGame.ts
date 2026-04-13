@@ -66,6 +66,13 @@ import type {
   UpgradesState
 } from './types';
 import {
+  DEFAULT_PRESTIGE_STATE,
+  PRESTIGE_LEVEL_THRESHOLD,
+  applyPrestigeReset,
+  computePrestigeState,
+  getPrestigeBlockedReason,
+} from './prestige';
+import {
   getShopItemById,
   getConversionRate,
   getConverterCreditCost,
@@ -195,7 +202,8 @@ export function useGame(initial: GameStateInit | undefined, dialogues: Dialogues
       credits: 0,
       activeBoosts: [],
       characterMessageHistory: [],
-      greetingShown: false
+      greetingShown: false,
+      prestige: DEFAULT_PRESTIGE_STATE,
     }),
     []
   );
@@ -288,7 +296,9 @@ export function useGame(initial: GameStateInit | undefined, dialogues: Dialogues
       credits: initial?.credits ?? 0,
       activeBoosts: initial?.activeBoosts ?? [],
       characterMessageHistory: initial?.characterMessageHistory ?? [],
-      greetingShown: initial?.greetingShown ?? false
+      greetingShown: initial?.greetingShown ?? false,
+      // Soft-migrate old saves: if prestige field is missing, default to count=0
+      prestige: initial?.prestige ?? DEFAULT_PRESTIGE_STATE,
     };
   });
 
@@ -298,9 +308,10 @@ export function useGame(initial: GameStateInit | undefined, dialogues: Dialogues
         upgrades: state.upgrades,
         selectedPlanetId: state.selectedPlanetId,
         research: state.research,
-        activeBoosts: state.activeBoosts
+        activeBoosts: state.activeBoosts,
+        prestige: state.prestige,
       }),
-    [state.upgrades, state.selectedPlanetId, state.research, state.activeBoosts]
+    [state.upgrades, state.selectedPlanetId, state.research, state.activeBoosts, state.prestige]
   );
 
   const totalDamage = useMemo(
@@ -1720,6 +1731,52 @@ export function useGame(initial: GameStateInit | undefined, dialogues: Dialogues
     });
   }, []);
 
+  // ── PRESTIGE ──
+
+  const prestigeBlockedReason = getPrestigeBlockedReason(
+    playerLevel,
+    !!state.battle,
+    state.expeditions.length > 0,
+  );
+  const canPrestige = prestigeBlockedReason === null;
+
+  const performPrestige = useCallback(() => {
+    const level = computePlayerLevel(state.playerXP);
+    const reason = getPrestigeBlockedReason(level, !!state.battle, state.expeditions.length > 0);
+    if (reason !== null) return;
+
+    setState((prev) => {
+      const lvl = computePlayerLevel(prev.playerXP);
+      const blocked = getPrestigeBlockedReason(lvl, !!prev.battle, prev.expeditions.length > 0);
+      if (blocked !== null) return prev;
+      return applyPrestigeReset(prev, defaultState);
+    });
+
+    // Reset all in-session narrative trackers so the new run starts fresh
+    // without requiring an app restart. Refs are not reactive — mutating them
+    // here is safe and won't cause a re-render.
+    characterFlowShownRef.current          = false;
+    shownSectorUnlocksRef.current          = new Set();
+    shownSectorCharacterMessagesRef.current = new Set();
+    firstIronShownRef.current              = false;
+    firstShipShownRef.current              = false;
+    shipyardUnlockShownRef.current         = false;
+    // achievementsUnlockShownRef intentionally NOT reset — player already saw
+    // this intro toast before their first prestige; don't show it again.
+    upgradesUnlockShownRef.current         = false;
+    planetsUnlockShownRef.current          = false;
+    shownUnlocksRef.current                = new Set();
+
+    logEvent('prestige_complete', {
+      playerLevel: level,
+      prestigeCountBefore: state.prestige.count,
+      prestigeCountAfter: state.prestige.count + 1,
+      energyBonusAfter: computePrestigeState(state.prestige.count + 1).energyBonus,
+      metalBonusAfter: computePrestigeState(state.prestige.count + 1).metalDropBonus,
+      attackBonusAfter: computePrestigeState(state.prestige.count + 1).attackBonus,
+    });
+  }, [state.playerXP, state.battle, state.expeditions, state.prestige, defaultState]);
+
   return {
     ...state,
     ...derived,
@@ -1806,6 +1863,10 @@ export function useGame(initial: GameStateInit | undefined, dialogues: Dialogues
     activateBoost,
     unlockPlanets,
     resetResearch,
+    prestige: state.prestige,
+    canPrestige,
+    prestigeBlockedReason,
+    performPrestige,
     debugSetValues: useCallback(
       (patch: {
         energy?: number;

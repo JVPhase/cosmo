@@ -33,6 +33,29 @@ function jwtUserId(authHeader: string | undefined): string {
   }
 }
 
+function corsOriginConfig() {
+  const configuredOrigins = [
+    process.env.APP_ORIGIN,
+    process.env.CORS_ALLOWED_ORIGINS,
+  ]
+    .flatMap((value) => value?.split(',') ?? [])
+    .map((value) => value.trim())
+    .filter(Boolean)
+
+  if (configuredOrigins.length === 0) return true
+
+  const allowedOrigins = new Set(configuredOrigins)
+
+  return (origin: string | undefined, cb: (err: Error | null, allow: boolean) => void) => {
+    if (!origin || allowedOrigins.has(origin)) {
+      cb(null, true)
+      return
+    }
+
+    cb(new Error(`Origin ${origin} is not allowed`), false)
+  }
+}
+
 async function main() {
   // Global rate limit with composite key: IP + userId + telegramId.
   // Per-route configs (via config.rateLimit) override max/timeWindow on top.
@@ -60,7 +83,7 @@ async function main() {
   })
 
   await app.register(cors, {
-    origin: true,
+    origin: corsOriginConfig(),
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Telegram-User-Id'],

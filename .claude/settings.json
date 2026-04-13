@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "defaultMode": "acceptEdits",
+  "permissions": {
+    "allow": [
+      "Bash(rg *)",
+      "Bash(git status)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(npm run build)",
+      "Bash(npm run test:contract)",
+      "Bash(npm run test:contract:verbose)",
+      "Bash(npx tsx --test *)",
+      "Bash(yarn web)"
+    ],
+    "ask": [
+      "Bash(docker compose *)",
+      "Bash(prisma *)",
+      "Bash(npx prisma *)",
+      "Bash(npm run db:*)",
+      "Bash(yarn start)",
+      "Bash(yarn analytics-sink)"
+    ],
+    "deny": [
+      "Read(**/.env)"
+    ]
+  }
+}

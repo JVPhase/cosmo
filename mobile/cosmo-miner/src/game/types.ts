@@ -11,6 +11,13 @@ import type { FleetState, OwnedShip, ShipId } from "./SHIPS";
 import type { UpgradeId } from "./UPGRADES";
 import type { BoostEffect, ShopItemId } from "./SHOP";
 
+export type PrestigeState = {
+  count: number;
+  energyBonus: number;    // total multiplier bonus, e.g. 0.1 = +10%
+  metalDropBonus: number; // total flat bonus added to metal drop chance
+  attackBonus: number;    // total multiplier bonus, e.g. 0.08 = +8%
+};
+
 export type ActiveBoost = {
   instanceId: string;
   shopItemId: ShopItemId;
@@ -55,6 +62,7 @@ export type GameState = {
   activeBoosts: ActiveBoost[];
   characterMessageHistory: string[];
   greetingShown: boolean;
+  prestige: PrestigeState;
 };
 
 export type GameStateInit = {
@@ -89,6 +97,7 @@ export type GameStateInit = {
   activeBoosts?: ActiveBoost[];
   characterMessageHistory?: string[];
   greetingShown?: boolean;
+  prestige?: PrestigeState;
 };
 
 /**
