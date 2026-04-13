@@ -13,6 +13,10 @@ const TELEGRAM_TEST_MODE_ENABLED =
 const TELEGRAM_TEST_INIT_DATA =
   process.env.EXPO_PUBLIC_TELEGRAM_TEST_INIT_DATA?.trim() ??
   'telegram-test-runtime';
+const TELEGRAM_SDK_URL = 'https://telegram.org/js/telegram-web-app.js?62';
+const TELEGRAM_SDK_SCRIPT_ID = 'telegram-web-app-sdk';
+
+let telegramSdkPromise: Promise<TelegramWebApp | null> | null = null;
 
 export interface TelegramWebApp {
   initData: string;
@@ -102,12 +106,94 @@ export function isTelegramTestMode(): boolean {
   return Platform.OS === 'web' && TELEGRAM_TEST_MODE_ENABLED;
 }
 
-/** Returns the Telegram WebApp SDK object, or null when not available. */
-export function getTelegramWebApp(): TelegramWebApp | null {
+function readTelegramWebAppFromWindow(): TelegramWebApp | null {
   if (Platform.OS !== 'web') return null;
   if (typeof window === 'undefined') return null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const realTelegram = (window as any)?.Telegram?.WebApp ?? null;
+  return (window as any)?.Telegram?.WebApp ?? null;
+}
+
+/**
+ * Ensures the Telegram WebApp SDK script is available on web before any runtime
+ * checks that depend on window.Telegram.WebApp. In test mode, falls back to the
+ * local mock runtime when the real SDK is absent.
+ */
+export async function ensureTelegramWebApp(timeoutMs = 5000): Promise<TelegramWebApp | null> {
+  const existing = readTelegramWebAppFromWindow();
+  if (existing) return existing;
+
+  if (Platform.OS !== 'web') return null;
+  if (typeof document === 'undefined') {
+    return isTelegramTestMode() ? createMockTelegramWebApp() : null;
+  }
+
+  if (telegramSdkPromise) return telegramSdkPromise;
+
+  telegramSdkPromise = new Promise<TelegramWebApp | null>((resolve) => {
+    const finish = () => {
+      const runtime = readTelegramWebAppFromWindow();
+      resolve(runtime ?? (isTelegramTestMode() ? createMockTelegramWebApp() : null));
+    };
+
+    const existingScript = document.getElementById(
+      TELEGRAM_SDK_SCRIPT_ID
+    ) as HTMLScriptElement | null;
+
+    const script =
+      existingScript ??
+      Object.assign(document.createElement('script'), {
+        id: TELEGRAM_SDK_SCRIPT_ID,
+        src: TELEGRAM_SDK_URL,
+        async: true
+      });
+
+    const cleanup = () => {
+      script.removeEventListener('load', onLoad);
+      script.removeEventListener('error', onError);
+      window.clearTimeout(timeoutId);
+    };
+
+    const onLoad = () => {
+      cleanup();
+      finish();
+    };
+
+    const onError = () => {
+      cleanup();
+      finish();
+    };
+
+    const timeoutId = window.setTimeout(() => {
+      cleanup();
+      finish();
+    }, timeoutMs);
+
+    script.addEventListener('load', onLoad, { once: true });
+    script.addEventListener('error', onError, { once: true });
+
+    if (!existingScript) {
+      document.head.appendChild(script);
+    } else if (existingScript.dataset.loaded === 'true') {
+      cleanup();
+      finish();
+      return;
+    }
+
+    script.addEventListener(
+      'load',
+      () => {
+        script.dataset.loaded = 'true';
+      },
+      { once: true }
+    );
+  });
+
+  return telegramSdkPromise;
+}
+
+/** Returns the Telegram WebApp SDK object, or null when not available. */
+export function getTelegramWebApp(): TelegramWebApp | null {
+  const realTelegram = readTelegramWebAppFromWindow();
   if (realTelegram) return realTelegram;
   return isTelegramTestMode() ? createMockTelegramWebApp() : null;
 }

@@ -10,6 +10,7 @@
  * the token without knowing it came from Telegram.
  */
 import {
+  ensureTelegramWebApp,
   isTelegramRuntime,
   getTelegramWebApp,
   isTelegramTestMode,
@@ -28,6 +29,7 @@ const TELEGRAM_TEST_INIT_DATA =
  * Outside Telegram this is a no-op and resolves immediately.
  */
 export async function telegramAuthIfNeeded(): Promise<void> {
+  await ensureTelegramWebApp();
   if (!isTelegramRuntime()) return;
 
   const tg = getTelegramWebApp()!;
