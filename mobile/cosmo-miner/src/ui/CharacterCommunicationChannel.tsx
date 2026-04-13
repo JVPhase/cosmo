@@ -15,8 +15,8 @@ import type { DialogueCharacter } from '../game/dialogues';
 import { ModalSheet } from './ModalSheet';
 
 const PORTRAIT_BOX = 300;
-const PORTRAIT_WIDTH = 600;
-const PORTRAIT_HEIGHT = 900;
+const PORTRAIT_WIDTH = 300;
+const PORTRAIT_HEIGHT = 450;
 
 function CharacterPortraitCoverTop({
   source
@@ -186,7 +186,6 @@ export function CharacterCommunicationChannel({
           </View>
         </View>
 
-
         {/* Tabs */}
         <View style={styles.tabs}>
           <Pressable
@@ -197,7 +196,9 @@ export function CharacterCommunicationChannel({
             ]}
             onPress={() => setTab('inbox')}
           >
-            <Text style={[styles.tabText, tab === 'inbox' && styles.tabTextActive]}>
+            <Text
+              style={[styles.tabText, tab === 'inbox' && styles.tabTextActive]}
+            >
               ВХОДЯЩИЕ
             </Text>
           </Pressable>
@@ -209,7 +210,12 @@ export function CharacterCommunicationChannel({
             ]}
             onPress={() => setTab('history')}
           >
-            <Text style={[styles.tabText, tab === 'history' && styles.tabTextActive]}>
+            <Text
+              style={[
+                styles.tabText,
+                tab === 'history' && styles.tabTextActive
+              ]}
+            >
               ИСТОРИЯ
             </Text>
           </Pressable>
@@ -249,8 +255,13 @@ export function CharacterCommunicationChannel({
             ) : (
               <View style={styles.historyList}>
                 {[...characterMessageHistory].reverse().map((msg, idx) => (
-                  <View key={`${idx}-${msg.slice(0, 8)}`} style={styles.historyItem}>
-                    <Text style={styles.historyLabel}>СООБЩЕНИЕ #{characterMessageHistory.length - idx}</Text>
+                  <View
+                    key={`${idx}-${msg.slice(0, 8)}`}
+                    style={styles.historyItem}
+                  >
+                    <Text style={styles.historyLabel}>
+                      СООБЩЕНИЕ #{characterMessageHistory.length - idx}
+                    </Text>
                     <Text style={styles.bodyText}>{msg}</Text>
                   </View>
                 ))}
