@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import * as argon2 from 'argon2';
 import {
   formulaConstantsData,
   upgradesData,
@@ -17,6 +18,46 @@ import {
 } from './configData';
 
 const prisma = new PrismaClient();
+
+function readRequiredSeedEnv(name: string): string | null {
+  const value = process.env[name]?.trim();
+  return value ? value : null;
+}
+
+async function seedCrmAdmin() {
+  const email = readRequiredSeedEnv('CRM_ADMIN_EMAIL');
+  const password = readRequiredSeedEnv('CRM_ADMIN_PASSWORD');
+
+  if (!email && !password) {
+    console.log('Skipping CRM admin seed: CRM_ADMIN_EMAIL / CRM_ADMIN_PASSWORD are not set.');
+    return;
+  }
+
+  if (!email || !password) {
+    throw new Error('CRM admin seed requires both CRM_ADMIN_EMAIL and CRM_ADMIN_PASSWORD.');
+  }
+
+  if (password.length < 8) {
+    throw new Error('CRM_ADMIN_PASSWORD must be at least 8 characters long.');
+  }
+
+  const emailNorm = email.toLowerCase();
+  const passwordHash = await argon2.hash(password);
+
+  const user = await prisma.user.upsert({
+    where: { email: emailNorm },
+    update: { passwordHash },
+    create: { email: emailNorm, passwordHash },
+  });
+
+  await prisma.crmUser.upsert({
+    where: { userId: user.id },
+    update: { role: 'admin' },
+    create: { userId: user.id, role: 'admin' },
+  });
+
+  console.log(`  ✓ seeded CRM admin ${emailNorm}`);
+}
 
 const CONFIG_ENTRIES: Array<{ key: string; data: unknown }> = [
   { key: 'formulaConstants', data: formulaConstantsData },
@@ -287,6 +328,9 @@ async function main() {
   if (deactivated.count > 0) {
     console.log(`  ↩ deactivated ${deactivated.count} legacy credit pack(s)`);
   }
+
+  console.log('Seeding CRM admin user...');
+  await seedCrmAdmin();
 
   console.log('Done.');
 }

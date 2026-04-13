@@ -1,4 +1,4 @@
-﻿const ACCESS_KEY = 'crm_access_token'
+const ACCESS_KEY = 'crm_access_token'
 const REFRESH_KEY = 'crm_refresh_token'
 
 export type Tokens = { accessToken: string; refreshToken: string }
@@ -63,18 +63,6 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}, retry
 
 export async function login(email: string, password: string) {
   const res = await fetch(`${API_URL}/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password })
-  })
-  if (!res.ok) throw new Error(await res.text())
-  const data = (await res.json()) as Tokens & { userId: string }
-  setTokens(data)
-  return data
-}
-
-export async function register(email: string, password: string) {
-  const res = await fetch(`${API_URL}/auth/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password })
