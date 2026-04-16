@@ -143,3 +143,19 @@ export async function saveIntroSeen(seen: boolean): Promise<void> {
     await AsyncStorage.setItem(INTRO_KEY, seen ? "1" : "0");
   } catch {}
 }
+
+const UNLOCKED_KEY = "cosmo_unlocked_v1";
+
+export async function loadUnlocked(): Promise<boolean> {
+  try {
+    return (await AsyncStorage.getItem(UNLOCKED_KEY)) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export async function saveUnlocked(): Promise<void> {
+  try {
+    await AsyncStorage.setItem(UNLOCKED_KEY, "1");
+  } catch {}
+}
