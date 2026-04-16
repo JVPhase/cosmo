@@ -47,9 +47,11 @@ import {
   clearGame,
   loadGame,
   loadIntroSeen,
+  loadUnlocked,
   saveGame,
   saveGameEnvelope,
-  saveIntroSeen
+  saveIntroSeen,
+  saveUnlocked
 } from './src/game/storage';
 import { getAliens } from './src/game/ALIENS';
 import { STORY_LOG } from './src/game/STORY_LOG';
@@ -1277,7 +1279,7 @@ function GameApp({
 }
 
 export default function App() {
-  const [unlocked, setUnlocked] = useState(false);
+  const [unlocked, setUnlocked] = useState<boolean | null>(null);
   const [tab, setTab] = useState<TabId>('game');
   const [initial, setInitial] = useState<GameStateInit | undefined>(undefined);
   const [initialAppliedGrantSeq, setInitialAppliedGrantSeq] = useState(0);
@@ -1304,6 +1306,16 @@ export default function App() {
         setDialoguesError(err?.message ?? 'Failed to load dialogues');
       });
   }, []);
+
+  const handleUnlock = useCallback(() => {
+    void saveUnlocked();
+    setUnlocked(true);
+  }, []);
+
+  useEffect(() => {
+    loadUnlocked().then(was => setUnlocked(was ? true : false));
+  }, []);
+
   useEffect(() => {
     initAnalytics(sessionIdRef.current);
 
@@ -1516,11 +1528,12 @@ export default function App() {
     setGameKey((k) => k + 1);
   }, []);
 
-  if (!unlocked) {
+  if (unlocked !== true) {
+    if (unlocked === null) return null;
     return (
       <View style={styles.container}>
         <StatusBar style="light" />
-        <PasswordScreen onUnlock={() => setUnlocked(true)} />
+        <PasswordScreen onUnlock={handleUnlock} />
       </View>
     );
   }
