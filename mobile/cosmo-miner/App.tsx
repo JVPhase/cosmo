@@ -293,12 +293,7 @@ function GameApp({
       state: stateWithGrants,
     };
 
-    try {
-      await saveGameEnvelope(envelope);
-    } catch {
-      return false;
-    }
-
+    // Apply the grant to React state immediately so the UI updates now.
     const replaceStateFromSync = latestRef.current.replaceStateFromSync;
     appliedGrantSeqRef.current = newSeq;
     latestRef.current = {
@@ -306,6 +301,17 @@ function GameApp({
       ...stateWithGrants,
     } as typeof latestRef.current;
     replaceStateFromSync(stateWithGrants);
+
+    let savedSuccessfully = false;
+    try {
+      await saveGameEnvelope(envelope);
+      savedSuccessfully = true;
+    } catch {
+      // Local save failed — grant applied to UI but not persisted yet.
+      // It remains un-acked on the server, so the next bootstrap will re-apply it.
+    }
+
+    if (!savedSuccessfully) return true;
 
     try {
       const currentRev = await getCloudRev();
