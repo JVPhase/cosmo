@@ -209,28 +209,36 @@ export function StarsShopTab({ onPurchaseApplied }: StarsShopTabProps) {
       purchaseId = invoice.purchaseId;
 
       tg.openInvoice(invoice.invoiceUrl, async (status) => {
-        if (status === 'paid') {
-          tg.hapticFeedback.notificationOccurred('success');
+        try {
+          if (status === 'paid') {
+            try {
+              tg.hapticFeedback.notificationOccurred('success');
+            } catch {
+              // Haptic feedback is best-effort; swallow errors silently.
+            }
 
-          // Delivery is via grant sync — no immediate local apply.
-          // The grant will be applied on the next app launch or manual sync.
-          const appliedImmediately = await onPurchaseApplied({
-            id: item.id,
-            type: item.type,
-            metadata: item.metadata,
-            purchaseId,
-          });
-          if (appliedImmediately) {
-            Alert.alert('Purchase complete', grantAppliedMessage(item));
-            setBuying(null);
-            return;
+            // Delivery is via grant sync — no immediate local apply.
+            // The grant will be applied on the next app launch or manual sync.
+            const appliedImmediately = await onPurchaseApplied({
+              id: item.id,
+              type: item.type,
+              metadata: item.metadata,
+              purchaseId,
+            });
+            if (appliedImmediately) {
+              Alert.alert('Purchase complete', grantAppliedMessage(item));
+              return;
+            }
+
+            Alert.alert('Покупка завершена', grantPendingMessage(item));
+          } else if (status !== 'cancelled') {
+            Alert.alert('Ошибка оплаты', `Статус: ${status}`);
           }
-
-          Alert.alert('Покупка завершена', grantPendingMessage(item));
-        } else if (status !== 'cancelled') {
-          Alert.alert('Ошибка оплаты', `Статус: ${status}`);
+        } catch (err: unknown) {
+          console.error('[StarsShopTab] openInvoice callback error', err);
+        } finally {
+          setBuying(null);
         }
-        setBuying(null);
       });
     } catch (err: unknown) {
       Alert.alert('Ошибка', err instanceof Error ? err.message : 'Не удалось создать инвойс');
