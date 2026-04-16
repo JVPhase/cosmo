@@ -1,6 +1,6 @@
 {
   "name": "cosmo-miner",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "main": "index.ts",
   "scripts": {
     "analytics-sink": "node ./scripts/analytics-dev-sink.mjs",
