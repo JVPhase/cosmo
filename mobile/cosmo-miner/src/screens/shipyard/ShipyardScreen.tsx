@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { logEvent } from '../../game/analytics';
+import { t } from '../../game/i18n';
 import type { CannonId } from '../../game/CANNONS';
 import type { ExpeditionId } from '../../game/EXPEDITIONS';
 import type { MetalId } from '../../game/METALS';
@@ -86,7 +87,7 @@ export function ShipyardScreen(props: ShipyardScreenProps) {
               activeTab === 'fleet' ? styles.subTabTextActive : null,
             ]}
           >
-            🛠️ ФЛОТ
+            {t('ui.shipyard.tab_fleet')}
           </Text>
         </Pressable>
         {expeditionsUnlocked && (
@@ -106,7 +107,7 @@ export function ShipyardScreen(props: ShipyardScreenProps) {
                 activeTab === 'expeditions' ? styles.subTabTextActive : null,
               ]}
             >
-              🚀 ЭКСПЕДИЦИИ
+              {t('ui.shipyard.tab_expeditions')}
             </Text>
             {expeditions.some(
               (e) => (expeditionRemainingMap[e.shipId] ?? 1) === 0,

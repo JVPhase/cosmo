@@ -16,6 +16,7 @@ import { getAliens } from '../game/ALIENS';
 import { getMaxUltsPerBattle, type ModuleDefinition } from '../game/MODULES';
 import { getPlanets } from '../game/PLANETS';
 import { formatNum } from '../game/formatNum';
+import { t } from '../game/i18n';
 import type { BattleState } from '../game/types';
 import { AnimatedHitEffects } from '../ui/AnimatedHitEffects';
 import { SkillCheckRing } from '../ui/SkillCheckRing';
@@ -36,7 +37,7 @@ function BattleTimer({ expiresAt }: { expiresAt: number }) {
 
   return (
     <View style={[styles.timerBox, { borderColor: `${color}66` }]}>
-      <Text style={styles.timerLabel}>ВРЕМЯ</Text>
+      <Text style={styles.timerLabel}>{t('ui.battle.timer_label')}</Text>
       <Text style={[styles.timerValue, { color }]}>{label}</Text>
     </View>
   );
@@ -378,10 +379,8 @@ export function BattleScreen({
         <StarField />
         <View style={styles.empty}>
           <Text style={styles.emptyIcon}>⚔️</Text>
-          <Text style={styles.emptyTitle}>НЕТ АКТИВНОГО БОЯ</Text>
-          <Text style={styles.emptyText}>
-            Выберите вражескую планету на вкладке ПЛАН. и начните атаку.
-          </Text>
+          <Text style={styles.emptyTitle}>{t('ui.battle.no_battle_title')}</Text>
+          <Text style={styles.emptyText}>{t('ui.battle.no_battle_text')}</Text>
         </View>
       </LinearGradient>
     );
@@ -398,15 +397,13 @@ export function BattleScreen({
         <View style={styles.empty}>
           <Text style={styles.emptyIcon}>💥</Text>
           <Text style={[styles.emptyTitle, { color: '#ff4444' }]}>
-            КОРАБЛЬ СЛОМАН
+            {t('ui.battle.ship_broken_title')}
           </Text>
           <Text style={[styles.emptyText, { color: 'rgba(255,150,150,0.7)' }]}>
-            «{defeatInfo.shipName}» получил критические повреждения и вышел из
-            боя.{'\n\n'}
-            Отправьтесь в Верфь для починки.
+            {t('ui.battle.ship_broken_text', { shipName: defeatInfo.shipName })}
           </Text>
           <Pressable onPress={() => { onClearDefeat(); onGoToShipyard(); }} style={styles.goShipyardBtn} hitSlop={10}>
-            <Text style={styles.goShipyardText}>🛠️ ПЕРЕЙТИ В ВЕРФЬ</Text>
+            <Text style={styles.goShipyardText}>{t('ui.battle.go_shipyard_btn')}</Text>
           </Pressable>
         </View>
       </LinearGradient>
@@ -431,7 +428,7 @@ export function BattleScreen({
         <View style={styles.headerTop}>
           <View style={{ flex: 1 }}>
             <Text style={styles.raceLabel}>
-              {alien?.icon} {alien?.name ?? 'Противник'}
+              {alien?.icon} {alien?.name ?? t('ui.battle.enemy_fallback')}
             </Text>
             <Text style={styles.planetLabel}>
               {planet?.icon} {planet?.name}
@@ -443,7 +440,7 @@ export function BattleScreen({
 
         {/* HP bar */}
         <View style={styles.hpLabelRow}>
-          <Text style={styles.hpLabel}>HP ПРОТИВНИКА</Text>
+          <Text style={styles.hpLabel}>{t('ui.battle.hp_label')}</Text>
           <Text style={styles.hpNumbers}>
             {formatNum(battle!.currentHP)} /{' '}
             {formatNum(battle!.maxHP)}
@@ -462,35 +459,35 @@ export function BattleScreen({
         </View>
 
         <View style={styles.statsRow}>
-          <Text style={styles.statChip}>⚔️ {formatNum(effectiveDamage)}/клик</Text>
+          <Text style={styles.statChip}>{t('ui.battle.damage_per_click', { damage: formatNum(effectiveDamage) })}</Text>
           {abilityActive && !qteAttempted && (
             <Text style={[styles.statChip, { color: '#00dc64' }]}>
-              🎯 QTE — {isIllusion ? 'рассейте иллюзию!' : 'снимите щит!'}
+              {isIllusion ? t('ui.battle.qte_illusion') : t('ui.battle.qte_shield')}
             </Text>
           )}
           {abilityActive && qteAttempted && !isIllusion && (
             <Text style={[styles.statChip, { color: '#ff8844' }]}>
-              🛡 ×0.5 урон / −1с за клик
+              {t('ui.battle.shield_held')}
             </Text>
           )}
           {abilityActive && qteAttempted && isIllusion && (
             <Text style={[styles.statChip, { color: '#44ff88' }]}>
-              👻 клики лечат врага +{formatNum(Math.floor(totalDamage * attackMultiplier))} HP
+              {t('ui.battle.heal_enemy', { hp: formatNum(Math.floor(totalDamage * attackMultiplier)) })}
             </Text>
           )}
           {opportunityActive && (
             <Text style={[styles.statChip, { color: '#ff9900' }]}>
-              ⚡ ×2 АТАКА!
+              {t('ui.battle.double_attack')}
             </Text>
           )}
           {equippedModule?.id === 'surge' && ultActive && (
             <Text style={[styles.statChip, { color: '#ffe066' }]}>
-              ⚡ ×5 ВСПЛЕСК!
+              {t('ui.battle.surge_attack')}
             </Text>
           )}
           {equippedModule?.id === 'dispel' && dispelImmune && (
             <Text style={[styles.statChip, { color: '#b388ff' }]}>
-              👁️ ИММУНИТЕТ К ИЛЛЮЗИИ
+              {t('ui.battle.dispel_immune')}
             </Text>
           )}
         </View>
@@ -499,7 +496,7 @@ export function BattleScreen({
       {/* Forfeit button */}
       <View style={styles.forfeitRow}>
         <Pressable onPress={onForfeit} style={styles.forfeitBtn} hitSlop={10}>
-          <Text style={styles.forfeitText}>✕ ОТСТУПИТЬ</Text>
+          <Text style={styles.forfeitText}>{t('ui.battle.forfeit_btn')}</Text>
         </Pressable>
       </View>
 
@@ -518,7 +515,7 @@ export function BattleScreen({
                 <View style={styles.ultBtnText}>
                   <View style={styles.ultBtnTopRow}>
                     <Text style={[styles.ultBtnName, ultReady && { color: '#ffe066' }]}>
-                      {ultActive ? '◈ АКТИВНО' : ultReady ? `◈ ${equippedModule.ultName}` : equippedModule.ultName}
+                      {ultActive ? t('ui.battle.ult_active') : ultReady ? `◈ ${equippedModule.ultName}` : equippedModule.ultName}
                     </Text>
                     <Text style={[styles.ultBtnCounter, ultLimitReached && { color: '#ff5555' }]}>
                       {ultsUsedThisBattle}/{maxUltsPerBattle}
@@ -592,7 +589,7 @@ export function BattleScreen({
               </Animated.View>
               {(!abilityActive || opportunityActive) && (
                 <Text style={[styles.clickHint, opportunityActive && { color: '#ff9900' }]}>
-                  {opportunityActive ? '⚡ АТАКОВАТЬ' : 'АТАКОВАТЬ'}
+                  {opportunityActive ? t('ui.battle.attack_btn_opportunity') : t('ui.battle.attack_btn')}
                 </Text>
               )}
               {abilityActive && qteAttempted && isIllusion && qteFailed && (
@@ -639,12 +636,12 @@ export function BattleScreen({
 
         <Text style={styles.hint}>
           {opportunityActive
-            ? '⚡ ОКНО ВОЗМОЖНОСТЕЙ — АТАКУЙТЕ! ⚡'
+            ? t('ui.battle.hint_opportunity')
             : abilityActive
               ? isIllusion
-                ? (qteAttempted ? '👻 ИЛЛЮЗИЯ! КЛИКИ ЛЕЧАТ ВРАГА...' : '🎯 НАЖМИТЕ В КРАСНУЮ ЗОНУ!')
-                : (qteAttempted ? '⌛ ЩИТ ДЕРЖИТСЯ...' : '🎯 НАЖМИТЕ В КРАСНУЮ ЗОНУ!')
-              : '◈ ЖМИТЕ ДЛЯ АТАКИ ◈'}
+                ? (qteAttempted ? t('ui.battle.hint_illusion_failed') : t('ui.battle.hint_red_zone'))
+                : (qteAttempted ? t('ui.battle.hint_shield_held') : t('ui.battle.hint_red_zone'))
+              : t('ui.battle.hint_attack')}
         </Text>
       </View>
     </LinearGradient>

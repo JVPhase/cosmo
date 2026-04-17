@@ -6,6 +6,7 @@ import {
   type AchievementId
 } from '../game/ACHIEVEMENTS';
 import type { AchievementsState } from '../game/types';
+import { t } from '../game/i18n';
 
 export type AchievementsScreenProps = {
   achievements: AchievementsState;
@@ -71,7 +72,7 @@ export function AchievementsScreen({ achievements, onClaim }: AchievementsScreen
         contentContainerStyle={styles.content}
         ListHeaderComponent={
           <Text style={styles.subtitle}>
-            {unlockedSet.size}/{getAchievements().length} страниц получено
+            {t('ui.achievements.subtitle', { unlocked: String(unlockedSet.size), total: String(getAchievements().length) })}
           </Text>
         }
         renderItem={({ item: def }) => {
@@ -115,8 +116,8 @@ export function AchievementsScreen({ achievements, onClaim }: AchievementsScreen
                 {unlocked && (
                   <Text style={[styles.reward, { color: claimable ? '#00d4ff' : 'rgba(0,212,255,0.35)' }]}>
                     {claimable
-                      ? `Забрать: +${getAchievementClaimCredits()} 💳`
-                      : `Получено: +${getAchievementClaimCredits()} 💳`}
+                      ? t('ui.achievements.claim', { credits: String(getAchievementClaimCredits()) })
+                      : t('ui.achievements.claimed', { credits: String(getAchievementClaimCredits()) })}
                   </Text>
                 )}
               </View>
