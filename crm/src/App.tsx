@@ -10,6 +10,7 @@ import GameConfigPage from '@/pages/GameConfig'
 import OverviewPage from '@/pages/Overview'
 import PlayerGamePage from '@/pages/PlayerGame'
 import StarsShopPage from '@/pages/StarsShop'
+import TranslationsPage from '@/pages/Translations'
 import UsersPage from '@/pages/Users'
 
 function RequireAuth({ children }: { children: JSX.Element }) {
@@ -41,6 +42,8 @@ export default function App() {
         <Route path="users" element={<UsersPage />} />
         <Route path="players" element={<PlayerGamePage />} />
         <Route path="players/:userId" element={<PlayerGamePage />} />
+        <Route path="translations" element={<TranslationsPage />} />
+        <Route path="translations/:app/:namespace/:locale" element={<TranslationsPage />} />
       </Route>
     </Routes>
   )

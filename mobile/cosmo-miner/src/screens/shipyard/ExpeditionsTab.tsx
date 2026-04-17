@@ -14,6 +14,7 @@ import { getShips, type ShipId } from '../../game/SHIPS';
 import type { ActiveExpedition, BattleState, FleetState } from '../../game/types';
 import { TIMELY_CLAIM_WINDOW_MS } from '../../game/useGame';
 import { formatDuration } from './shipyardUtils';
+import { t } from '../../game/i18n';
 
 export type ExpeditionsTabProps = {
   fleet: FleetState;
@@ -52,11 +53,11 @@ export function ExpeditionsTab({
 
   const listHeader = (
     <>
-      <Text style={styles.title}>◈ ЭКСПЕДИЦИИ · МММРДР ◈</Text>
+      <Text style={styles.title}>{t('ui.expedition.title')}</Text>
 
       {expeditions.length > 0 && (
         <>
-          <Text style={styles.sectionTitle}>АКТИВНЫЕ МИССИИ</Text>
+          <Text style={styles.sectionTitle}>{t('ui.expedition.section_active')}</Text>
           {expeditions.map((exp) => {
             const def = getExpeditions().find((e) => e.id === exp.expeditionId)!;
             const ship = getShips().find((s) => s.id === exp.shipId)!;
@@ -94,7 +95,7 @@ export function ExpeditionsTab({
                       done ? { color: '#00ff88' } : null,
                     ]}
                   >
-                    {done ? 'ГОТОВО!' : formatDuration(remaining)}
+                    {done ? t('ui.expedition.done') : formatDuration(remaining)}
                   </Text>
                 </View>
                 <View style={styles.progressBarBg}>
@@ -114,7 +115,7 @@ export function ExpeditionsTab({
                       <>
                         {timely && (
                           <Text style={styles.timelyBonusLabel}>
-                            +25% БОНУС · ЗАБЕРИТЕ ВОВРЕМЯ
+                            {t('ui.expedition.timely_bonus')}
                           </Text>
                         )}
                         <Pressable
@@ -126,7 +127,7 @@ export function ExpeditionsTab({
                           ]}
                         >
                           <Text style={styles.claimBtnText}>
-                            ✓ ЗАБРАТЬ ГРУЗ
+                            {t('ui.expedition.claim_btn')}
                           </Text>
                         </Pressable>
                       </>
@@ -135,7 +136,7 @@ export function ExpeditionsTab({
                 {!done && (
                   <View style={styles.activeExpRewardsRow}>
                     <Text style={styles.activeExpRewardsLabel}>
-                      Ожидаемый груз:
+                      {t('ui.expedition.expected_cargo')}
                     </Text>
                     {Object.entries(def.metalRewards).map(([k, v]) => {
                       const m = METALS.find((x) => x.id === k);
@@ -154,7 +155,7 @@ export function ExpeditionsTab({
                       );
                     })}
                     {sector2Unlocked && (
-                      <Text style={styles.activeExpRewards}>×5 СЕК.2</Text>
+                      <Text style={styles.activeExpRewards}>{t('ui.expedition.sector2_short')}</Text>
                     )}
                   </View>
                 )}
@@ -164,11 +165,11 @@ export function ExpeditionsTab({
         </>
       )}
 
-      <Text style={styles.sectionTitle}>ДОСТУПНЫЕ МИССИИ</Text>
+      <Text style={styles.sectionTitle}>{t('ui.expedition.section_available')}</Text>
 
       <View style={styles.shipSelector}>
         <Text style={styles.shipSelectorLabel}>
-          КОРАБЛЬ ДЛЯ ЭКСПЕДИЦИИ:
+          {t('ui.expedition.ship_label')}
         </Text>
         <FlatList
           horizontal
@@ -202,9 +203,7 @@ export function ExpeditionsTab({
           }}
         />
         {availableShips.length === 0 && (
-          <Text style={styles.noShipsHint}>
-            Нет доступных кораблей. Постройте флот во вкладке ФЛОТ.
-          </Text>
+          <Text style={styles.noShipsHint}>{t('ui.expedition.no_ships')}</Text>
         )}
       </View>
     </>
@@ -251,7 +250,7 @@ export function ExpeditionsTab({
               })}
               {sector2Unlocked && (
                 <View style={styles.expMultiplierBadge}>
-                  <Text style={styles.expMultiplierText}>×5 СЕКТОР 2</Text>
+                  <Text style={styles.expMultiplierText}>{t('ui.expedition.sector2_multiplier')}</Text>
                 </View>
               )}
               {shipExpMultiplier > 1 && (
@@ -262,7 +261,7 @@ export function ExpeditionsTab({
                   ]}
                 >
                   <Text style={styles.expMultiplierTextShip}>
-                    ×{shipExpMultiplier} КОРАБЛЬ
+                    {t('ui.expedition.ship_multiplier', { mult: String(shipExpMultiplier) })}
                   </Text>
                 </View>
               )}
@@ -288,10 +287,10 @@ export function ExpeditionsTab({
                 ]}
               >
                 {isBattleActive
-                  ? 'БОЙ АКТИВЕН'
+                  ? t('ui.expedition.battle_active_btn')
                   : !expeditionShipId
-                    ? 'ВЫБЕРИТЕ КОРАБЛЬ'
-                    : '🚀 ОТПРАВИТЬ'}
+                    ? t('ui.expedition.select_ship_btn')
+                    : t('ui.expedition.send_btn')}
               </Text>
             </Pressable>
           </View>

@@ -3,6 +3,7 @@ import * as argon2 from 'argon2'
 import prisma from '../lib/prisma'
 import type { JwtPayload } from '../plugins/jwt'
 import { registerCrmGameAdminRoutes } from './crmGameAdmin'
+import { registerCrmLocaleRoutes } from './crmLocales'
 
 const CRM_ROLES = ['admin', 'member', 'viewer'] as const
 type CrmRole = (typeof CRM_ROLES)[number]
@@ -403,4 +404,5 @@ export async function crmRoutes(app: FastifyInstance) {
   })
 
   registerCrmGameAdminRoutes(app)
+  registerCrmLocaleRoutes(app)
 }
