@@ -515,7 +515,7 @@ export function BattleScreen({
                 <View style={styles.ultBtnText}>
                   <View style={styles.ultBtnTopRow}>
                     <Text style={[styles.ultBtnName, ultReady && { color: '#ffe066' }]}>
-                      {ultActive ? t('ui.battle.ult_active') : ultReady ? `◈ ${equippedModule.ultName}` : equippedModule.ultName}
+                      {ultActive ? t('ui.battle.ult_active') : ultReady ? `◈ ${t('config.' + equippedModule.ultNameKey)}` : t('config.' + equippedModule.ultNameKey)}
                     </Text>
                     <Text style={[styles.ultBtnCounter, ultLimitReached && { color: '#ff5555' }]}>
                       {ultsUsedThisBattle}/{maxUltsPerBattle}

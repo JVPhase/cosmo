@@ -139,7 +139,7 @@ function ResearchCard({
               isLocked ? { color: 'rgba(255,255,255,0.5)' } : { color: '#fff' }
             ]}
           >
-            {node.name}
+            {t('config.' + node.nameKey)}
           </Text>
           <Text
             style={[
@@ -160,7 +160,7 @@ function ResearchCard({
       <Text
         style={[styles.cardLore, isLocked ? { opacity: LOCKED_OPACITY } : null]}
       >
-        {node.lore}
+        {t('config.' + node.loreKey)}
       </Text>
 
       <View style={styles.cardFooter}>
@@ -172,13 +172,13 @@ function ResearchCard({
           )}
           {nodeState === 'locked_prereq' && (
             <Text style={styles.metaLocked}>
-              {t('ui.research.locked_prereq', { names: prereqNodes.map((r) => r.name).join(', ') })}
+              {t('ui.research.locked_prereq', { names: prereqNodes.map((r) => t('config.' + r.nameKey)).join(', ') })}
             </Text>
           )}
           {(nodeState === 'available' || nodeState === 'no_energy') &&
             prereqNodes.length > 0 && (
               <Text style={styles.metaPrereq}>
-                ✓ {prereqNodes.map((r) => r.name).join(', ')}
+                ✓ {prereqNodes.map((r) => t('config.' + r.nameKey)).join(', ')}
               </Text>
             )}
           {!isResearched && !isLocked && (

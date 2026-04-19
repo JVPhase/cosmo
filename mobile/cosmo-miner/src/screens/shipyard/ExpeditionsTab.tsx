@@ -86,7 +86,7 @@ export function ExpeditionsTab({
                       {t('config.' + def.nameKey)}
                     </Text>
                     <Text style={styles.activeExpShip}>
-                      {ship.icon} {ship.name}
+                      {ship.icon} {t('config.' + ship.nameKey)}
                     </Text>
                   </View>
                   <Text
@@ -195,7 +195,7 @@ export function ExpeditionsTab({
                 ]}
               >
                 <Text style={styles.shipChipText}>
-                  {def.icon} {def.name.split('«')[0].trim()}
+                  {def.icon} {t('config.' + def.nameKey).split('«')[0].trim()}
                   {onExpedition ? ' 🚀' : ''}
                 </Text>
               </Pressable>

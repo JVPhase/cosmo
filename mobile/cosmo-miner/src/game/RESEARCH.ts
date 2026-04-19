@@ -31,14 +31,14 @@ export type ResearchEffect =
 
 export type ResearchNode = {
   id: ResearchId;
-  name: string;
+  nameKey: string;
   icon: string;
   branch: ResearchBranch;
   requiredLevel: number;
   energyCost: number;
   requires: ResearchId[];
   effect: ResearchEffect;
-  lore: string;
+  loreKey: string;
 };
 
 export type ResearchState = Partial<Record<ResearchId, boolean>>;

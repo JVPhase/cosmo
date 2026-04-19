@@ -111,10 +111,10 @@ export function ShipCard({
               },
             ]}
           >
-            {ship.name}
+            {t('config.' + ship.nameKey)}
             {isBroken ? '  💥' : isOnExpedition ? '  🚀' : isSelected ? '  ✓' : ''}
           </Text>
-          <Text style={styles.shipLore}>{ship.lore}</Text>
+          <Text style={styles.shipLore}>{t('config.' + ship.loreKey)}</Text>
           <View style={styles.shipStatsRow}>
             <Text style={styles.shipMult}>{t('ui.shipcard.damage_mult', { mult: String(ship.damageMultiplier) })}</Text>
             {isOwned && !isOnExpedition && (
@@ -219,7 +219,7 @@ export function ShipCard({
             const mod = getModules().find((m) => m.id === owned.equippedModuleId);
             return mod ? (
               <Text style={styles.equippedModuleText}>
-                {mod.icon} {mod.name} · {mod.ultDescription}
+                {mod.icon} {t('config.' + mod.nameKey)} · {t('config.' + mod.ultDescriptionKey)}
               </Text>
             ) : null;
           })()}
@@ -243,7 +243,7 @@ export function ShipCard({
                   resizeMode="contain"
                 />
                 <View style={styles.cannonInfo}>
-                  <Text style={styles.cannonName}>{cannon.name}</Text>
+                  <Text style={styles.cannonName}>{t('config.' + cannon.nameKey)}</Text>
                   <Text style={styles.cannonDmg}>
                     {t('ui.shipcard.cannon_dmg', { dmg: String(cannon.damagePerLevel) })}
                     {level > 0

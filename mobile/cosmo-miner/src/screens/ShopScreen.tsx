@@ -179,7 +179,7 @@ function ConverterPanel({
             <Text style={styles.arrowText}>◀</Text>
           </Pressable>
           <Text style={styles.metalPickerText}>
-            {metalDef(fromId).icon} {metalDef(fromId).name}
+            {metalDef(fromId).icon} {t('config.' + metalDef(fromId).nameKey)}
           </Text>
           <Pressable
             onPress={() => cycleMetal(fromIdx, 1, toIdx, setFromIdx)}
@@ -206,7 +206,7 @@ function ConverterPanel({
             <Text style={styles.arrowText}>◀</Text>
           </Pressable>
           <Text style={styles.metalPickerText}>
-            {metalDef(toId).icon} {metalDef(toId).name}
+            {metalDef(toId).icon} {t('config.' + metalDef(toId).nameKey)}
           </Text>
           <Pressable
             onPress={() => cycleMetal(toIdx, 1, fromIdx, setToIdx)}
@@ -453,7 +453,7 @@ export function ShopScreen({
               const m = METALS.find((x) => x.id === id)!;
               return (
                 <Text key={id} style={styles.lootToastLine}>
-                  {m.icon} {m.name}: +{n}
+                  {m.icon} {t('config.' + m.nameKey)}: +{n}
                 </Text>
               );
             })}

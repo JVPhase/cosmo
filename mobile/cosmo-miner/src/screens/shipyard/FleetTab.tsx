@@ -174,7 +174,7 @@ export function FleetTab({
                           isCrafted && { color: '#ffe066' },
                         ]}
                       >
-                        {mod.name}
+                        {t('config.' + mod.nameKey)}
                       </Text>
                       {isCrafted && (
                         <Text style={styles.moduleLevelBadge}>
@@ -182,9 +182,9 @@ export function FleetTab({
                         </Text>
                       )}
                     </View>
-                    <Text style={styles.moduleLore}>{mod.lore}</Text>
+                    <Text style={styles.moduleLore}>{t('config.' + mod.loreKey)}</Text>
                     <Text style={styles.moduleUlt}>
-                      ⚡ {mod.ultName} — {mod.ultDescription}
+                      ⚡ {t('config.' + mod.ultNameKey)} — {t('config.' + mod.ultDescriptionKey)}
                     </Text>
                     {isCrafted && (
                       <Text style={styles.moduleUltLimit}>
@@ -197,7 +197,7 @@ export function FleetTab({
                     )}
                     {equippedOnShip && (
                       <Text style={styles.moduleEquippedOn}>
-                        {t('ui.fleet.equipped', { name: getShips().find((s) => s.id === equippedOnShip.shipId)?.name ?? equippedOnShip.shipId })}
+                        {t('ui.fleet.equipped', { name: (() => { const s = getShips().find((s) => s.id === equippedOnShip.shipId); return s ? t('config.' + s.nameKey) : equippedOnShip.shipId; })() })}
                       </Text>
                     )}
                   </View>

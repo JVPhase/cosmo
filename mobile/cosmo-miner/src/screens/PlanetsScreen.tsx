@@ -123,7 +123,7 @@ export function PlanetsScreen({
                           style={styles.metalChipIcon}
                           resizeMode="contain"
                         />
-                        <Text style={styles.metalChipText}>{metal.name}</Text>
+                        <Text style={styles.metalChipText}>{t('config.' + metal.nameKey)}</Text>
                       </View>
                     );
                   })}

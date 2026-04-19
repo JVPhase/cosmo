@@ -68,7 +68,7 @@ function getPlanetSuffixes(): string[] {
 }
 
 function generatedPlanetName(theme: PlanetZoneThemeConfig, sectorInZone: number, planetIndex: number): string {
-  return `${theme.namePrefix}-${SECTOR_ROMAN[sectorInZone - 1]} ${getPlanetSuffixes()[planetIndex]}`;
+  return `${t('config.' + theme.namePrefixKey)}-${SECTOR_ROMAN[sectorInZone - 1]} ${getPlanetSuffixes()[planetIndex]}`;
 }
 
 // Zone sector-start lookup (derived from zone index: zone 0 starts at sector 1, zone 1 at 11, etc.)
@@ -82,7 +82,7 @@ function buildHardcodedPlanets(): PlanetDefinition[] {
   return config.planets.overrides.map((o) => ({
     id: o.id,
     sectorId: o.sectorId,
-    name: o.name,
+    name: t('config.' + o.nameKey),
     icon: o.icon,
     image: PLANET_IMAGE_REGISTRY[o.imageKey] ?? PLANET_IMAGE_POOL[0],
     unlocked: o.unlocked,
@@ -90,7 +90,7 @@ function buildHardcodedPlanets(): PlanetDefinition[] {
     bonus: o.bonus,
     resource: o.resource,
     color: o.color,
-    lore: o.lore,
+    lore: t('config.' + o.loreKey),
   }));
 }
 
@@ -119,10 +119,10 @@ function generatePlanets(): PlanetDefinition[] {
         image: PLANET_IMAGE_POOL[(id - 1) % PLANET_IMAGE_POOL.length],
         unlocked: false,
         cost: 0,
-        resource: theme.resourcePool[pi % theme.resourcePool.length],
+        resource: t('config.' + theme.resourcePoolKeys[pi % theme.resourcePoolKeys.length]),
         color: theme.colorPool[pi % theme.colorPool.length],
         bonus: Math.round(bonus),
-        lore: theme.lore,
+        lore: t('config.' + theme.loreKey),
       });
     }
   }

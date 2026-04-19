@@ -5,7 +5,7 @@ export type MetalId = "iron" | "titan" | "iridium" | "voidCrystal" | "echoShard"
 
 export type MetalDefinition = {
   id: MetalId;
-  name: string;
+  nameKey: string;
   icon: string;
   image: number;
 };
@@ -26,7 +26,7 @@ export function getMetals(): readonly MetalDefinition[] {
   if (!config) throw new Error('Game config not loaded');
   return config.metals.metals.map((m) => ({
     id: m.id as MetalId,
-    name: m.name,
+    nameKey: m.nameKey,
     icon: m.icon,
     image: METALS_IMAGE_REGISTRY[m.imageKey] ?? METALS_IMAGE_REGISTRY.iron,
   }));

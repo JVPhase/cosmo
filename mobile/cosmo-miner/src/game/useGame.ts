@@ -889,7 +889,7 @@ export function useGame(initial: GameStateInit | undefined, dialogues: Dialogues
         {
           id: toastId,
           title: t('alerts.unlock_research.title'),
-          text: t('alerts.unlock_research.text', { icon: node.icon, name: node.name, lore: node.lore, tab })
+          text: t('alerts.unlock_research.text', { icon: node.icon, name: t('config.' + node.nameKey), lore: t('config.' + node.loreKey), tab })
         }
       ]);
     }
@@ -1035,7 +1035,7 @@ export function useGame(initial: GameStateInit | undefined, dialogues: Dialogues
           shipId: prev.shipId
         });
         const ship = getShips().find((s) => s.id === prev.shipId);
-        if (ship) setDefeatInfo({ shipName: ship.name });
+        if (ship) setDefeatInfo({ shipName: t('config.' + ship.nameKey) });
       }
     }
     prevBattleRef.current = state.battle;
