@@ -29,9 +29,9 @@ function generateSectors(): SectorDefinition[] {
       const sectorId = zoneIndex * 10 + i;
       result.push({
         id: sectorId,
-        name: `${zone.name} ${i}`,
+        name: `${t('config.' + zone.nameKey)} ${i}`,
         icon: zone.icon,
-        lore: zone.lore,
+        lore: t('config.' + zone.loreKey),
         zoneIndex,
       });
     }

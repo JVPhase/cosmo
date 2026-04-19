@@ -7,7 +7,7 @@ export type ShipId = 'scout' | 'cruiser' | 'dreadnought' | 'flagship';
 
 export type ShipDefinition = {
   id: ShipId;
-  name: string;
+  nameKey: string;
   icon: string;
   image: number;
   damageMultiplier: number;
@@ -15,7 +15,7 @@ export type ShipDefinition = {
   unlockLevel: number;
   baseCost: Partial<MetalsState>;
   repairCost: Partial<MetalsState>;
-  lore: string;
+  loreKey: string;
 };
 
 const IMAGE_REGISTRY: Record<string, number> = {

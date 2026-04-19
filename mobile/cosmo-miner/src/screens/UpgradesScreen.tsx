@@ -120,8 +120,8 @@ export function UpgradesScreen({ energy, upgrades, onBuyUpgrade }: UpgradesScree
               <Text style={styles.icon}>{upg.icon}</Text>
 
               <View style={styles.mainText}>
-                <Text style={[styles.name, { color: canBuy ? "#00d4ff" : "rgba(255,255,255,0.5)" }]}>{upg.name}</Text>
-                <Text style={styles.desc}>{upg.lore}</Text>
+                <Text style={[styles.name, { color: canBuy ? "#00d4ff" : "rgba(255,255,255,0.5)" }]}>{t('config.' + upg.nameKey)}</Text>
+                <Text style={styles.desc}>{t('config.' + upg.loreKey)}</Text>
                 {level > 0 ? (
                   <Text style={styles.bonus}>
                     {t('ui.upgrades.output_change', { current: formatNum(currentOutput), unit, next: formatNum(nextOutput) })}

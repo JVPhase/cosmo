@@ -5,12 +5,12 @@ export type CannonId = 'standard' | 'titan' | 'iridium' | 'alloy';
 
 export type CannonDefinition = {
   id: CannonId;
-  name: string;
+  nameKey: string;
   icon: string;
   image: number;
   damagePerLevel: number;
   baseCost: Partial<MetalsState>;
-  lore: string;
+  loreKey: string;
 };
 
 const IMAGE_REGISTRY: Record<string, number> = {

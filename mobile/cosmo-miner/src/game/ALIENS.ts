@@ -1,6 +1,7 @@
 import type { ShipId } from './SHIPS';
 import { getCachedRemoteConfig, getFormulaConstants } from './remoteConfig';
 import type { AlienZoneConfig } from './remoteConfig';
+import { t } from './i18n';
 
 export type AlienAbility =
   | { type: 'shield'; intervalMs: number; durationMs: number }
@@ -81,10 +82,10 @@ function buildHardcodedAliens(): AlienRace[] {
     const ability = h.ability as AlienAbility | undefined;
     return {
       planetId: h.planetId,
-      name: h.name,
+      name: t('config.' + h.nameKey),
       icon: h.icon,
       image,
-      lore: h.lore,
+      lore: t('config.' + h.loreKey),
       ...(ability ? { ability } : {}),
       ...statsFor(h.planetId),
     };
@@ -155,18 +156,18 @@ function generateAliens(): AlienRace[] {
       const xpReward = computeEnemyXP(sectorId, pi);
       const fc = getFormulaConstants();
       const attackEnergyCost = Math.round(maxHP * (fc.ENERGY_BASE + zoneIndex * fc.ENERGY_STEP));
-      const nameIndex = (sectorInZone - 1) % zd.namePool.length;
+      const nameIndex = (sectorInZone - 1) % zd.namePoolKeys.length;
       const ability = alienAbilityForZone(zoneIndex, sectorInZone);
 
       result.push({
         planetId,
-        name: zd.namePool[nameIndex],
+        name: t('config.' + zd.namePoolKeys[nameIndex]),
         icon: zd.iconPool[pi % zd.iconPool.length],
         image: ALIEN_IMAGE_POOL[(planetId - 1) % ALIEN_IMAGE_POOL.length],
         maxHP,
         attackEnergyCost,
         xpReward,
-        lore: zd.lore,
+        lore: t('config.' + zd.loreKey),
         ...(ability ? { ability } : {}),
       });
     }
