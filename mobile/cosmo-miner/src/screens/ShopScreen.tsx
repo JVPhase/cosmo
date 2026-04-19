@@ -14,6 +14,7 @@ import { CREDIT_PACKS } from '../game/CREDIT_PACKS';
 import type { ActiveBoost } from '../game/types';
 import type { MetalId } from '../game/METALS';
 import { getMetals } from '../game/METALS';
+import { t } from '../game/i18n';
 import { watchRewardedAd } from '../services/ads';
 import {
   initIAP,
@@ -47,15 +48,17 @@ export type ShopScreenProps = {
 };
 
 type ShopTab = ShopCategory | 'credits' | 'stars';
-const ALL_TABS: { id: ShopTab; label: string }[] = [
-  // until android release
-  // { id: 'credits', label: '💳 КРЕДИТЫ' },
-  { id: 'boosters', label: '⚡ БУСТЕРЫ' },
-  { id: 'metals', label: '⛏️ МЕТАЛЛЫ' },
-  { id: 'lootboxes', label: '📦 КОНТЕЙН.' },
-  { id: 'converter', label: '🔄 КОНВЕРТЕР' }
-];
-const STARS_TAB = { id: 'stars' as ShopTab, label: '💳 КРЕДИТЫ' };
+function getShopTabs(): { id: ShopTab; label: string }[] {
+  return [
+    // until android release
+    // { id: 'credits', label: t('ui.shop.tab_credits') },
+    { id: 'boosters', label: t('ui.shop.tab_boosters') },
+    { id: 'metals',   label: t('ui.shop.tab_metals') },
+    { id: 'lootboxes', label: t('ui.shop.tab_containers') },
+    { id: 'converter', label: t('ui.shop.tab_converter') },
+  ];
+}
+function getStarsTab() { return { id: 'stars' as ShopTab, label: t('ui.shop.tab_credits') }; }
 
 const METAL_ORDER: MetalId[] = [
   'iron',
@@ -100,7 +103,7 @@ function ActiveBoostsBanner({ boosts }: { boosts: ActiveBoost[] }) {
 
   return (
     <View style={styles.activeBanner}>
-      <Text style={styles.activeBannerTitle}>⏱ АКТИВНЫЕ БУСТЕРЫ</Text>
+      <Text style={styles.activeBannerTitle}>{t('ui.shop.active_boosters')}</Text>
       {active.map((b) => {
         const item = SHOP.find((s) => s.id === b.shopItemId);
         const remaining = b.expiresAt - now;
@@ -159,15 +162,15 @@ function ConverterPanel({
   return (
     <View style={styles.converterWrap}>
       <Text style={styles.converterTitle}>
-        Обмен металлов по курсу {rate > 0 ? `${totalFrom}:${amount}` : '—'}
+        {t('ui.shop.converter_title', { ratio: rate > 0 ? `${totalFrom}:${amount}` : '—' })}
       </Text>
       <Text style={styles.converterSubtitle}>
-        Курс 3:1 за каждый уровень тира
+        {t('ui.shop.converter_subtitle')}
       </Text>
 
       {/* From metal */}
       <View style={styles.converterRow}>
-        <Text style={styles.converterLabel}>ОТДАТЬ:</Text>
+        <Text style={styles.converterLabel}>{t('ui.shop.converter_give')}</Text>
         <View style={styles.metalPicker}>
           <Pressable
             onPress={() => cycleMetal(fromIdx, -1, toIdx, setFromIdx)}
@@ -186,14 +189,15 @@ function ConverterPanel({
           </Pressable>
         </View>
         <Text style={styles.converterStock}>
-          В наличии: {metals[fromId] ?? 0}
-          {totalFrom > 0 ? `  (нужно: ${totalFrom})` : ''}
+          {totalFrom > 0
+            ? t('ui.shop.converter_stock_full', { stock: String(metals[fromId] ?? 0), needed: String(totalFrom) })
+            : t('ui.shop.converter_stock', { stock: String(metals[fromId] ?? 0) })}
         </Text>
       </View>
 
       {/* To metal */}
       <View style={styles.converterRow}>
-        <Text style={styles.converterLabel}>ПОЛУЧИТЬ:</Text>
+        <Text style={styles.converterLabel}>{t('ui.shop.converter_receive')}</Text>
         <View style={styles.metalPicker}>
           <Pressable
             onPress={() => cycleMetal(toIdx, -1, fromIdx, setToIdx)}
@@ -211,7 +215,7 @@ function ConverterPanel({
             <Text style={styles.arrowText}>▶</Text>
           </Pressable>
         </View>
-        <Text style={styles.converterStock}>Количество: {amount}</Text>
+        <Text style={styles.converterStock}>{t('ui.shop.converter_amount', { amount: String(amount) })}</Text>
       </View>
 
       {/* Amount buttons */}
@@ -236,7 +240,7 @@ function ConverterPanel({
 
       {rate === 0 && (
         <Text style={styles.converterError}>
-          Конвертация возможна только в металл высшего тира
+          {t('ui.shop.converter_error')}
         </Text>
       )}
 
@@ -251,7 +255,7 @@ function ConverterPanel({
           });
         }}
       >
-        <Text style={styles.convertBtnText}>ОБМЕНЯТЬ 💳 {creditCost}</Text>
+        <Text style={styles.convertBtnText}>{t('ui.shop.converter_btn', { cost: String(creditCost) })}</Text>
       </Pressable>
     </View>
   );
@@ -281,7 +285,7 @@ function CreditsTab({ onAddCredits }: { onAddCredits: (n: number) => void }) {
       const rewarded = await watchRewardedAd();
       if (rewarded) onAddCredits(adPack.credits);
     } catch {
-      Alert.alert('Ошибка', 'Не удалось загрузить рекламу.');
+      Alert.alert(t('ui.shop.ad_error_title'), t('ui.shop.ad_error_text'));
     } finally {
       setAdLoading(false);
     }
@@ -294,7 +298,7 @@ function CreditsTab({ onAddCredits }: { onAddCredits: (n: number) => void }) {
       onAddCredits(earned || credits);
     } catch (e) {
       const msg = String(e);
-      if (msg !== 'cancelled') Alert.alert('Ошибка', 'Покупка не завершена.');
+      if (msg !== 'cancelled') Alert.alert(t('ui.shop.purchase_error_title'), t('ui.shop.purchase_error_text'));
     } finally {
       setIapLoading(null);
     }
@@ -321,7 +325,7 @@ function CreditsTab({ onAddCredits }: { onAddCredits: (n: number) => void }) {
           {adLoading ? (
             <ActivityIndicator size="small" color="#00d4ff" />
           ) : (
-            <Text style={styles.creditBuyBtnText}>СМОТРЕТЬ</Text>
+            <Text style={styles.creditBuyBtnText}>{t('ui.shop.watch_btn')}</Text>
           )}
         </Pressable>
       </View>
@@ -382,10 +386,11 @@ export function ShopScreen({
   const monetizationEnabled =
     getCachedRemoteConfig()?.monetizationEnabled ?? false;
   const inTelegram = isTelegramRuntime();
+  const allTabs = getShopTabs();
   const baseTabs = monetizationEnabled
-    ? ALL_TABS
-    : ALL_TABS.filter((t) => t.id !== 'credits');
-  const TABS = inTelegram ? [STARS_TAB, ...baseTabs] : baseTabs;
+    ? allTabs
+    : allTabs.filter((tab) => tab.id !== 'credits');
+  const TABS = inTelegram ? [getStarsTab(), ...baseTabs] : baseTabs;
   const [tab, setTab] = useState<ShopTab>(
     monetizationEnabled ? (inTelegram ? 'stars' : 'credits') : 'boosters'
   );
@@ -410,7 +415,7 @@ export function ShopScreen({
     <View style={styles.screen}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>🛒 МАГАЗИН</Text>
+        <Text style={styles.headerTitle}>{t('ui.shop.header_title')}</Text>
         <View style={styles.creditsChip}>
           <Text style={styles.creditsChipText}>💳 {credits}</Text>
         </View>
@@ -441,7 +446,7 @@ export function ShopScreen({
       {/* Loot result toast */}
       {lootResult && (
         <Pressable style={styles.lootToast} onPress={() => setLootResult(null)}>
-          <Text style={styles.lootToastTitle}>📦 Содержимое контейнера:</Text>
+          <Text style={styles.lootToastTitle}>{t('ui.shop.loot_title')}</Text>
           {(Object.entries(lootResult) as [MetalId, number][])
             .filter(([, n]) => n > 0)
             .map(([id, n]) => {
@@ -452,7 +457,7 @@ export function ShopScreen({
                 </Text>
               );
             })}
-          <Text style={styles.lootToastDismiss}>Нажмите чтобы закрыть</Text>
+          <Text style={styles.lootToastDismiss}>{t('ui.shop.loot_dismiss')}</Text>
         </Pressable>
       )}
 
@@ -545,7 +550,7 @@ export function ShopScreen({
                     onPress={() => handleBuy(item.id)}
                     disabled={!canAfford}
                   >
-                    <Text style={styles.buyBtnText}>КУПИТЬ</Text>
+                    <Text style={styles.buyBtnText}>{t('ui.shop.buy_btn')}</Text>
                   </Pressable>
                 </View>
               </View>
@@ -560,15 +565,15 @@ export function ShopScreen({
 function effectLabel(stat: string): string {
   switch (stat) {
     case 'clickMultiplier':
-      return 'добыча кликом';
+      return t('ui.shop.effect_click');
     case 'passiveMultiplier':
-      return 'пассивный доход';
+      return t('ui.shop.effect_passive');
     case 'metalDropBonus':
-      return 'шанс металлов';
+      return t('ui.shop.effect_metal');
     case 'xpMultiplier':
-      return 'опыт';
+      return t('ui.shop.effect_xp');
     case 'damageMultiplier':
-      return 'урон';
+      return t('ui.shop.effect_damage');
     default:
       return stat;
   }

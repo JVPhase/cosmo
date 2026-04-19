@@ -43,7 +43,7 @@ export default function App() {
         <Route path="players" element={<PlayerGamePage />} />
         <Route path="players/:userId" element={<PlayerGamePage />} />
         <Route path="translations" element={<TranslationsPage />} />
-        <Route path="translations/:app/:namespace/:locale" element={<TranslationsPage />} />
+        <Route path="translations/:app/:namespace" element={<TranslationsPage />} />
       </Route>
     </Routes>
   )

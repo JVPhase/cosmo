@@ -56,12 +56,12 @@ export type CannonConfig = {
 
 export type ExpeditionConfig = {
   id: string;
-  name: string;
+  nameKey: string;
   icon: string;
   durationMs: number;
   metalRewards: Record<string, number>;
   xpReward: number;
-  lore: string;
+  loreKey: string;
 };
 
 export type ModuleConfig = {
@@ -123,10 +123,10 @@ export type AchievementTargetConfig =
 
 export type AchievementConfig = {
   id: number;
-  name: string;
+  nameKey: string;
   icon: string;
   target: AchievementTargetConfig;
-  lore: string;
+  loreKey: string;
 };
 
 export type AchievementsConfig = {

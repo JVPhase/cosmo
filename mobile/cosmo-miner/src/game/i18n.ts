@@ -24,7 +24,7 @@ const CACHE_KEY_PREFIX = 'cosmo_i18n_v1_';
 const I18N_URL =
   (process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000') + '/i18n/mobile';
 
-const ALL_NAMESPACES = ['ui', 'alerts', 'intro', 'story', 'dialogues'] as const;
+const ALL_NAMESPACES = ['ui', 'alerts', 'intro', 'story', 'dialogues', 'config'] as const;
 export type I18nNamespace = (typeof ALL_NAMESPACES)[number];
 
 // ── Types ─────────────────────────────────────────────────────────────────────

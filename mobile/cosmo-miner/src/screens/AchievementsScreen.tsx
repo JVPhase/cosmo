@@ -103,7 +103,7 @@ export function AchievementsScreen({ achievements, onClaim }: AchievementsScreen
                     { color: claimable ? '#ffd700' : unlocked ? 'rgba(255,215,0,0.45)' : LOCKED_NAME_COLOR }
                   ]}
                 >
-                  {def.name}
+                  {t('config.' + def.nameKey)}
                 </Text>
                 <Text
                   style={[
@@ -111,7 +111,7 @@ export function AchievementsScreen({ achievements, onClaim }: AchievementsScreen
                     unlocked ? null : { color: LOCKED_LORE_COLOR }
                   ]}
                 >
-                  {unlocked ? def.lore : '???'}
+                  {unlocked ? t('config.' + def.loreKey) : '???'}
                 </Text>
                 {unlocked && (
                   <Text style={[styles.reward, { color: claimable ? '#00d4ff' : 'rgba(0,212,255,0.35)' }]}>

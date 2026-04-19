@@ -1,0 +1,64 @@
+name: cosmo-devserver
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-cosmo_dev}
+      POSTGRES_USER: ${POSTGRES_USER:-cosmo}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cosmo_dev_password}
+    volumes:
+      - cosmo_devserver_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cosmo} -d ${POSTGRES_DB:-cosmo_dev}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  server:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    image: cosmo-server:devserver
+    restart: unless-stopped
+    env_file:
+      - .env.dev-server
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://${POSTGRES_USER:-cosmo}:${POSTGRES_PASSWORD:-cosmo_dev_password}@postgres:5432/${POSTGRES_DB:-cosmo_dev}
+    entrypoint:
+      - sh
+      - -lc
+      - npx prisma generate && npx prisma migrate deploy && exec npm run dev
+    ports:
+      - "${SERVER_PORT:-3002}:3000"
+    volumes:
+      - ./server/src:/app/server/src
+      - ./server/prisma:/app/server/prisma
+      - ./server/scripts:/app/server/scripts
+      - ./server/package.json:/app/server/package.json:ro
+      - ./server/package-lock.json:/app/server/package-lock.json:ro
+      - ./server/tsconfig.json:/app/server/tsconfig.json:ro
+      - ./packages/game-config/src:/app/packages/game-config/src
+      - ./packages/game-config/package.json:/app/packages/game-config/package.json:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/health').then((res)=>{if(!res.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+volumes:
+  cosmo_devserver_pg_data:

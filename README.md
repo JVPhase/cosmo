@@ -522,3 +522,16 @@ npx expo export --platform web   # или: npx expo start --web
 1. Добавьте запись в `SHOP_ITEMS` в `server/prisma/seed.ts`.
 2. Запустите `cd server && npm run db:seed`.
 3. Если тип новый (не из таблицы выше): добавьте ветку в `fulfillment.ts` и в `App.tsx` `onStarsPurchaseApplied`.
+
+
+# Снёс весь test-local стек
+docker compose -f compose.test-local.yml --env-file .env.test-local down
+
+# Остановил старые контейнеры, занимавшие порт 5432
+docker stop cosmo-postgres cosmo-server cosmo-game-web
+
+# Поднял test-local стек заново
+docker compose -f compose.test-local.yml --env-file .env.test-local up -d
+
+# Засидировал
+cd server && npm run db:seed
