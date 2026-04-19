@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { INTRO_SLIDES } from "../game/INTRO_SLIDES";
+import { getIntroSlides, INTRO_SLIDE_COUNT } from "../game/INTRO_SLIDES";
+import { t } from "../game/i18n";
 import { TypewriterText } from "./TypewriterText";
 import { logEvent } from "../game/analytics";
 
@@ -21,11 +22,12 @@ export function IntroOverlay({ visible, onDone }: { visible: boolean; onDone: ()
 
   if (!visible) return null;
 
-  const cur = INTRO_SLIDES[slide];
-  const isLast = slide === INTRO_SLIDES.length - 1;
+  const slides = getIntroSlides();
+  const cur = slides[slide];
+  const isLast = slide === INTRO_SLIDE_COUNT - 1;
 
   function goNext() {
-    logEvent('intro_next', { slide, total: INTRO_SLIDES.length, isLast });
+    logEvent('intro_next', { slide, total: INTRO_SLIDE_COUNT, isLast });
     if (isLast) {
       onDone();
     } else {
@@ -64,15 +66,15 @@ export function IntroOverlay({ visible, onDone }: { visible: boolean; onDone: ()
             onPress={goNext}
             style={({ pressed }) => [styles.primaryBtn, !textDone && styles.primaryBtnDim, pressed ? { opacity: 0.92 } : null]}
           >
-            <Text style={styles.primaryBtnText}>{isLast ? "ПРИСТУПИТЬ К РАБОТЕ ▶" : "ДАЛЕЕ ▶"}</Text>
+            <Text style={styles.primaryBtnText}>{isLast ? t('intro.action_start') : t('intro.action_next')}</Text>
           </Pressable>
 
           {slide > 0 ? (
             <Pressable
-              onPress={() => { logEvent('intro_skip', { slide, total: INTRO_SLIDES.length }); onDone(); }}
+              onPress={() => { logEvent('intro_skip', { slide, total: INTRO_SLIDE_COUNT }); onDone(); }}
               style={({ pressed }) => [styles.skipBtn, pressed ? { opacity: 0.92 } : null]}
             >
-              <Text style={styles.skipText}>ПРОПУСТИТЬ</Text>
+              <Text style={styles.skipText}>{t('intro.action_skip')}</Text>
             </Pressable>
           ) : null}
         </View>

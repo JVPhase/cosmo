@@ -2,7 +2,17 @@
   "permissions": {
     "allow": [
       "Bash(xargs grep:*)",
-      "Bash(python3 -c ':*)"
+      "Bash(python3 -c ':*)",
+      "Bash(yarn tsc *)",
+      "Bash(npm run *)",
+      "Bash(docker exec *)",
+      "Bash(DATABASE_URL=\"postgresql://postgres:postgres@localhost:5432/cosmo_db\" npx tsx prisma/seed.ts)",
+      "Bash(docker port *)",
+      "Bash(DATABASE_URL=\"postgresql://cosmo:cosmo_test_local_password@localhost:5432/cosmo_test_local\" npm run db:seed)",
+      "Bash(docker inspect *)",
+      "Bash(DATABASE_URL=\"postgresql://cosmo:cosmo_test_local_password@172.18.0.2:5432/cosmo_test_local\" npm run db:seed)",
+      "Bash(docker cp *)",
+      "Bash(docker stop *)"
     ]
   }
 }

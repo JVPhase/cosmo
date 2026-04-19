@@ -1,5 +1,6 @@
 import { getCachedRemoteConfig } from './remoteConfig';
 import type { ZoneConfig } from './remoteConfig';
+import { t } from './i18n';
 
 export type SectorId = number;
 
@@ -68,7 +69,7 @@ export function getSectorLockReason(sectorId: number, unlockedPlanetIds: number[
   if (isSectorUnlocked(sectorId, unlockedPlanetIds, playerLevel)) return null;
   const zone = getZoneForSector(sectorId);
   if (playerLevel < zone.minLevel) {
-    return `Требуется уровень ${zone.minLevel}`;
+    return t('ui.sectors.require_level', { level: String(zone.minLevel) });
   }
-  return `Захватите все планеты Сектора ${sectorId - 1}`;
+  return t('ui.sectors.capture_all', { id: String(sectorId - 1) });
 }

@@ -5,6 +5,7 @@ import type { DialogueCharacter } from '../game/dialogues';
 import { getAliens } from '../game/ALIENS';
 import { getModules } from '../game/MODULES';
 import { logEvent } from '../game/analytics';
+import { t } from '../game/i18n';
 
 type Props = {
   characters: readonly DialogueCharacter[];
@@ -63,8 +64,8 @@ export function CharacterSelectFlow({
               {step === 'greeting' ||
               step === 'metalDeal_intro' ||
               step === 'metalDeal_offer'
-                ? `◈ ПРЯМОЙ КАНАЛ · ${chosen?.name?.toUpperCase() ?? ''} ◈`
-                : '◈ ВХОДЯЩИЙ СИГНАЛ · КЛЕРК-7 ◈'}
+                ? t('ui.channel.title_active', { name: chosen?.name?.toUpperCase() ?? '' })
+                : t('ui.channel.title_incoming')}
             </Text>
           </View>
 
@@ -73,9 +74,7 @@ export function CharacterSelectFlow({
               <View style={styles.body}>
                 <Text style={styles.clerkEmoji}>🤖</Text>
                 <Text style={styles.text}>
-                  {
-                    'Зафиксированы 4 входящих сигнала из неизвестных источников.\n\nСогласно регламенту МММРДР, одновременная обработка более одного канала связи требует лицензии категории КС-4. Форма подана. Ответа нет. Поэтому — выберите одного адресата.\n\nОстальные сигналы будут архивированы. Или потеряны. Технически — разницы нет.'
-                  }
+                  {t('ui.channel.select_text')}
                 </Text>
               </View>
               {pendingId && (
@@ -130,7 +129,7 @@ export function CharacterSelectFlow({
                     !pendingId && styles.actionBtnTextDisabled
                   ]}
                 >
-                  ПОДТВЕРДИТЬ
+                  {t('ui.channel.confirm')}
                 </Text>
               </Pressable>
             </>
@@ -146,7 +145,7 @@ export function CharacterSelectFlow({
               </View>
               <View style={styles.transmissionBox}>
                 <Text style={styles.transmissionLabel}>
-                  📡 ПЕРЕДАЧА · СИГНАЛ 12%
+                  {t('ui.channel.transmission')}
                 </Text>
                 <Text style={styles.transmissionText}>
                   {chosen.garbledMessage}
@@ -159,7 +158,7 @@ export function CharacterSelectFlow({
                 ]}
                 onPress={() => { logEvent('character_flow_advance', { step: 'garbled' }); onAdvance(); }}
               >
-                <Text style={styles.actionBtnText}>ДАЛЕЕ</Text>
+                <Text style={styles.actionBtnText}>{t('ui.channel.next')}</Text>
               </Pressable>
             </>
           )}
@@ -179,7 +178,7 @@ export function CharacterSelectFlow({
                 ]}
                 onPress={() => { logEvent('character_flow_advance', { step: 'explain' }); onClose(); }}
               >
-                <Text style={styles.actionBtnText}>ПОНЯЛ</Text>
+                <Text style={styles.actionBtnText}>{t('ui.channel.understood')}</Text>
               </Pressable>
             </>
           )}
@@ -210,7 +209,7 @@ export function CharacterSelectFlow({
                 ]}
                 onPress={() => { logEvent('character_flow_advance', { step: 'greeting' }); onAdvance(); }}
               >
-                <Text style={styles.actionBtnText}>ПОНЯЛ</Text>
+                <Text style={styles.actionBtnText}>{t('ui.channel.understood')}</Text>
               </Pressable>
             </>
           )}
@@ -241,7 +240,7 @@ export function CharacterSelectFlow({
                 ]}
                 onPress={() => { logEvent('character_flow_advance', { step: 'metalDeal_intro' }); onAdvance(); }}
               >
-                <Text style={styles.actionBtnText}>СЛУШАЮ</Text>
+                <Text style={styles.actionBtnText}>{t('ui.channel.listening')}</Text>
               </Pressable>
             </>
           )}
@@ -263,7 +262,7 @@ export function CharacterSelectFlow({
                 </View>
               </View>
               <View style={styles.offerBox}>
-                <Text style={styles.offerLabel}>⚗️ ПРЕДЛОЖЕНИЕ</Text>
+                <Text style={styles.offerLabel}>{t('ui.channel.offer_title')}</Text>
                 <Text style={styles.dealText}>{chosen.metalDealOffer}</Text>
                 <View style={styles.offerReward}>
                   <Text style={styles.offerRewardText}>
@@ -289,7 +288,7 @@ export function CharacterSelectFlow({
                     !canAffordMetalDeal && styles.actionBtnTextDisabled
                   ]}
                 >
-                  {canAffordMetalDeal ? 'ВЗЯТЬ' : 'НЕТ ЭНЕРГИУМА'}
+                  {canAffordMetalDeal ? t('ui.channel.take') : t('ui.channel.no_energy')}
                 </Text>
               </Pressable>
               {!canAffordMetalDeal && (
@@ -302,7 +301,7 @@ export function CharacterSelectFlow({
                   onPress={() => { logEvent('character_flow_earn_energy', {}); onEarnEnergy(); }}
                 >
                   <Text style={[styles.actionBtnText, styles.actionBtnTextSecondary]}>
-                    ЗАРАБОТАТЬ ЭНЕРГИУМ
+                    {t('ui.channel.earn_energy')}
                   </Text>
                 </Pressable>
               )}

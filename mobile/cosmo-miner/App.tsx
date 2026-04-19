@@ -54,7 +54,7 @@ import {
   saveUnlocked
 } from './src/game/storage';
 import { getAliens } from './src/game/ALIENS';
-import { STORY_LOG } from './src/game/STORY_LOG';
+import { getStoryLogUnlockedEntries } from './src/game/STORY_LOG';
 import { isSectorUnlocked } from './src/game/SECTORS';
 import { fetchDialogues, type DialoguesPayload } from './src/game/dialogues';
 import {
@@ -164,15 +164,15 @@ function GameApp({
         .then(setAnalyticsSizeKb)
         .catch(() => {});
     } catch (e: any) {
-      Alert.alert('Ошибка', e?.message ?? 'Не удалось экспортировать лог');
+      Alert.alert(t('alerts.export_error.title'), e?.message ?? t('alerts.export_error.text'));
     }
   }, []);
 
   const handleClearAnalytics = useCallback(() => {
-    Alert.alert('Очистить лог?', 'Все записи аналитики будут удалены.', [
-      { text: 'Отмена', style: 'cancel' },
+    Alert.alert(t('alerts.analytics_clear.title'), t('alerts.analytics_clear.text'), [
+      { text: t('alerts.analytics_clear.cancel'), style: 'cancel' },
       {
-        text: 'Удалить',
+        text: t('alerts.analytics_clear.confirm'),
         style: 'destructive',
         onPress: async () => {
           await clearAnalytics();
@@ -423,9 +423,9 @@ function GameApp({
             game.achievementToast
               ? {
                   id: game.achievementToast.id,
-                  name: game.achievementToast.name,
+                  nameKey: game.achievementToast.nameKey,
                   icon: game.achievementToast.icon,
-                  lore: game.achievementToast.lore
+                  loreKey: game.achievementToast.loreKey
                 }
               : null
           }
@@ -482,7 +482,7 @@ function GameApp({
               chosenCharacterId: game.chosenCharacterId
             };
             setSeenStoryCount(
-              STORY_LOG.filter((e) => e.isUnlocked(ctx)).length
+              getStoryLogUnlockedEntries(ctx).length
             );
             logEvent('modal_open', { modal: 'story_log' });
             setStoryLogOpen(true);
@@ -505,12 +505,10 @@ function GameApp({
           isPrestigeAvailable={game.canPrestige}
           prestigeCount={game.prestige.count}
           hasNewStoryEntry={
-            STORY_LOG.filter((e) =>
-              e.isUnlocked({
-                unlockedPlanetIds: game.unlockedPlanetIds,
-                chosenCharacterId: game.chosenCharacterId
-              })
-            ).length > seenStoryCount
+            getStoryLogUnlockedEntries({
+              unlockedPlanetIds: game.unlockedPlanetIds,
+              chosenCharacterId: game.chosenCharacterId
+            }).length > seenStoryCount
           }
           hasUnreadChannelMessage={!!game.characterMessage}
           chosenCharacter={game.chosenCharacter}
@@ -715,31 +713,27 @@ function GameApp({
 
       <Popup
         visible={game.firstIronToast}
-        title="◈ ПЕРВАЯ НАХОДКА · КЛЕРК-7 ◈"
+        title={t('alerts.first_iron.title')}
         onClose={() => {
           logEvent('toast_close', { toast: 'first_iron' });
           game.closeFirstIronToast();
         }}
         image={getMetals().find((m) => m.id === 'iron')?.image}
-        text={
-          'Зафиксирован первый образец Железа™! За эту выдающуюся находку вам полагается премия — после заполнения форм ЖЛ-1 по ЖЛ-83, нотариально заверенного снимка астероида и справки с предыдущего места работы. P.S. Этот металл может пригодиться. Возможно.'
-        }
+        text={t('alerts.first_iron.text')}
         clerk
       />
 
       <Popup
         visible={game.achievementsUnlockToast}
-        title="◈ СИСТЕМА ДОСТИЖЕНИЙ · КЛЕРК-7 ◈"
+        title={t('alerts.achievements_unlock.title')}
         onClose={() => {
           logEvent('toast_close', { toast: 'achievements_unlock' });
           game.closeAchievementsUnlockToast();
         }}
-        text={
-          'Хочу вас подбодрить. Серьёзно. Поэтому внедряю систему достижений — специально для вас.\n\nКаждое достижение будет официально зафиксировано в личном деле. Форма ДСТ-1 уже направлена в архив в трёх экземплярах.\n\nТак держать, сотрудник №4,829,441. Вы справляетесь. Почти.'
-        }
+        text={t('alerts.achievements_unlock.text')}
         clerk
         headerEmoji="🏆"
-        actionLabel="ОТКРЫТЬ ДОСТИЖЕНИЯ"
+        actionLabel={t('alerts.achievements_unlock.action')}
         onAction={() => {
           logEvent('toast_action', {
             toast: 'achievements_unlock',
@@ -751,17 +745,15 @@ function GameApp({
 
       <Popup
         visible={game.upgradesUnlockToast}
-        title="◈ АПГРЕЙДЫ ДОСТУПНЫ · КЛЕРК-7 ◈"
+        title={t('alerts.upgrades_unlock.title')}
         onClose={() => {
           logEvent('toast_close', { toast: 'upgrades_unlock' });
           game.closeUpgradesUnlockToast();
         }}
-        text={
-          'Поздравляю — у вас достаточно энергии для первого улучшения оборудования!\n\nАпгрейды повышают мощность добычи и пассивный доход. Настоятельно рекомендую вкладывать всё, что есть.\n\nФорма АПГ-1 «Заявка на улучшение» заполнена автоматически. Можете не благодарить.'
-        }
+        text={t('alerts.upgrades_unlock.text')}
         clerk
         headerEmoji="⚡"
-        actionLabel="ОТКРЫТЬ АПГРЕЙДЫ"
+        actionLabel={t('alerts.upgrades_unlock.action')}
         onAction={() => {
           logEvent('toast_action', {
             toast: 'upgrades_unlock',
@@ -790,19 +782,19 @@ function GameApp({
 
       <Popup
         visible={game.firstShipToast}
-        title="◈ ПЕРВЫЙ КОРАБЛЬ · КЛЕРК-7 ◈"
+        title={t('alerts.first_ship.title')}
         onClose={() => {
           logEvent('toast_close', { toast: 'first_ship' });
           game.closeFirstShipToast();
         }}
         image={getShips()[0].image}
-        text={`Поздравляю с постройкой первого корабля!\n\nОднако для навигации необходимы данные из реестра МММРДР. Министерство готово их предоставить — как только вы выйдете на связь. Для этого потребуется ${minAttackEnergy} единиц энергии. Форма НВГ-1 «Запрос навигационных данных» будет заполнена автоматически.`}
+        text={t('alerts.first_ship.text', { minEnergy: String(minAttackEnergy) })}
         clerk
         headerEmoji="🚀"
         actionLabel={
           planetsUnlocked
-            ? 'ПЕРЕЙТИ К ПЛАНЕТАМ'
-            : `ДОБЫТЬ ${minAttackEnergy} ЭНЕРГИИ`
+            ? t('alerts.first_ship.action_go_planets')
+            : t('alerts.first_ship.action_earn', { energy: String(minAttackEnergy) })
         }
         onAction={() => {
           logEvent('toast_action', {
@@ -816,17 +808,15 @@ function GameApp({
 
       <Popup
         visible={game.planetsUnlockToast}
-        title="◈ ПЛАНЕТЫ ДОСТУПНЫ · КЛЕРК-7 ◈"
+        title={t('alerts.planets_unlock.title')}
         onClose={() => {
           logEvent('toast_close', { toast: 'planets_unlock' });
           game.closePlanetsUnlockToast();
         }}
         headerEmoji="🌍"
-        text={
-          'У вас достаточно энергии для атаки! Вкладка «ПЛАН.» разблокирована.\n\nЗдесь вы можете выбирать планеты и вступать в бой с инопланетными захватчиками. Победа откроет новые планеты с бонусами к добыче.\n\nМинистерство межпланетных отношений категорически не рекомендует вступать в контакт с пришельцами. Так что, возможно, сначала постройте корабль.'
-        }
+        text={t('alerts.planets_unlock.text')}
         clerk
-        actionLabel="ОТКРЫТЬ ПЛАНЕТЫ"
+        actionLabel={t('alerts.planets_unlock.action')}
         onAction={() => {
           logEvent('toast_action', {
             toast: 'planets_unlock',
@@ -838,17 +828,15 @@ function GameApp({
 
       <Popup
         visible={game.shipyardUnlockToast}
-        title="◈ ВЕРФЬ РАЗБЛОКИРОВАНА · КЛЕРК-7 ◈"
+        title={t('alerts.shipyard_unlock.title')}
         onClose={() => {
           logEvent('toast_close', { toast: 'shipyard_unlock' });
           game.closeShipyardUnlockToast();
         }}
         headerEmoji="🛠️"
-        text={
-          'У вас достаточно железа для постройки первого корабля!\n\nПерейдите во вкладку «ВЕРФЬ» — там можно строить корабли, устанавливать пушки и отправлять флот в экспедиции за металлами.\n\nМинистерство судостроения уведомлено. Форма СТР-1 «Разрешение на строительство» находится на рассмотрении с 2374 года. Стройте пока никто не заметил.'
-        }
+        text={t('alerts.shipyard_unlock.text')}
         clerk
-        actionLabel="ОТКРЫТЬ ВЕРФЬ"
+        actionLabel={t('alerts.shipyard_unlock.action')}
         onAction={() => {
           logEvent('toast_action', {
             toast: 'shipyard_unlock',
@@ -860,7 +848,7 @@ function GameApp({
 
       <Popup
         visible={!!game.planetUnlockToast}
-        title="◈ НОВАЯ ПЛАНЕТА · КЛЕРК-7 ◈"
+        title={t('alerts.planet_unlock.title')}
         onClose={() => {
           logEvent('toast_close', {
             toast: 'planet_unlock',
@@ -871,11 +859,11 @@ function GameApp({
         image={game.planetUnlockToast?.image}
         text={
           game.planetUnlockToast
-            ? `Планета ${game.planetUnlockToast.name} разблокирована!\n\n${game.planetUnlockToast.lore}`
+            ? t('alerts.planet_unlock.text', { name: game.planetUnlockToast.name, lore: game.planetUnlockToast.lore })
             : ''
         }
         clerk
-        actionLabel="НАЧАТЬ ДОБЫЧУ"
+        actionLabel={t('alerts.planet_unlock.action')}
         onAction={() => {
           logEvent('toast_action', {
             toast: 'planet_unlock',

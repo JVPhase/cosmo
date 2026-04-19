@@ -83,7 +83,7 @@ export function ExpeditionsTab({
                         done ? { color: '#00ff88' } : null,
                       ]}
                     >
-                      {def.name}
+                      {t('config.' + def.nameKey)}
                     </Text>
                     <Text style={styles.activeExpShip}>
                       {ship.icon} {ship.name}
@@ -222,14 +222,14 @@ export function ExpeditionsTab({
             <View style={styles.expCardHeader}>
               <Text style={styles.expIcon}>{def.icon}</Text>
               <View style={styles.expCardHeaderBody}>
-                <Text style={styles.expName}>{def.name}</Text>
+                <Text style={styles.expName}>{t('config.' + def.nameKey)}</Text>
                 <Text style={styles.expDuration}>
                   ⏱ {formatDuration(def.durationMs)}
                 </Text>
               </View>
               <Text style={styles.expXp}>+{def.xpReward} XP</Text>
             </View>
-            <Text style={styles.expLore}>{def.lore}</Text>
+            <Text style={styles.expLore}>{t('config.' + def.loreKey)}</Text>
             <View style={styles.expRewardsRow}>
               {Object.entries(def.metalRewards).map(([k, v]) => {
                 const m = METALS.find((x) => x.id === k);

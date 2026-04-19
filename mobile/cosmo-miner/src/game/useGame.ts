@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { logEvent } from './analytics';
 import { getCharacterById as getStaticCharacterById, type CharacterId } from './CHARACTERS';
 import { getCharacterById, getRandomMessage, type DialoguesPayload } from './dialogues';
-import { CLERK_MESSAGES, type ClerkTrigger } from './CLERK_MESSAGES';
+import { getClerkMessages, type ClerkTrigger } from './CLERK_MESSAGES';
+import { t } from './i18n';
 import {
   getAchievements,
   getAchievementClaimCredits,
@@ -513,7 +514,7 @@ export function useGame(initial: GameStateInit | undefined, dialogues: Dialogues
   }, [levelUpToast, closeLevelUpToast]);
 
   const showClerk = useCallback((trigger: ClerkTrigger) => {
-    const msgs = CLERK_MESSAGES.filter((m) => m.trigger === trigger);
+    const msgs = getClerkMessages().filter((m) => m.trigger === trigger);
     if (!msgs.length) return;
     setClerkMessage(msgs[Math.floor(Math.random() * msgs.length)].text);
   }, []);
@@ -555,7 +556,7 @@ export function useGame(initial: GameStateInit | undefined, dialogues: Dialogues
   useEffect(() => {
     const interval = setInterval(() => {
       if (clerkMessage) return;
-      const pool = CLERK_MESSAGES.filter(
+      const pool = getClerkMessages().filter(
         (m) => m.trigger === 'idle' || m.trigger === 'random'
       );
       if (!pool.length) return;
@@ -695,29 +696,29 @@ export function useGame(initial: GameStateInit | undefined, dialogues: Dialogues
 
     if (titan > 0) {
       enqueue('metal_titan', {
-        title: '◈ НОВЫЙ МЕТАЛЛ · КЛЕРК-7 ◈',
-        text: 'Зафиксирован образец Титана™! Материал группы IV-B, исключительная прочность.\n\nПо регламенту подлежит немедленной конфискации в пользу МММРДР. Форма КНФ-3 на рассмотрении с 2379 года. Пока — считайте его своим.',
+        title: t('alerts.unlock_titan.title'),
+        text: t('alerts.unlock_titan.text'),
         image: metals.find((m) => m.id === 'titan')!.image
       });
       if (
         playerLevel >= getShips().find((s) => s.id === 'cruiser')!.unlockLevel
       )
         enqueue('ship_cruiser', {
-          title: '◈ НОВЫЙ КОРАБЛЬ · КЛЕРК-7 ◈',
-          text: 'Доступен Крейсер «Гамма»! Множитель урона ×2.5.\n\nМинистерство обороны одобрило ещё в прошлом году. Министерство финансов — пока думает. Стройте, пока оба не передумали.',
+          title: t('alerts.unlock_cruiser.title'),
+          text: t('alerts.unlock_cruiser.text'),
           image: getShips().find((s) => s.id === 'cruiser')!.image
         });
       enqueue('cannon_titan', {
-        title: '◈ НОВОЕ ВООРУЖЕНИЕ · КЛЕРК-7 ◈',
-        text: 'Титановая пушка разблокирована! +20 урона за уровень.\n\nКомиссия по вооружению одобрила её в 2381 году. Комиссия не пережила испытаний. Новую — на всякий случай не собирали. Стреляйте.',
+        title: t('alerts.unlock_titan_cannon.title'),
+        text: t('alerts.unlock_titan_cannon.text'),
         image: getCannons().find((c) => c.id === 'titan')!.image
       });
     }
 
     if (iridium > 0) {
       enqueue('metal_iridium', {
-        title: '◈ НОВЫЙ МЕТАЛЛ · КЛЕРК-7 ◈',
-        text: 'Обнаружен Иридий™ — редчайший металл сектора!\n\nМинистерство финансов уже отправило форму НДС-8 «Налог на удачу». Документ прибудет через 6-8 галактических недель. Пока — не расслабляйтесь.',
+        title: t('alerts.unlock_iridium.title'),
+        text: t('alerts.unlock_iridium.text'),
         image: metals.find((m) => m.id === 'iridium')!.image
       });
       if (
@@ -725,13 +726,13 @@ export function useGame(initial: GameStateInit | undefined, dialogues: Dialogues
         getShips().find((s) => s.id === 'dreadnought')!.unlockLevel
       )
         enqueue('ship_dreadnought', {
-          title: '◈ НОВЫЙ КОРАБЛЬ · КЛЕРК-7 ◈',
-          text: 'Чертежи Дредноута «Отдел Б» разблокированы! Множитель ×5.\n\nНазван в честь отдела, которого официально не существует. Это единственный корабль в реестре, который отрицает собственное существование.',
+          title: t('alerts.unlock_dreadnought.title'),
+          text: t('alerts.unlock_dreadnought.text'),
           image: getShips().find((s) => s.id === 'dreadnought')!.image
         });
       enqueue('cannon_iridium', {
-        title: '◈ НОВОЕ ВООРУЖЕНИЕ · КЛЕРК-7 ◈',
-        text: 'Иридиевая пушка разблокирована! +60 урона за уровень.\n\nИридиевый сплав нестабилен при температуре ниже 4000К. Вы летите к звезде — так что всё в порядке. Относительно.',
+        title: t('alerts.unlock_iridium_cannon.title'),
+        text: t('alerts.unlock_iridium_cannon.text'),
         image: getCannons().find((c) => c.id === 'iridium')!.image
       });
     }
@@ -741,13 +742,13 @@ export function useGame(initial: GameStateInit | undefined, dialogues: Dialogues
         playerLevel >= getShips().find((s) => s.id === 'flagship')!.unlockLevel
       )
         enqueue('ship_flagship', {
-          title: '◈ НОВЫЙ КОРАБЛЬ · КЛЕРК-7 ◈',
-          text: 'Все компоненты есть — Флагман «Абсолют-77» доступен! Множитель ×12.\n\nФорма допуска — 47 страниц. Я заполнил 46. Страница 47 засекречена. Начните строительство и не задавайте лишних вопросов.',
+          title: t('alerts.unlock_flagship.title'),
+          text: t('alerts.unlock_flagship.text'),
           image: getShips().find((s) => s.id === 'flagship')!.image
         });
       enqueue('cannon_alloy', {
-        title: '◈ НОВОЕ ВООРУЖЕНИЕ · КЛЕРК-7 ◈',
-        text: 'Сплавная пушка разблокирована! +200 урона за уровень.\n\nЗасекречена в 14 галактиках. Разработана отделом, которого официально не существует. Похоже, «Отдел Б» снова отличился. Не спрашивайте — это безопаснее.',
+        title: t('alerts.unlock_alloy_cannon.title'),
+        text: t('alerts.unlock_alloy_cannon.text'),
         image: getCannons().find((c) => c.id === 'alloy')!.image
       });
     }
@@ -755,8 +756,8 @@ export function useGame(initial: GameStateInit | undefined, dialogues: Dialogues
 
     if (voidCrystal > 0 || echoShard > 0) {
       enqueue('sector3_metals', {
-        title: '◈ МАТЕРИАЛЫ СЕКТОРА 3 · КЛЕРК-7 ◈',
-        text: 'Зафиксированы Кристалл Пустоты и Осколок Эха!\n\nМинистерство ещё не придумало, как их классифицировать. Зато инженеры уже знают, что с ними делать — загляните в Верфь, раздел «Модули».',
+        title: t('alerts.unlock_sector3_materials.title'),
+        text: t('alerts.unlock_sector3_materials.text'),
         images: [
           metals.find((m) => m.id === 'voidCrystal')!.image,
           metals.find((m) => m.id === 'echoShard')!.image
@@ -867,20 +868,12 @@ export function useGame(initial: GameStateInit | undefined, dialogues: Dialogues
       const toastId = `ship_${ship.id}`;
       if (shownUnlocksRef.current.has(toastId)) continue;
       shownUnlocksRef.current.add(toastId);
-      const textMap: Record<string, string> = {
-        cruiser:
-          'Доступен Крейсер «Гамма»! Множитель урона ×2.5.\n\nМинистерство обороны одобрило ещё в прошлом году. Министерство финансов — пока думает. Стройте, пока оба не передумали.',
-        dreadnought:
-          'Чертежи Дредноута «Отдел Б» разблокированы! Множитель ×5.\n\nНазван в честь отдела, которого официально не существует. Это единственный корабль в реестре, который отрицает собственное существование.',
-        flagship:
-          'Все компоненты есть — Флагман «Абсолют-77» доступен! Множитель ×12.\n\nФорма допуска — 47 страниц. Я заполнил 46. Страница 47 засекречена. Начните строительство и не задавайте лишних вопросов.'
-      };
       setUnlockQueue((prev) => [
         ...prev,
         {
           id: toastId,
-          title: '◈ НОВЫЙ КОРАБЛЬ · КЛЕРК-7 ◈',
-          text: textMap[ship.id] ?? ship.lore,
+          title: t(`alerts.unlock_${ship.id}.title`),
+          text: t(`alerts.unlock_${ship.id}.text`, {}),
           image: ship.image
         }
       ]);
@@ -895,8 +888,8 @@ export function useGame(initial: GameStateInit | undefined, dialogues: Dialogues
         ...prev,
         {
           id: toastId,
-          title: '◈ НОВОЕ ИССЛЕДОВАНИЕ · КЛЕРК-7 ◈',
-          text: `Доступно исследование: ${node.icon} «${node.name}».\n\n${node.lore}\n\nВкладка ИССЛ. → ${tab}.`
+          title: t('alerts.unlock_research.title'),
+          text: t('alerts.unlock_research.text', { icon: node.icon, name: node.name, lore: node.lore, tab })
         }
       ]);
     }
@@ -916,8 +909,8 @@ export function useGame(initial: GameStateInit | undefined, dialogues: Dialogues
         ...prev,
         {
           id: 'sector_2_unlocked',
-          title: '◈ СЕКТОР 2 ОТКРЫТ · КЛЕРК-7 ◈',
-          text: 'Все планеты Сектора 1 завоёваны! Сектор 2 разблокирован.\n\nМинистерство фиксирует расширение зоны контроля. Новые планеты — новые металлы, более сильные противники.\n\nТакже: экспедиции в Сектор 1 теперь приносят ×5 металлов. Это не ошибка. Ну, скорее всего.'
+          title: t('alerts.unlock_sector2.title'),
+          text: t('alerts.unlock_sector2.text')
         }
       ]);
     }
@@ -927,8 +920,8 @@ export function useGame(initial: GameStateInit | undefined, dialogues: Dialogues
         ...prev,
         {
           id: 'sector_3_unlocked',
-          title: '◈ СЕКТОР 3 ОТКРЫТ · КЛЕРК-7 ◈',
-          text: 'Сектор 2 завоёван. Открыт Сектор 3.\n\nМинистерство не знает, что там. Данные засекречены начиная с 2371 года.\n\nВаш персонаж, скорее всего, знает больше. Рекомендую спросить его лично.'
+          title: t('alerts.unlock_sector3.title'),
+          text: t('alerts.unlock_sector3.text')
         }
       ]);
     }

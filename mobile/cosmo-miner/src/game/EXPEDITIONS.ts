@@ -6,12 +6,12 @@ export type ExpeditionId = 'patrol' | 'asteroid_belt' | 'deep_space' | 'classifi
 
 export type ExpeditionDefinition = {
   id: ExpeditionId;
-  name: string;
+  nameKey: string;
   icon: string;
   durationMs: number;
   metalRewards: Partial<MetalsState>;
   xpReward: number;
-  lore: string;
+  loreKey: string;
 };
 
 export type ActiveExpedition = {
