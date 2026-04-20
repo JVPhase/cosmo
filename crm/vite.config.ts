@@ -1,11 +1,11 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import { fileURLToPath, URL } from 'node:url'
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import { fileURLToPath, URL } from 'node:url';
 
 function normalizeBase(input: string | undefined) {
-  const value = input?.trim()
-  if (!value || value === '/') return '/'
-  return `/${value.replace(/^\/+|\/+$/g, '')}/`
+  const value = input?.trim();
+  if (!value || value === '/') return '/';
+  return `/${value.replace(/^\/+|\/+$/g, '')}/`;
 }
 
 export default defineConfig(({ command }) => ({
@@ -15,8 +15,8 @@ export default defineConfig(({ command }) => ({
   plugins: [react()],
   resolve: {
     alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url))
-    }
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+    },
   },
-  server: { port: 5174 }
-}))
+  server: { port: 5173 },
+}));

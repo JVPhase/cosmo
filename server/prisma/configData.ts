@@ -4,6 +4,19 @@
  * Used exclusively by seed.ts; never imported by the runtime server.
  */
 
+// ── dialogues ─────────────────────────────────────────────────────────────────
+// Stores i18n key references for each character/sector — actual text lives in
+// LocaleBundle (mobile/dialogues/ru).
+const DIALOGUE_CHARS = ['lien', 'riva', 'graves', 'alex'] as const;
+export const dialoguesData = Object.fromEntries(
+  DIALOGUE_CHARS.map(char => [
+    char,
+    Object.fromEntries(
+      Array.from({ length: 100 }, (_, i) => [String(i + 1), `${char}.${i + 1}`])
+    ),
+  ])
+);
+
 // ── helpers ─────────────────────────────────────────────────────────────────
 function bn(s: string): number {
   const units: Record<string, number> = {
