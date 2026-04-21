@@ -21,6 +21,7 @@ import { Platform } from 'react-native';
 
 const BASE_LOCALE = 'ru';
 const CACHE_KEY_PREFIX = 'cosmo_i18n_v1_';
+const LOCALE_PREF_KEY = 'cosmo_locale_pref';
 const I18N_URL =
   (process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000') + '/i18n/mobile';
 
@@ -174,6 +175,24 @@ export async function reloadI18n(overrideLocale?: string): Promise<void> {
 /** Returns the currently active locale code. */
 export function getLocale(): string {
   return _locale;
+}
+
+/** Persist the user's explicit locale choice to AsyncStorage. */
+export async function saveLocale(locale: string): Promise<void> {
+  try {
+    await AsyncStorage.setItem(LOCALE_PREF_KEY, locale);
+  } catch {
+    // non-fatal
+  }
+}
+
+/** Load the persisted locale choice. Returns null if not yet set. */
+export async function loadSavedLocale(): Promise<string | null> {
+  try {
+    return await AsyncStorage.getItem(LOCALE_PREF_KEY);
+  } catch {
+    return null;
+  }
 }
 
 /** Whether translations have been loaded at least once. */

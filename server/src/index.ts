@@ -12,6 +12,7 @@ import { crmRoutes } from './routes/crm'
 import { consentsRoutes } from './routes/consents'
 import { dialoguesRoutes } from './routes/dialogues'
 import { i18nRoutes } from './routes/i18n'
+import { shopRoutes } from './routes/shop'
 import { LIMITS } from './lib/rateLimitConfig'
 import { blockMetrics } from './lib/blockMetrics'
 
@@ -104,6 +105,7 @@ async function main() {
   await app.register(consentsRoutes, { prefix: '/consents' })
   await app.register(dialoguesRoutes)
   await app.register(i18nRoutes)
+  await app.register(shopRoutes, { prefix: '/shop' })
 
   // Internal metrics endpoint — restrict in production to internal network / admin token.
   app.get('/metrics/blocks', async (_req, reply) => {

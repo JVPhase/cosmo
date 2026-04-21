@@ -10,7 +10,7 @@ import {
   View
 } from 'react-native';
 import { getShopItems, type ShopCategory, type ShopItemId } from '../game/SHOP';
-import { CREDIT_PACKS } from '../game/CREDIT_PACKS';
+import { CREDIT_PACKS, type CreditPack } from '../game/CREDIT_PACKS';
 import type { ActiveBoost } from '../game/types';
 import type { MetalId } from '../game/METALS';
 import { getMetals } from '../game/METALS';
@@ -70,13 +70,17 @@ const METAL_ORDER: MetalId[] = [
 
 function formatMs(ms: number): string {
   const s = Math.ceil(ms / 1000);
-  if (s < 60) return `${s}с`;
+  if (s < 60) return t('ui.duration.s', { s: String(s) });
   const m = Math.floor(s / 60);
   const rem = s % 60;
-  if (m < 60) return rem > 0 ? `${m}м ${rem}с` : `${m}м`;
+  if (m < 60) return rem > 0
+    ? t('ui.duration.ms', { m: String(m), s: String(rem) })
+    : t('ui.duration.m', { m: String(m) });
   const h = Math.floor(m / 60);
   const mr = m % 60;
-  return mr > 0 ? `${h}ч ${mr}м` : `${h}ч`;
+  return mr > 0
+    ? t('ui.duration.hm', { h: String(h), m: String(mr) })
+    : t('ui.duration.h', { h: String(h) });
 }
 
 // ─── Active boosts banner ─────────────────────────────────────────────────────
@@ -263,12 +267,22 @@ function ConverterPanel({
 
 // ─── Credits tab ─────────────────────────────────────────────────────────────
 
+const IAP_CATALOG_URL =
+  (process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000') + '/shop/iap-packs';
+
 function CreditsTab({ onAddCredits }: { onAddCredits: (n: number) => void }) {
   const [adLoading, setAdLoading] = useState(false);
   const [iapLoading, setIapLoading] = useState<string | null>(null);
   const [products, setProducts] = useState<IAPProduct[]>([]);
+  const [packs, setPacks] = useState<readonly CreditPack[]>(CREDIT_PACKS);
 
   useEffect(() => {
+    // Fetch catalog from server; fall back to bundled CREDIT_PACKS on any error.
+    fetch(IAP_CATALOG_URL)
+      .then((r) => r.json() as Promise<{ packs: CreditPack[] }>)
+      .then(({ packs: remote }) => { if (remote?.length) setPacks(remote); })
+      .catch(() => { /* keep static fallback */ });
+
     void initIAP()
       .then(() => getProducts().then(setProducts))
       .catch(() => {
@@ -276,8 +290,8 @@ function CreditsTab({ onAddCredits }: { onAddCredits: (n: number) => void }) {
       });
   }, []);
 
-  const iapPacks = CREDIT_PACKS.filter((p) => p.kind === 'iap');
-  const adPack = CREDIT_PACKS.find((p) => p.kind === 'ad')!;
+  const iapPacks = packs.filter((p) => p.kind === 'iap');
+  const adPack = packs.find((p) => p.kind === 'ad') ?? CREDIT_PACKS.find((p) => p.kind === 'ad')!;
 
   async function handleWatchAd() {
     setAdLoading(true);
@@ -310,9 +324,9 @@ function CreditsTab({ onAddCredits }: { onAddCredits: (n: number) => void }) {
       <View style={[styles.creditCard, styles.creditCardAd]}>
         <Text style={styles.creditCardIcon}>{adPack.icon}</Text>
         <View style={styles.creditCardBody}>
-          <Text style={styles.creditCardName}>{adPack.name}</Text>
+          <Text style={styles.creditCardName}>{t('config.' + adPack.name)}</Text>
           <Text style={styles.creditCardAmount}>+{adPack.credits} 💳</Text>
-          <Text style={styles.creditCardLore}>{adPack.lore}</Text>
+          <Text style={styles.creditCardLore}>{t('config.' + adPack.lore)}</Text>
         </View>
         <Pressable
           style={[
@@ -341,9 +355,9 @@ function CreditsTab({ onAddCredits }: { onAddCredits: (n: number) => void }) {
           <View key={pack.id} style={[styles.creditCard, styles.creditCardIAP]}>
             <Text style={styles.creditCardIcon}>{pack.icon}</Text>
             <View style={styles.creditCardBody}>
-              <Text style={styles.creditCardName}>{pack.name}</Text>
+              <Text style={styles.creditCardName}>{t('config.' + pack.name)}</Text>
               <Text style={styles.creditCardAmount}>+{pack.credits} 💳</Text>
-              <Text style={styles.creditCardLore}>{pack.lore}</Text>
+              <Text style={styles.creditCardLore}>{t('config.' + pack.lore)}</Text>
             </View>
             <Pressable
               style={[
@@ -507,9 +521,11 @@ export function ShopScreen({
                   <Text style={styles.cardName}>{item.name}</Text>
                   {item.boostEffect && (
                     <Text style={styles.cardEffect}>
-                      ×{item.boostEffect.multiplier}{' '}
-                      {effectLabel(item.boostEffect.stat)} на{' '}
-                      {formatMs(item.boostEffect.durationMs)}
+                      {t('ui.shop.boost_effect_line', {
+                        multiplier: String(item.boostEffect.multiplier),
+                        stat: effectLabel(item.boostEffect.stat),
+                        duration: formatMs(item.boostEffect.durationMs),
+                      })}
                     </Text>
                   )}
                   {item.metalReward && (

@@ -239,9 +239,9 @@ export function StarsShopTab({ onPurchaseApplied }: StarsShopTabProps) {
               return;
             }
 
-            Alert.alert('Покупка завершена', grantPendingMessage(item));
+            Alert.alert(t('ui.shop.stars_purchase_pending_title'), grantPendingMessage(item));
           } else if (status !== 'cancelled') {
-            Alert.alert(t('ui.shop.stars_payment_error_title'), `Статус: ${status}`);
+            Alert.alert(t('ui.shop.stars_payment_error_title'), t('ui.shop.stars_payment_error_text', { status }));
           }
         } catch (err: unknown) {
           console.error('[StarsShopTab] openInvoice callback error', err);

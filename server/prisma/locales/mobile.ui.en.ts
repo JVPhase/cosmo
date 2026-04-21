@@ -154,7 +154,9 @@ export const messages: Record<string, string> = {
   'shipcard.cannon_upgrade_btn': 'UPG.',
   // ── Duration format ──────────────────────────────────────────────────────
   'duration.hm': '{h}h {m}m',
+  'duration.h': '{h}h',
   'duration.ms': '{m}m {s}s',
+  'duration.m': '{m}m',
   'duration.s': '{s}s',
   // ── Prestige popup ───────────────────────────────────────────────────────
   'prestige.not_available': 'PRESTIGE UNAVAILABLE',
@@ -240,6 +242,8 @@ export const messages: Record<string, string> = {
   'mining.click_hint': 'TAP',
   'mining.hint': '◈ MINE {resource} ◈',
   // ── CharacterCommunicationChannel (remaining) ─────────────────────────────
+  'channel.established_garbled': 'Channel established: {name} [{role}].\n\nReceived a garbled message:',
+  'channel.history_label': '📁 HISTORY',
   'channel.tab_inbox': 'INBOX',
   'channel.tab_history': 'HISTORY',
   'channel.incoming_message': '📨 INCOMING MESSAGE',
@@ -310,6 +314,8 @@ export const messages: Record<string, string> = {
   'shop.effect_xp': 'experience',
   'shop.effect_damage': 'damage',
   // ── StarsShopTab ──────────────────────────────────────────────────────────
+  'shop.stars_purchase_pending_title': 'Purchase pending',
+  'shop.stars_payment_error_text': 'Status: {status}',
   'shop.stars_telegram_unavail_title': 'Telegram unavailable',
   'shop.stars_telegram_unavail_text': 'Open the Mini App inside Telegram or set EXPO_PUBLIC_TELEGRAM_TEST_MODE=true for local catalog testing.',
   'shop.stars_purchase_complete_title': 'Purchase complete',
@@ -325,6 +331,22 @@ export const messages: Record<string, string> = {
   'shop.stars_applied_metal': '{icon} {quantity} {metalId} were added to your inventory.',
   'shop.stars_applied_booster': '{name} was delivered and activated immediately.',
   'shop.stars_applied_lootbox': '{name} was delivered to your account.',
+  // ── CharacterSelectFlow (explain step) ────────────────────────────────────
+  'channel.signal_unstable_explain': 'Signal unstable. Source of interference — {alienName}.\n\nWhile they are active, connection quality does not exceed 12%. After defeating them, the channel will be restored and {characterName} will be able to communicate fully.\n\nForm SVZ-1 "Request for Communication Restoration" has been filed automatically. Expected resolution time: after victory.',
+  // ── CharacterSelectFlow (metal deal offer) ────────────────────────────────
+  'channel.offer_void_crystal': '✨ ×{amount} Void Crystal',
+  'channel.offer_echo_shard':   '🔊 ×{amount} Echo Shard',
+  'channel.offer_energy_cost':  '— {cost} energium',
+  // ── ShopScreen boost effect line ──────────────────────────────────────────
+  'shop.boost_effect_line': '×{multiplier} {stat} for {duration}',
+  // ── Research tab names (used in unlock toast) ─────────────────────────────
+  'research.tab_mining': '"Mining"',
+  'research.tab_battle': '"Battle"',
+  // ── Analytics export ──────────────────────────────────────────────────────
+  'analytics.error_web':        'File export not available in web version',
+  'analytics.error_log_empty':  'Log is empty — no data to export',
+  'analytics.error_no_sharing': 'Sharing not available on this device',
+  'analytics.share_title':      'Export Cosmo Analytics',
   // ── PrestigePopup ─────────────────────────────────────────────────────────
   'prestige.pp_unit': 'pp',
 };

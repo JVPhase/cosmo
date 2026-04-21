@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { logEvent } from './analytics';
-import { getCharacterById as getStaticCharacterById, type CharacterId } from './CHARACTERS';
+import type { CharacterId } from './CHARACTERS';
 import { getCharacterById, getRandomMessage, type DialoguesPayload } from './dialogues';
 import { getClerkMessages, type ClerkTrigger } from './CLERK_MESSAGES';
 import { t } from './i18n';
@@ -883,7 +883,7 @@ export function useGame(initial: GameStateInit | undefined, dialogues: Dialogues
       const toastId = `research_unlock_${node.id}`;
       if (shownUnlocksRef.current.has(toastId)) continue;
       shownUnlocksRef.current.add(toastId);
-      const tab = node.branch === 'mining' ? '«Добыча»' : '«Бой»';
+      const tab = t('ui.research.' + (node.branch === 'mining' ? 'tab_mining' : 'tab_battle'));
       setUnlockQueue((prev) => [
         ...prev,
         {
@@ -962,9 +962,8 @@ export function useGame(initial: GameStateInit | undefined, dialogues: Dialogues
     );
     if (!sector2Complete) return;
     const character = getCharacterById(dialogues, state.chosenCharacterId);
-    const fallback = getStaticCharacterById(state.chosenCharacterId);
-    const greeting =
-      character?.greeting?.trim() ? character.greeting : fallback.greeting;
+    const greeting = character?.greeting?.trim();
+    if (!greeting) return;
     greetingShownRef.current = true;
     setState((prev) => ({ ...prev, greetingShown: true }));
     if (characterMessage) {
@@ -1659,9 +1658,7 @@ export function useGame(initial: GameStateInit | undefined, dialogues: Dialogues
     logEvent('choose_character', { characterId: id });
     setState((prev) => ({ ...prev, chosenCharacterId: id }));
     const character = getCharacterById(dialogues, id);
-    const fallback = getStaticCharacterById(id);
-    const garbled =
-      character?.garbledMessage?.trim() ? character.garbledMessage : fallback.garbledMessage;
+    const garbled = character?.garbledMessage?.trim();
     if (garbled) {
       setCharacterMessage(garbled);
       setCharacterDialogueQueue([]);

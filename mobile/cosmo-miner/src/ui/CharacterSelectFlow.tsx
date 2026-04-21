@@ -140,7 +140,7 @@ export function CharacterSelectFlow({
               <View style={styles.body}>
                 <Text style={styles.clerkEmoji}>🤖</Text>
                 <Text style={styles.text}>
-                  {`Канал установлен: ${chosen.name} [${chosen.role}].\n\nПолучено обрывистое сообщение:`}
+                  {t('ui.channel.established_garbled', { name: chosen.name, role: chosen.role })}
                 </Text>
               </View>
               <View style={styles.transmissionBox}>
@@ -168,7 +168,7 @@ export function CharacterSelectFlow({
               <View style={styles.body}>
                 <Text style={styles.clerkEmoji}>🤖</Text>
                 <Text style={styles.text}>
-                  {`Сигнал нестабилен. Источник помех — ${getAliens()[8].name}.\n\nПока они активны, качество связи не превышает 12%. После победы над ними канал будет восстановлен, и ${chosen.name} сможет выйти на связь в полном объёме.\n\nФорма СВЗ-1 «Запрос на восстановление связи» подана автоматически. Ожидаемый срок рассмотрения: после победы.`}
+                  {t('ui.channel.signal_unstable_explain', { alienName: getAliens()[8].name, characterName: chosen.name })}
                 </Text>
               </View>
               <Pressable
@@ -266,11 +266,11 @@ export function CharacterSelectFlow({
                 <Text style={styles.dealText}>{chosen.metalDealOffer}</Text>
                 <View style={styles.offerReward}>
                   <Text style={styles.offerRewardText}>
-                    ✨ ×{getModules()[0].cost.voidCrystal ?? 15} Кристалл Пустоты
+                    {t('ui.channel.offer_void_crystal', { amount: String(getModules()[0].cost.voidCrystal ?? 15) })}
                   </Text>
-                  <Text style={styles.offerRewardText}>🔊 ×15 Осколок Эха</Text>
+                  <Text style={styles.offerRewardText}>{t('ui.channel.offer_echo_shard', { amount: '15' })}</Text>
                   <Text style={styles.offerCostText}>
-                    — {metalDealEnergyCost} энергиума
+                    {t('ui.channel.offer_energy_cost', { cost: String(metalDealEnergyCost) })}
                   </Text>
                 </View>
               </View>
