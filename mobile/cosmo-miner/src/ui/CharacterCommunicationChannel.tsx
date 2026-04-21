@@ -248,7 +248,7 @@ export function CharacterCommunicationChannel({
           <>
             {characterMessageHistory.length === 0 ? (
               <View style={styles.signalBox}>
-                <Text style={styles.signalLabel}>📁 ИСТОРИЯ</Text>
+                <Text style={styles.signalLabel}>{t('ui.channel.history_label')}</Text>
                 <Text style={styles.bodyText}>{t('ui.channel.no_messages')}</Text>
               </View>
             ) : (

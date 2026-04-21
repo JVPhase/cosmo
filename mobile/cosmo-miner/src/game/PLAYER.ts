@@ -4,6 +4,7 @@ import {
   xpForNextLevel as _canonicalXpForNextLevel,
 } from '@cosmo/game-config';
 import { getCachedRemoteConfig } from './remoteConfig';
+import { t } from './i18n';
 
 export function getXpThresholds(): readonly number[] {
   const config = getCachedRemoteConfig();
@@ -26,7 +27,8 @@ export function getPlayerTitle(level: number): string {
   if (!config) throw new Error('Game config not loaded');
   const titles: string[] = config.player.titles;
   const maxLevel = config.player.maxLevel;
-  return titles[Math.min(level, maxLevel) - 1] ?? titles[titles.length - 1];
+  const key = titles[Math.min(level, maxLevel) - 1] ?? titles[titles.length - 1]!;
+  return t('config.' + key);
 }
 
 /** Total XP needed to reach the START of this level. */

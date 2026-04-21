@@ -154,7 +154,9 @@ export const messages: Record<string, string> = {
   'shipcard.cannon_upgrade_btn': 'УЛУ.',
   // ── Duration format ──────────────────────────────────────────────────────
   'duration.hm': '{h}ч {m}м',
+  'duration.h': '{h}ч',
   'duration.ms': '{m}м {s}с',
+  'duration.m': '{m}м',
   'duration.s': '{s}с',
   // ── Prestige popup ───────────────────────────────────────────────────────
   'prestige.not_available': 'ПРЕСТИЖ НЕДОСТУПЕН',
@@ -240,6 +242,8 @@ export const messages: Record<string, string> = {
   'mining.click_hint': 'КЛИКНИ',
   'mining.hint': '◈ ДОБЫВАЙ {resource} ◈',
   // ── CharacterCommunicationChannel (remaining) ─────────────────────────────
+  'channel.established_garbled': 'Канал установлен: {name} [{role}].\n\nПолучено обрывистое сообщение:',
+  'channel.history_label': '📁 ИСТОРИЯ',
   'channel.tab_inbox': 'ВХОДЯЩИЕ',
   'channel.tab_history': 'ИСТОРИЯ',
   'channel.incoming_message': '📨 ВХОДЯЩЕЕ СООБЩЕНИЕ',
@@ -310,6 +314,8 @@ export const messages: Record<string, string> = {
   'shop.effect_xp': 'опыт',
   'shop.effect_damage': 'урон',
   // ── StarsShopTab ──────────────────────────────────────────────────────────
+  'shop.stars_purchase_pending_title': 'Покупка завершена',
+  'shop.stars_payment_error_text': 'Статус: {status}',
   'shop.stars_telegram_unavail_title': 'Telegram недоступен',
   'shop.stars_telegram_unavail_text': 'Откройте Mini App внутри Telegram или включите EXPO_PUBLIC_TELEGRAM_TEST_MODE=true для локальной проверки каталога.',
   'shop.stars_purchase_complete_title': 'Purchase complete',
@@ -325,6 +331,22 @@ export const messages: Record<string, string> = {
   'shop.stars_applied_metal': '{icon} {quantity} {metalId} were added to your inventory.',
   'shop.stars_applied_booster': '{name} was delivered and activated immediately.',
   'shop.stars_applied_lootbox': '{name} was delivered to your account.',
+  // ── CharacterSelectFlow (explain step) ────────────────────────────────────
+  'channel.signal_unstable_explain': 'Сигнал нестабилен. Источник помех — {alienName}.\n\nПока они активны, качество связи не превышает 12%. После победы над ними канал будет восстановлен, и {characterName} сможет выйти на связь в полном объёме.\n\nФорма СВЗ-1 «Запрос на восстановление связи» подана автоматически. Ожидаемый срок рассмотрения: после победы.',
+  // ── CharacterSelectFlow (metal deal offer) ────────────────────────────────
+  'channel.offer_void_crystal': '✨ ×{amount} Кристалл Пустоты',
+  'channel.offer_echo_shard':   '🔊 ×{amount} Осколок Эха',
+  'channel.offer_energy_cost':  '— {cost} энергиума',
+  // ── ShopScreen boost effect line ──────────────────────────────────────────
+  'shop.boost_effect_line': '×{multiplier} {stat} на {duration}',
+  // ── Research tab names (used in unlock toast) ─────────────────────────────
+  'research.tab_mining': '«Добыча»',
+  'research.tab_battle': '«Бой»',
+  // ── Analytics export ──────────────────────────────────────────────────────
+  'analytics.error_web':        'Экспорт файла недоступен в веб-версии',
+  'analytics.error_log_empty':  'Лог пуст — нет данных для экспорта',
+  'analytics.error_no_sharing': 'Sharing недоступен на этом устройстве',
+  'analytics.share_title':      'Экспорт аналитики Cosmo',
   // ── PrestigePopup ─────────────────────────────────────────────────────────
   'prestige.pp_unit': 'п.п.',
 };

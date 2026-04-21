@@ -124,19 +124,20 @@ export async function flushAnalytics(): Promise<void> {
 }
 
 export async function exportAnalytics(): Promise<void> {
-  if (Platform.OS === 'web') throw new Error('Экспорт файла недоступен в веб-версии');
+  const { t } = await import('./i18n');
+  if (Platform.OS === 'web') throw new Error(t('ui.analytics.error_web'));
   await _flushBuffer();
   const info = await FileSystem.getInfoAsync(FILE_PATH);
   if (!info.exists) {
-    throw new Error('Лог пуст — нет данных для экспорта');
+    throw new Error(t('ui.analytics.error_log_empty'));
   }
   const available = await Sharing.isAvailableAsync();
   if (!available) {
-    throw new Error('Sharing недоступен на этом устройстве');
+    throw new Error(t('ui.analytics.error_no_sharing'));
   }
   await Sharing.shareAsync(FILE_PATH, {
     mimeType: 'application/json',
-    dialogTitle: 'Экспорт аналитики Cosmo',
+    dialogTitle: t('ui.analytics.share_title'),
     UTI: 'public.json',
   });
 }

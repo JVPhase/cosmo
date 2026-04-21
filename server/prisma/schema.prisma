@@ -292,6 +292,25 @@ model CrmActivity {
   @@index([dealId])
 }
 
+// ── IAP Packs ─────────────────────────────────────────────────────────────────
+// Catalog of in-app purchase packs (rewarded-ad + Apple/Google IAP).
+// kind: "ad" | "iap"
+// name / lore: i18n keys resolved via the config namespace (e.g. "iap_pack.credits_ad.name")
+model IapPack {
+  id        String   @id   // "credits_ad" | "credits_100" | "credits_300" | "credits_800" | "credits_2000"
+  kind      String         // "ad" | "iap"
+  icon      String
+  credits   Int
+  name      String         // i18n key in config namespace
+  lore      String         // i18n key in config namespace
+  productId String?        // Apple/Google store product ID (null for kind="ad")
+  basePrice String?        // Fallback display price, e.g. "$0.99" (null for kind="ad")
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 // ── Localisation ─────────────────────────────────────────────────────────────
 // Stores translated string bundles, one row per (app, namespace, locale).
 // messages: JSON object { "key": "translated value" }

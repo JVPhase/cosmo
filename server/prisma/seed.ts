@@ -295,6 +295,110 @@ const SHOP_ITEMS: ShopItemSeed[] = [
   },
 ];
 
+// ── IAP Packs ─────────────────────────────────────────────────────────────────
+
+type IapPackSeed = {
+  id: string;
+  kind: 'ad' | 'iap';
+  icon: string;
+  credits: number;
+  name: string;        // i18n key in config namespace
+  lore: string;        // i18n key in config namespace
+  productId: string | null;
+  basePrice: string | null;
+  sortOrder: number;
+};
+
+const IAP_PACKS: IapPackSeed[] = [
+  {
+    id: 'credits_ad',
+    kind: 'ad',
+    icon: '📺',
+    credits: 30,
+    name: 'iap_pack.credits_ad.name',
+    lore: 'iap_pack.credits_ad.lore',
+    productId: null,
+    basePrice: null,
+    sortOrder: 0,
+  },
+  {
+    id: 'credits_100',
+    kind: 'iap',
+    icon: '💳',
+    credits: 100,
+    name: 'iap_pack.credits_100.name',
+    lore: 'iap_pack.credits_100.lore',
+    productId: 'cosmo_credits_100',
+    basePrice: '$0.99',
+    sortOrder: 1,
+  },
+  {
+    id: 'credits_300',
+    kind: 'iap',
+    icon: '💰',
+    credits: 300,
+    name: 'iap_pack.credits_300.name',
+    lore: 'iap_pack.credits_300.lore',
+    productId: 'cosmo_credits_300',
+    basePrice: '$1.99',
+    sortOrder: 2,
+  },
+  {
+    id: 'credits_800',
+    kind: 'iap',
+    icon: '🌟',
+    credits: 800,
+    name: 'iap_pack.credits_800.name',
+    lore: 'iap_pack.credits_800.lore',
+    productId: 'cosmo_credits_800',
+    basePrice: '$4.99',
+    sortOrder: 3,
+  },
+  {
+    id: 'credits_2000',
+    kind: 'iap',
+    icon: '🏦',
+    credits: 2000,
+    name: 'iap_pack.credits_2000.name',
+    lore: 'iap_pack.credits_2000.lore',
+    productId: 'cosmo_credits_2000',
+    basePrice: '$9.99',
+    sortOrder: 4,
+  },
+];
+
+async function seedIapPacks() {
+  console.log('Seeding IapPack table...');
+  for (const pack of IAP_PACKS) {
+    await prisma.iapPack.upsert({
+      where: { id: pack.id },
+      update: {
+        kind: pack.kind,
+        icon: pack.icon,
+        credits: pack.credits,
+        name: pack.name,
+        lore: pack.lore,
+        productId: pack.productId,
+        basePrice: pack.basePrice,
+        sortOrder: pack.sortOrder,
+      },
+      create: {
+        id: pack.id,
+        kind: pack.kind,
+        icon: pack.icon,
+        credits: pack.credits,
+        name: pack.name,
+        lore: pack.lore,
+        productId: pack.productId,
+        basePrice: pack.basePrice,
+        sortOrder: pack.sortOrder,
+        isActive: true,
+      },
+    });
+    console.log(`  ✓ ${pack.id}`);
+  }
+}
+
 // ── Locale bundles ────────────────────────────────────────────────────────────
 
 type LocaleBundleSeed = {
@@ -396,6 +500,8 @@ async function main() {
 
   console.log('Seeding CRM admin user...');
   await seedCrmAdmin();
+
+  await seedIapPacks();
 
   await seedLocaleBundles();
 

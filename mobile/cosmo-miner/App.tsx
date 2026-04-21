@@ -61,7 +61,8 @@ import {
   loadRemoteConfigFromCache,
   fetchAndCacheRemoteConfig
 } from './src/game/remoteConfig';
-import { loadI18n, t } from './src/game/i18n';
+import { loadI18n, loadSavedLocale, saveLocale, t } from './src/game/i18n';
+import { LocalePickerOverlay, type SupportedLocale } from './src/ui/LocalePickerOverlay';
 import {
   fetchCloudSave,
   getAccessToken,
@@ -1285,6 +1286,8 @@ export default function App() {
   const [dialoguesError, setDialoguesError] = useState<string | null>(null);
   const [configReady, setConfigReady] = useState(false);
   const [configError, setConfigError] = useState<string | null>(null);
+  const [localeChecked, setLocaleChecked] = useState(false);
+  const [showLocalePicker, setShowLocalePicker] = useState(false);
 
   const sessionIdRef = useRef(
     Math.random().toString(36).slice(2) + Date.now().toString(36)
@@ -1352,9 +1355,14 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    // Load i18n in parallel with game config — non-blocking.
-    // t() falls back to the key name if translations are unavailable.
-    loadI18n().catch(() => {});
+    loadSavedLocale().then((saved) => {
+      if (saved) {
+        loadI18n(saved).catch(() => {});
+        setLocaleChecked(true);
+      } else {
+        setShowLocalePicker(true);
+      }
+    });
   }, []);
 
   useEffect(() => {
@@ -1518,6 +1526,13 @@ export default function App() {
     };
   }, []);
 
+  const handleLocalePick = useCallback(async (locale: SupportedLocale) => {
+    await saveLocale(locale);
+    loadI18n(locale).catch(() => {});
+    setShowLocalePicker(false);
+    setLocaleChecked(true);
+  }, []);
+
   const handleReset = useCallback(async (showIntro?: boolean) => {
     await clearGame().catch(() => {});
     if (showIntro) {
@@ -1537,6 +1552,18 @@ export default function App() {
         <PasswordScreen onUnlock={handleUnlock} />
       </View>
     );
+  }
+
+  if (!localeChecked) {
+    if (showLocalePicker) {
+      return (
+        <View style={styles.container}>
+          <StatusBar style="light" />
+          <LocalePickerOverlay onPick={handleLocalePick} />
+        </View>
+      );
+    }
+    return <View style={styles.container}><StatusBar style="light" /></View>;
   }
 
   if (!configReady && configError) {
