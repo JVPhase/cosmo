@@ -34,6 +34,7 @@ export type TapState = { count: number; origin?: { x: number; y: number } };
 export type MiningAreaProps = {
   planet: PlanetDefinition;
   passiveRate: number;
+  clickPower: number;
   tapState: TapState;
   handlePressIn: (e: GestureResponderEvent) => void;
   showClickHint: boolean;
@@ -46,6 +47,7 @@ export type MiningAreaProps = {
 export function MiningArea({
   planet,
   passiveRate,
+  clickPower,
   tapState,
   handlePressIn,
   showClickHint,
@@ -74,7 +76,7 @@ export function MiningArea({
         <AnimatedMineEffects
           trigger={tapState.count}
           origin={tapState.origin}
-          clickPower={1}
+          clickPower={clickPower}
           mineColor={planet.color}
           style={styles.asteroidWrap}
         >

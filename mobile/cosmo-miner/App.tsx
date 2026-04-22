@@ -79,7 +79,7 @@ import {
   pickNewerEnvelope
 } from './src/game/saveContract';
 import { applyGrants } from './src/game/grants';
-import { bootstrapTelegram, ensureTelegramWebApp } from './src/telegram/runtime';
+import { bootstrapTelegram, ensureTelegramWebApp, getTelegramSafeTop } from './src/telegram/runtime';
 import { telegramAuthIfNeeded } from './src/telegram/auth';
 import { getPlanets } from './src/game/PLANETS';
 import { getShips } from './src/game/SHIPS';
@@ -1316,6 +1316,7 @@ export default function App() {
   const [configError, setConfigError] = useState<string | null>(null);
   const [localeChecked, setLocaleChecked] = useState(false);
   const [showLocalePicker, setShowLocalePicker] = useState(false);
+  const [tgSafeTop, setTgSafeTop] = useState(0);
 
   const sessionIdRef = useRef(
     Math.random().toString(36).slice(2) + Date.now().toString(36)
@@ -1353,7 +1354,10 @@ export default function App() {
 
     if (Platform.OS === 'web') {
       void ensureTelegramWebApp().then((tg) => {
-        if (tg) bootstrapTelegram();
+        if (tg) {
+          bootstrapTelegram();
+          setTgSafeTop(getTelegramSafeTop());
+        }
       });
 
       const onUnhandled = (event: PromiseRejectionEvent) => {
@@ -1668,7 +1672,7 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <View style={styles.container}>
+      <View style={[styles.container, tgSafeTop > 0 ? { paddingTop: tgSafeTop } : null]}>
         <GameAppErrorBoundary>
           <GameApp
             key={gameKey}
