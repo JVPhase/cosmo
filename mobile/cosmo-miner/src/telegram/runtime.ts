@@ -4,6 +4,7 @@
  * Safe to import on all platforms — all window/DOM access is guarded by
  * Platform.OS === 'web' checks so iOS/Android are never affected.
  */
+import React from 'react';
 import { Platform } from 'react-native';
 
 // ── Minimal TelegramWebApp surface we actually use ────────────────────────────
@@ -43,7 +44,12 @@ export interface TelegramWebApp {
     secondary_bg_color?: string;
   };
   safeAreaInset?: { top: number; bottom: number; left: number; right: number };
-  contentSafeAreaInset?: { top: number; bottom: number; left: number; right: number };
+  contentSafeAreaInset?: {
+    top: number;
+    bottom: number;
+    left: number;
+    right: number;
+  };
   viewportHeight: number;
   viewportStableHeight: number;
   ready(): void;
@@ -96,7 +102,8 @@ function createMockTelegramWebApp(): TelegramWebApp {
       secondary_bg_color: '#0c152d',
     },
     viewportHeight: typeof window !== 'undefined' ? window.innerHeight : 0,
-    viewportStableHeight: typeof window !== 'undefined' ? window.innerHeight : 0,
+    viewportStableHeight:
+      typeof window !== 'undefined' ? window.innerHeight : 0,
     ready() {},
     expand() {},
     onEvent() {},
@@ -131,7 +138,9 @@ function readTelegramWebAppFromWindow(): TelegramWebApp | null {
  * checks that depend on window.Telegram.WebApp. In test mode, falls back to the
  * local mock runtime when the real SDK is absent.
  */
-export async function ensureTelegramWebApp(timeoutMs = 5000): Promise<TelegramWebApp | null> {
+export async function ensureTelegramWebApp(
+  timeoutMs = 5000,
+): Promise<TelegramWebApp | null> {
   const existing = readTelegramWebAppFromWindow();
   if (existing) return existing;
 
@@ -145,11 +154,13 @@ export async function ensureTelegramWebApp(timeoutMs = 5000): Promise<TelegramWe
   telegramSdkPromise = new Promise<TelegramWebApp | null>((resolve) => {
     const finish = () => {
       const runtime = readTelegramWebAppFromWindow();
-      resolve(runtime ?? (isTelegramTestMode() ? createMockTelegramWebApp() : null));
+      resolve(
+        runtime ?? (isTelegramTestMode() ? createMockTelegramWebApp() : null),
+      );
     };
 
     const existingScript = document.getElementById(
-      TELEGRAM_SDK_SCRIPT_ID
+      TELEGRAM_SDK_SCRIPT_ID,
     ) as HTMLScriptElement | null;
 
     const script =
@@ -157,7 +168,7 @@ export async function ensureTelegramWebApp(timeoutMs = 5000): Promise<TelegramWe
       Object.assign(document.createElement('script'), {
         id: TELEGRAM_SDK_SCRIPT_ID,
         src: TELEGRAM_SDK_URL,
-        async: true
+        async: true,
       });
 
     const cleanup = () => {
@@ -197,7 +208,7 @@ export async function ensureTelegramWebApp(timeoutMs = 5000): Promise<TelegramWe
       () => {
         script.dataset.loaded = 'true';
       },
-      { once: true }
+      { once: true },
     );
   });
 
@@ -246,8 +257,10 @@ export function bootstrapTelegram(): void {
   if (tp.text_color) root.style.setProperty('--tg-text', tp.text_color);
   if (tp.hint_color) root.style.setProperty('--tg-hint', tp.hint_color);
   if (tp.button_color) root.style.setProperty('--tg-button', tp.button_color);
-  if (tp.button_text_color) root.style.setProperty('--tg-button-text', tp.button_text_color);
-  if (tp.secondary_bg_color) root.style.setProperty('--tg-secondary-bg', tp.secondary_bg_color);
+  if (tp.button_text_color)
+    root.style.setProperty('--tg-button-text', tp.button_text_color);
+  if (tp.secondary_bg_color)
+    root.style.setProperty('--tg-secondary-bg', tp.secondary_bg_color);
 
   const safeTop = tg.contentSafeAreaInset?.top ?? tg.safeAreaInset?.top ?? 0;
   root.style.setProperty('--tg-safe-top', `${safeTop}px`);
@@ -255,7 +268,9 @@ export function bootstrapTelegram(): void {
 
 function readCssPx(varName: string): number {
   if (typeof document === 'undefined') return 0;
-  const raw = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+  const raw = getComputedStyle(document.documentElement)
+    .getPropertyValue(varName)
+    .trim();
   return parseFloat(raw) || 0;
 }
 
@@ -282,11 +297,11 @@ export function getTelegramSafeAreaInsets(): TelegramSafeAreaInsets {
   if (!realTg) return { sysTop: 0, contentTop: 0 };
 
   const sysTop =
-    realTg.safeAreaInset?.top ??
-    readCssPx('--tg-safe-area-inset-top');
+    realTg.safeAreaInset?.top ?? readCssPx('--tg-safe-area-inset-top');
 
   const contentTop =
-    (realTg.contentSafeAreaInset?.top || 0) ||
+    realTg.contentSafeAreaInset?.top ||
+    0 ||
     readCssPx('--tg-content-safe-area-inset-top') ||
     44; // Telegram header is consistently ~44 px across all client versions
 
@@ -326,6 +341,18 @@ export function subscribeTelegramSafeAreaInsets(
 }
 
 /** @deprecated Use subscribeTelegramSafeAreaInsets */
-export function subscribeTelegramSafeTop(onChange: (top: number) => void): () => void {
-  return subscribeTelegramSafeAreaInsets(({ contentTop }) => onChange(contentTop));
+export function subscribeTelegramSafeTop(
+  onChange: (top: number) => void,
+): () => void {
+  return subscribeTelegramSafeAreaInsets(({ contentTop }) =>
+    onChange(contentTop),
+  );
 }
+
+/**
+ * React context that carries the latest Telegram safe-area insets.
+ * Consumers inside SafeAreaProvider can compute the extra top padding needed
+ * without touching SafeAreaInsetsContext (which would break tab-bar edges).
+ */
+export const TelegramSafeAreaInsetsCtx =
+  React.createContext<TelegramSafeAreaInsets>({ sysTop: 0, contentTop: 0 });
