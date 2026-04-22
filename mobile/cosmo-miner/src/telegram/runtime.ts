@@ -253,16 +253,28 @@ export function bootstrapTelegram(): void {
   root.style.setProperty('--tg-safe-top', `${safeTop}px`);
 }
 
+function readCssPx(varName: string): number {
+  if (typeof document === 'undefined') return 0;
+  const raw = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+  return parseFloat(raw) || 0;
+}
+
 /** Returns the Telegram content safe area top inset in pixels, or 0 outside Telegram. */
 export function getTelegramSafeTop(): number {
   const tg = getTelegramWebApp();
   if (!tg) return 0;
-  const fromInset = tg.contentSafeAreaInset?.top ?? tg.safeAreaInset?.top ?? 0;
-  if (fromInset > 0) return fromInset;
-  // Fallback: difference between window height and Telegram's reported viewport
-  if (typeof window !== 'undefined' && tg.viewportStableHeight > 0) {
-    return Math.max(0, window.innerHeight - tg.viewportStableHeight);
-  }
+
+  // JS API (Bot API 8.0+)
+  const fromContent = tg.contentSafeAreaInset?.top ?? 0;
+  if (fromContent > 0) return fromContent;
+
+  // CSS variable set automatically by Telegram SDK
+  const fromCss = readCssPx('--tg-content-safe-area-inset-top');
+  if (fromCss > 0) return fromCss;
+
+  // Older clients: the mini-app header bar is consistently ~44 px
+  if (isTelegramRuntime() && !isTelegramTestMode()) return 44;
+
   return 0;
 }
 
