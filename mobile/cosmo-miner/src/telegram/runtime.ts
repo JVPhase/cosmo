@@ -42,8 +42,11 @@ export interface TelegramWebApp {
     button_text_color?: string;
     secondary_bg_color?: string;
   };
+  safeAreaInset?: { top: number; bottom: number; left: number; right: number };
+  contentSafeAreaInset?: { top: number; bottom: number; left: number; right: number };
   ready(): void;
   expand(): void;
+  disableVerticalSwipes?(): void;
   openInvoice(url: string, callback?: (status: InvoiceStatus) => void): void;
   hapticFeedback: {
     notificationOccurred(type: 'error' | 'success' | 'warning'): void;
@@ -221,6 +224,11 @@ export function bootstrapTelegram(): void {
 
   tg.ready();
   tg.expand();
+  tg.disableVerticalSwipes?.();
+
+  // Prevent accidental pull-to-close via browser overscroll
+  document.documentElement.style.overscrollBehavior = 'none';
+  document.body.style.overscrollBehavior = 'none';
 
   const tp = tg.themeParams;
   const root = document.documentElement;
@@ -230,4 +238,14 @@ export function bootstrapTelegram(): void {
   if (tp.button_color) root.style.setProperty('--tg-button', tp.button_color);
   if (tp.button_text_color) root.style.setProperty('--tg-button-text', tp.button_text_color);
   if (tp.secondary_bg_color) root.style.setProperty('--tg-secondary-bg', tp.secondary_bg_color);
+
+  const safeTop = tg.contentSafeAreaInset?.top ?? tg.safeAreaInset?.top ?? 0;
+  root.style.setProperty('--tg-safe-top', `${safeTop}px`);
+}
+
+/** Returns the Telegram content safe area top inset in pixels, or 0 outside Telegram. */
+export function getTelegramSafeTop(): number {
+  const tg = getTelegramWebApp();
+  if (!tg) return 0;
+  return tg.contentSafeAreaInset?.top ?? tg.safeAreaInset?.top ?? 0;
 }

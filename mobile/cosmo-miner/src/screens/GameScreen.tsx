@@ -254,6 +254,7 @@ export function GameScreen({
       <MiningArea
         planet={planet}
         passiveRate={passiveRate}
+        clickPower={clickPower}
         tapState={tapState}
         handlePressIn={handlePressIn}
         showClickHint={showClickHint}
