@@ -523,15 +523,61 @@ npx expo export --platform web   # или: npx expo start --web
 2. Запустите `cd server && npm run db:seed`.
 3. Если тип новый (не из таблицы выше): добавьте ветку в `fulfillment.ts` и в `App.tsx` `onStarsPurchaseApplied`.
 
+## Деплой и обновление
 
-# Снёс весь test-local стек
-docker compose -f compose.test-local.yml --env-file .env.test-local down
+### Прод
 
-# Остановил старые контейнеры, занимавшие порт 5432
-docker stop cosmo-postgres cosmo-server cosmo-game-web
+**Пересобрать и перезапустить сервер** (после изменений в `server/`):
 
-# Поднял test-local стек заново
+```bash
+docker compose --env-file .env.prod -f compose.prod.yml up -d --build server
+```
+
+**Применить миграции БД** (после изменений в `prisma/schema.prisma`):
+
+```bash
+docker compose --env-file .env.prod -f compose.prod.yml exec server npx prisma migrate deploy
+```
+
+**Засидировать** (после изменений в `configData.ts` или `locales/*.ts`):
+
+```bash
+docker compose --env-file .env.prod -f compose.prod.yml run --rm seed
+```
+
+**Полный деплой с нуля** (первый раз или после `down`):
+
+```bash
+docker compose --env-file .env.prod -f compose.prod.yml up -d --build postgres server caddy
+docker compose --env-file .env.prod -f compose.prod.yml run --rm seed
+```
+
+---
+
+### Test-local
+
+**Поднять стек:**
+
+```bash
 docker compose -f compose.test-local.yml --env-file .env.test-local up -d
+```
 
-# Засидировал
-cd server && npm run db:seed
+**Пересобрать сервер:**
+
+```bash
+docker compose -f compose.test-local.yml --env-file .env.test-local up -d --build server
+```
+
+**Засидировать:**
+
+```bash
+docker compose -f compose.test-local.yml --env-file .env.test-local run --rm seed
+```
+
+**Снести и поднять заново:**
+
+```bash
+docker compose -f compose.test-local.yml --env-file .env.test-local down
+docker compose -f compose.test-local.yml --env-file .env.test-local up -d
+docker compose -f compose.test-local.yml --env-file .env.test-local run --rm seed
+```

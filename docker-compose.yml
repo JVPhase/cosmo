@@ -55,5 +55,18 @@ services:
     ports:
       - "8080:80"
 
+  seed:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    image: cosmo-server:local
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/cosmo_db
+    command: ["npm", "run", "db:seed"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles: ["seed"]
+
 volumes:
   cosmo_pg_data:
