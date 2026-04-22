@@ -127,13 +127,13 @@ function grantPendingMessage(item: StarShopItem): string {
     }
 
     case 'booster':
-      return t('ui.shop.pending_booster', { name: item.name });
+      return t('ui.shop.pending_booster', { name: t('config.' + item.name) });
 
     case 'loot_box':
-      return t('ui.shop.pending_lootbox', { name: item.name });
+      return t('ui.shop.pending_lootbox', { name: t('config.' + item.name) });
 
     default:
-      return t('ui.shop.pending_lootbox', { name: item.name });
+      return t('ui.shop.pending_lootbox', { name: t('config.' + item.name) });
   }
 }
 
@@ -154,13 +154,13 @@ function grantAppliedMessage(item: StarShopItem): string {
     }
 
     case 'booster':
-      return t('ui.shop.stars_applied_booster', { name: item.name });
+      return t('ui.shop.stars_applied_booster', { name: t('config.' + item.name) });
 
     case 'loot_box':
-      return t('ui.shop.stars_applied_lootbox', { name: item.name });
+      return t('ui.shop.stars_applied_lootbox', { name: t('config.' + item.name) });
 
     default:
-      return t('ui.shop.stars_applied_lootbox', { name: item.name });
+      return t('ui.shop.stars_applied_lootbox', { name: t('config.' + item.name) });
   }
 }
 
@@ -300,8 +300,8 @@ export function StarsShopTab({ onPurchaseApplied }: StarsShopTabProps) {
         return (
           <View style={styles.card}>
             <View style={styles.cardBody}>
-              <Text style={styles.cardName}>{item.name}</Text>
-              <Text style={styles.cardDesc}>{item.description}</Text>
+              <Text style={styles.cardName}>{t('config.' + item.name)}</Text>
+              <Text style={styles.cardDesc}>{t('config.' + item.description)}</Text>
             </View>
             <Pressable
               style={[styles.buyBtn, !!buying && styles.buyBtnDisabled]}

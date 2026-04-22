@@ -58,7 +58,10 @@ export function MiningArea({
     <View style={styles.main}>
       <Animated.View
         pointerEvents="none"
-        style={[styles.asteroidPulseGlow, { transform: [{ scale: glowScale }] }]}
+        style={[
+          styles.asteroidPulseGlow,
+          { transform: [{ scale: glowScale }] },
+        ]}
       />
       <View style={styles.asteroidOrbitContainer}>
         <PassiveMiningFx passiveRate={passiveRate} mineColor={planet.color} />
@@ -77,7 +80,10 @@ export function MiningArea({
         >
           <Pressable
             onPressIn={handlePressIn}
-            style={({ pressed }) => [styles.asteroid, pressed ? { opacity: 0.92 } : null]}
+            style={({ pressed }) => [
+              styles.asteroid,
+              pressed ? { opacity: 0.92 } : null,
+            ]}
           >
             <Image
               source={planet.image}
@@ -87,16 +93,23 @@ export function MiningArea({
             {showClickHint && (
               <View style={styles.asteroidCenter}>
                 <Text style={styles.asteroidIcon}>⛏️</Text>
-                <Text style={styles.clickHint}>{t('ui.mining.click_hint')}</Text>
+                <Text style={styles.clickHint}>
+                  {t('ui.mining.click_hint')}
+                </Text>
               </View>
             )}
           </Pressable>
         </AnimatedMineEffects>
       </View>
 
-      <Text style={styles.hint}>{t('ui.mining.hint', { resource: planet.resource })}</Text>
+      <Text style={styles.hint}>
+        {t('ui.mining.hint')}
+      </Text>
 
-      <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.metalFloatOverlay]}>
+      <View
+        pointerEvents="none"
+        style={[StyleSheet.absoluteFill, styles.metalFloatOverlay]}
+      >
         {metalFloats.map((f) => {
           const metal = METALS.find((m) => m.id === f.metalId)!;
           return (
@@ -105,13 +118,20 @@ export function MiningArea({
               style={{
                 position: 'absolute',
                 opacity: f.opacity,
-                transform: [{ translateX: f.offsetX }, { translateY: f.translateY }],
+                transform: [
+                  { translateX: f.offsetX },
+                  { translateY: f.translateY },
+                ],
                 flexDirection: 'row',
                 alignItems: 'center',
                 gap: 3,
               }}
             >
-              <Image source={metal.image} style={styles.metalFloatIcon} resizeMode="contain" />
+              <Image
+                source={metal.image}
+                style={styles.metalFloatIcon}
+                resizeMode="contain"
+              />
               <Text style={styles.metalFloatText}>+{f.amount}</Text>
             </Animated.View>
           );
@@ -176,6 +196,8 @@ const styles = StyleSheet.create({
     height: 170,
   },
   asteroidCenter: {
+    width: 90,
+    height: 90,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(0, 20, 60, 0.55)',

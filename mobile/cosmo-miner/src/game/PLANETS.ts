@@ -10,7 +10,6 @@ export type PlanetDefinition = {
   image: number;
   unlocked: boolean;
   cost: number;
-  resource: string;
   color: string;
   bonus: number;
   lore: string;
@@ -57,6 +56,7 @@ const PLANET_IMAGE_REGISTRY: Record<string, number> = {
 };
 
 const SECTOR_ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+
 function getPlanetSuffixes(): string[] {
   return [
     t('ui.planets.suffix_0'),
@@ -88,7 +88,6 @@ function buildHardcodedPlanets(): PlanetDefinition[] {
     unlocked: o.unlocked,
     cost: o.cost,
     bonus: o.bonus,
-    resource: o.resource,
     color: o.color,
     lore: t('config.' + o.loreKey),
   }));
@@ -119,7 +118,6 @@ function generatePlanets(): PlanetDefinition[] {
         image: PLANET_IMAGE_POOL[(id - 1) % PLANET_IMAGE_POOL.length],
         unlocked: false,
         cost: 0,
-        resource: t('config.' + theme.resourcePoolKeys[pi % theme.resourcePoolKeys.length]),
         color: theme.colorPool[pi % theme.colorPool.length],
         bonus: Math.round(bonus),
         lore: t('config.' + theme.loreKey),

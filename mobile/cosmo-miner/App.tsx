@@ -62,6 +62,8 @@ import {
   fetchAndCacheRemoteConfig
 } from './src/game/remoteConfig';
 import { loadI18n, loadSavedLocale, saveLocale, t } from './src/game/i18n';
+import { invalidatePlanetsCache } from './src/game/PLANETS';
+import { invalidateAliensCache } from './src/game/ALIENS';
 import { LocalePickerOverlay, type SupportedLocale } from './src/ui/LocalePickerOverlay';
 import {
   fetchCloudSave,
@@ -1355,14 +1357,26 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    loadSavedLocale().then((saved) => {
+    let mounted = true;
+    (async () => {
+      const saved = await loadSavedLocale();
+      if (!mounted) return;
+
       if (saved) {
-        loadI18n(saved).catch(() => {});
+        await loadI18n(saved);
+        if (!mounted) return;
+        invalidatePlanetsCache();
+        invalidateAliensCache();
+        setShowLocalePicker(false);
         setLocaleChecked(true);
-      } else {
-        setShowLocalePicker(true);
+        return;
       }
-    });
+
+      setShowLocalePicker(true);
+    })();
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -1528,7 +1542,9 @@ export default function App() {
 
   const handleLocalePick = useCallback(async (locale: SupportedLocale) => {
     await saveLocale(locale);
-    loadI18n(locale).catch(() => {});
+    await loadI18n(locale);
+    invalidatePlanetsCache();
+    invalidateAliensCache();
     setShowLocalePicker(false);
     setLocaleChecked(true);
   }, []);
@@ -1544,16 +1560,6 @@ export default function App() {
     setGameKey((k) => k + 1);
   }, []);
 
-  if (unlocked !== true) {
-    if (unlocked === null) return null;
-    return (
-      <View style={styles.container}>
-        <StatusBar style="light" />
-        <PasswordScreen onUnlock={handleUnlock} />
-      </View>
-    );
-  }
-
   if (!localeChecked) {
     if (showLocalePicker) {
       return (
@@ -1564,6 +1570,16 @@ export default function App() {
       );
     }
     return <View style={styles.container}><StatusBar style="light" /></View>;
+  }
+
+  if (unlocked !== true) {
+    if (unlocked === null) return null;
+    return (
+      <View style={styles.container}>
+        <StatusBar style="light" />
+        <PasswordScreen onUnlock={handleUnlock} />
+      </View>
+    );
   }
 
   if (!configReady && configError) {
