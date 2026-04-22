@@ -9,6 +9,7 @@ import {
 } from '../game/RESEARCH';
 import { getPlayerTitle, xpAtLevelStart, xpForNextLevel } from '../game/PLAYER';
 import { formatNum } from '../game/formatNum';
+import { t } from '../game/i18n';
 
 export type ResearchScreenProps = {
   playerLevel: number;
@@ -22,39 +23,40 @@ export type ResearchScreenProps = {
 
 function formatEffect(node: ResearchNode): string {
   const { effect } = node;
+  const pct = String(Math.round(effect.value * 100));
   switch (effect.type) {
     case 'clickMultiplier':
-      return `+${Math.round(effect.value * 100)}% к добыче/клик`;
+      return t('ui.research.effect.click_multiplier', { pct });
     case 'passiveMultiplier':
-      return `+${Math.round(effect.value * 100)}% к пассивному доходу`;
+      return t('ui.research.effect.passive_multiplier', { pct });
     case 'metalDropBonus':
-      return `+${Math.round(effect.value * 100)}% к шансу металлов`;
+      return t('ui.research.effect.metal_drop_bonus', { pct });
     case 'damageMultiplier':
-      return `+${Math.round(effect.value * 100)}% к урону в бою`;
+      return t('ui.research.effect.damage_multiplier', { pct });
     case 'battleRegenBlock':
-      return `Регенерация врага заблокирована на ${effect.value / 1000} сек`;
+      return t('ui.research.effect.battle_regen_block', { sec: String(effect.value / 1000) });
     case 'critChance':
-      return `+${Math.round(effect.value * 100)}% шанс крита`;
+      return t('ui.research.effect.crit_chance', { pct });
     case 'critMultiplier':
-      return `+${Math.round(effect.value * 100)}% к урону крита`;
+      return t('ui.research.effect.crit_multiplier', { pct });
     case 'expeditionTimeReduction':
-      return `−${Math.round(effect.value * 100)}% время экспедиции`;
+      return t('ui.research.effect.expedition_time_reduction', { pct });
     case 'expeditionYieldBonus':
-      return `+${Math.round(effect.value * 100)}% металла за экспедицию`;
+      return t('ui.research.effect.expedition_yield_bonus', { pct });
     case 'expeditionSlotBonus':
-      return `+${effect.value} слот экспедиции`;
+      return t('ui.research.effect.expedition_slot_bonus', { count: String(effect.value) });
     case 'specificMetalDropBonus':
-      return `+${Math.round(effect.value * 100)}% к шансу выпадения ${effect.metalId}`;
+      return t('ui.research.effect.specific_metal_drop_bonus', { pct, metalId: effect.metalId });
     case 'moduleChargeReduction':
-      return `−${Math.round(effect.value * 100)}% ударов для зарядки модуля`;
+      return t('ui.research.effect.module_charge_reduction', { pct });
     case 'moduleEffectBonus':
-      return `+${Math.round(effect.value * 100)}% к эффекту модуля`;
+      return t('ui.research.effect.module_effect_bonus', { pct });
     case 'moduleSlotBonus':
-      return `+${effect.value} слот модуля`;
+      return t('ui.research.effect.module_slot_bonus', { count: String(effect.value) });
     case 'xpMultiplierBonus':
-      return `+${Math.round(effect.value * 100)}% к получаемому XP`;
+      return t('ui.research.effect.xp_multiplier_bonus', { pct });
     case 'upgradeCostReduction':
-      return `−${Math.round(effect.value * 100)}% к стоимости улучшений`;
+      return t('ui.research.effect.upgrade_cost_reduction', { pct });
   }
 }
 
@@ -137,7 +139,7 @@ function ResearchCard({
               isLocked ? { color: 'rgba(255,255,255,0.5)' } : { color: '#fff' }
             ]}
           >
-            {node.name}
+            {t('config.' + node.nameKey)}
           </Text>
           <Text
             style={[
@@ -150,7 +152,7 @@ function ResearchCard({
         </View>
         {isResearched && (
           <View style={styles.doneTag}>
-            <Text style={styles.doneTagText}>✓ ИЗУЧЕНО</Text>
+            <Text style={styles.doneTagText}>{t('ui.research.done_tag')}</Text>
           </View>
         )}
       </View>
@@ -158,25 +160,25 @@ function ResearchCard({
       <Text
         style={[styles.cardLore, isLocked ? { opacity: LOCKED_OPACITY } : null]}
       >
-        {node.lore}
+        {t('config.' + node.loreKey)}
       </Text>
 
       <View style={styles.cardFooter}>
         <View style={styles.cardMeta}>
           {nodeState === 'locked_level' && (
             <Text style={styles.metaLocked}>
-              🔒 Уровень {node.requiredLevel} (ваш: {playerLevel})
+              {t('ui.research.locked_level', { level: String(node.requiredLevel), current: String(playerLevel) })}
             </Text>
           )}
           {nodeState === 'locked_prereq' && (
             <Text style={styles.metaLocked}>
-              🔒 Требует: {prereqNodes.map((r) => r.name).join(', ')}
+              {t('ui.research.locked_prereq', { names: prereqNodes.map((r) => t('config.' + r.nameKey)).join(', ') })}
             </Text>
           )}
           {(nodeState === 'available' || nodeState === 'no_energy') &&
             prereqNodes.length > 0 && (
               <Text style={styles.metaPrereq}>
-                ✓ {prereqNodes.map((r) => r.name).join(', ')}
+                ✓ {prereqNodes.map((r) => t('config.' + r.nameKey)).join(', ')}
               </Text>
             )}
           {!isResearched && !isLocked && (
@@ -209,7 +211,7 @@ function ResearchCard({
                 { color: isAvailable ? '#00d4ff' : 'rgba(255,255,255,0.2)' }
               ]}
             >
-              ИЗУЧИТЬ
+              {t('ui.research.buy_btn')}
             </Text>
           </Pressable>
         )}
@@ -247,7 +249,7 @@ export function ResearchScreen({
       {/* Player level card */}
       <View style={styles.levelCard}>
         <View style={styles.levelRow}>
-          <Text style={styles.levelNum}>УР. {playerLevel}</Text>
+          <Text style={styles.levelNum}>{t('ui.research.level_prefix', { level: String(playerLevel) })}</Text>
           <Text style={styles.levelTitle}>{getPlayerTitle(playerLevel)}</Text>
         </View>
         <View style={styles.xpBarBg}>
@@ -257,8 +259,8 @@ export function ResearchScreen({
         </View>
         <Text style={styles.xpLabel}>
           {xpNext !== null
-            ? `${formatNum(xpInLevel)} / ${formatNum(xpNeeded!)} XP до уровня ${playerLevel + 1}`
-            : `${formatNum(playerXP)} XP · МАКСИМАЛЬНЫЙ УРОВЕНЬ`}
+            ? t('ui.research.xp_progress', { xpInLevel: formatNum(xpInLevel), xpNeeded: formatNum(xpNeeded!), next: String(playerLevel + 1) })
+            : t('ui.research.xp_max', { xp: formatNum(playerXP) })}
         </Text>
       </View>
 
@@ -277,7 +279,7 @@ export function ResearchScreen({
               branch === 'mining' ? styles.branchTabTextActive : null
             ]}
           >
-            ⛏️ ДОБЫЧА
+            {t('ui.research.branch_mining')}
           </Text>
           {branchHasAvailable('mining') && <View style={styles.branchTabBadge} />}
         </Pressable>
@@ -295,7 +297,7 @@ export function ResearchScreen({
                 branch === 'battle' ? styles.branchTabTextActive : null
               ]}
             >
-              ⚔️ БОЙ
+              {t('ui.research.branch_battle')}
             </Text>
             {branchHasAvailable('battle') && <View style={styles.branchTabBadge} />}
           </Pressable>
@@ -314,7 +316,7 @@ export function ResearchScreen({
                 branch === 'expedition' ? styles.branchTabTextActive : null
               ]}
             >
-              🚀 ЭКСПЕДИЦИИ
+              {t('ui.research.branch_expedition')}
             </Text>
             {branchHasAvailable('expedition') && <View style={styles.branchTabBadge} />}
           </Pressable>
@@ -325,10 +327,7 @@ export function ResearchScreen({
 
   const listFooter = (
     <View style={styles.hint}>
-      <Text style={styles.hintText}>
-        💡 XP начисляется за клики, пассивный доход, победы в боях и
-        экспедиции.
-      </Text>
+      <Text style={styles.hintText}>{t('ui.research.hint')}</Text>
     </View>
   );
 

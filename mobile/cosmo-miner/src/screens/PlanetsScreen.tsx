@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { getAliens } from '../game/ALIENS';
 import { formatNum } from '../game/formatNum';
+import { t } from '../game/i18n';
 import { getMetals, getPlanetDropTable } from '../game/METALS';
 import { getPlanets, type PlanetDefinition, type PlanetId } from '../game/PLANETS';
 import {
@@ -81,7 +82,7 @@ export function PlanetsScreen({
       <View style={styles.screen}>
         <ScrollView contentContainerStyle={styles.content}>
           <Pressable onPress={() => setSelPlanet(null)}>
-            <Text style={styles.back}>← НАЗАД</Text>
+            <Text style={styles.back}>{t('ui.planets.back')}</Text>
           </Pressable>
 
           <View style={{ alignItems: 'center' }}>
@@ -93,15 +94,15 @@ export function PlanetsScreen({
             <Text style={[styles.planetName, { color: selPlanet.color }]}>
               {selPlanet.name}
             </Text>
-            <Text style={styles.meta}>Ресурс: {selPlanet.resource}</Text>
+            <Text style={styles.meta}>{t('ui.planets.resource_label')}</Text>
           </View>
 
           <View
             style={[styles.dossier, { borderColor: 'rgba(255,255,255,0.08)' }]}
           >
-            <Text style={styles.dossierTitle}>📋 ДОСЬЕ ПЛАНЕТЫ · МММРДР</Text>
+            <Text style={styles.dossierTitle}>{t('ui.planets.dossier_title')}</Text>
             <Text style={styles.dossierText}>
-              ⛏ Добываемый ресурс: {selPlanet.resource}
+              {t('ui.planets.mined_resource')}
             </Text>
             {(() => {
               const drops =
@@ -111,7 +112,7 @@ export function PlanetsScreen({
               if (!drops || drops.length === 0) return null;
               return (
                 <View style={styles.metalsRow}>
-                  <Text style={styles.dossierText}>Металлы:</Text>
+                  <Text style={styles.dossierText}>{t('ui.planets.metals_label')}</Text>
                   {drops.map((d) => {
                     const metal = METALS.find((m) => m.id === d.metalId);
                     if (!metal) return null;
@@ -122,7 +123,7 @@ export function PlanetsScreen({
                           style={styles.metalChipIcon}
                           resizeMode="contain"
                         />
-                        <Text style={styles.metalChipText}>{metal.name}</Text>
+                        <Text style={styles.metalChipText}>{t('config.' + metal.nameKey)}</Text>
                       </View>
                     );
                   })}
@@ -142,11 +143,11 @@ export function PlanetsScreen({
               <Text
                 style={[styles.dossierTitle, { color: 'rgba(255,80,80,0.6)' }]}
               >
-                {alien.icon} ОККУПИРОВАНА · {alien.name}
+                {t('ui.planets.occupied', { icon: alien.icon, name: alien.name })}
               </Text>
               <Text style={styles.dossierText}>{alien.lore}</Text>
               <Text style={styles.alienHP}>
-                HP противника: {formatNum(alien.maxHP)}
+                {t('ui.planets.enemy_hp', { hp: formatNum(alien.maxHP) })}
               </Text>
               <Text
                 style={[
@@ -159,7 +160,7 @@ export function PlanetsScreen({
                   },
                 ]}
               >
-                ⚡ Стоимость атаки: {formatNum(alien.attackEnergyCost)} энергии
+                {t('ui.planets.attack_cost', { cost: formatNum(alien.attackEnergyCost) })}
               </Text>
             </View>
           )}
@@ -174,10 +175,10 @@ export function PlanetsScreen({
               <Text
                 style={[styles.attackingText, { color: 'rgba(255,200,0,0.6)' }]}
               >
-                🔒 СЕКТОР {selPlanet.sectorId} ЗАБЛОКИРОВАН
+                {t('ui.planets.sector_locked_title', { id: String(selPlanet.sectorId) })}
               </Text>
               <Text style={styles.attackingHint}>
-                Захватите все планеты Сектора {selPlanet.sectorId - 1}
+                {t('ui.planets.sector_locked_hint_planets', { id: String(selPlanet.sectorId - 1) })}
               </Text>
             </View>
           ) : unlocked ? (
@@ -188,7 +189,7 @@ export function PlanetsScreen({
                 pressed ? { opacity: 0.92 } : null,
               ]}
             >
-              <Text style={styles.chooseBtnText}>✓ ВЫБРАТЬ ЭТУ ЛОКАЦИЮ</Text>
+              <Text style={styles.chooseBtnText}>{t('ui.planets.choose_btn')}</Text>
             </Pressable>
           ) : characterLocked ? (
             <View
@@ -203,17 +204,17 @@ export function PlanetsScreen({
                   { color: 'rgba(0,212,255,0.7)' },
                 ]}
               >
-                📡 НУЖЕН ПЕРСОНАЖ
+                {t('ui.planets.need_character')}
               </Text>
               <Text style={styles.attackingHint}>
-                Сначала выберите адресата в «КАНАЛЕ СВЯЗИ»
+                {t('ui.planets.need_character_hint')}
               </Text>
             </View>
           ) : alreadyBattling ? (
             <View style={styles.attackingBox}>
-              <Text style={styles.attackingText}>⚔️ БОЙ В ПРОЦЕССЕ</Text>
+              <Text style={styles.attackingText}>{t('ui.planets.battle_in_progress')}</Text>
               <Text style={styles.attackingHint}>
-                Перейдите на вкладку БОЙ для атаки
+                {t('ui.planets.battle_in_progress_hint')}
               </Text>
             </View>
           ) : otherBattle ? (
@@ -229,10 +230,10 @@ export function PlanetsScreen({
                   { color: 'rgba(255,255,255,0.3)' },
                 ]}
               >
-                ВЫ УЖЕ ВЕДЁТЕ БОЙ
+                {t('ui.planets.already_battling')}
               </Text>
               <Text style={styles.attackingHint}>
-                Сначала завершите текущий бой
+                {t('ui.planets.already_battling_hint')}
               </Text>
             </View>
           ) : shipDamage === 0 ? (
@@ -248,9 +249,9 @@ export function PlanetsScreen({
                   { color: 'rgba(255,255,255,0.3)' },
                 ]}
               >
-                НЕТ ВООРУЖЕНИЯ
+                {t('ui.planets.no_weapons')}
               </Text>
-              <Text style={styles.attackingHint}>Постройте пушки в ВЕРФИ</Text>
+              <Text style={styles.attackingHint}>{t('ui.planets.no_weapons_hint')}</Text>
             </View>
           ) : notEnoughEnergy ? (
             <View
@@ -265,10 +266,10 @@ export function PlanetsScreen({
                   { color: 'rgba(255,100,100,0.6)' },
                 ]}
               >
-                НЕ ХВАТАЕТ ЭНЕРГИИ
+                {t('ui.planets.not_enough_energy')}
               </Text>
               <Text style={styles.attackingHint}>
-                Нужно {formatNum(alien!.attackEnergyCost)} энергии для атаки
+                {t('ui.planets.not_enough_energy_hint', { cost: formatNum(alien!.attackEnergyCost) })}
               </Text>
             </View>
           ) : (
@@ -282,7 +283,7 @@ export function PlanetsScreen({
                 pressed ? { opacity: 0.92 } : null,
               ]}
             >
-              <Text style={styles.attackBtnText}>⚔️ НАЧАТЬ АТАКУ</Text>
+              <Text style={styles.attackBtnText}>{t('ui.planets.attack_btn')}</Text>
             </Pressable>
           )}
         </ScrollView>
@@ -297,7 +298,7 @@ export function PlanetsScreen({
         keyExtractor={(p) => String(p.id)}
         contentContainerStyle={styles.content}
         ListHeaderComponent={
-          <Text style={styles.title}>◈ ЛОКАЦИИ ДОБЫЧИ ◈</Text>
+          <Text style={styles.title}>{t('ui.planets.locations_title')}</Text>
         }
         renderSectionHeader={({ section: { sector } }) => {
           const sectorUnlocked = isSectorUnlocked(
@@ -329,7 +330,7 @@ export function PlanetsScreen({
                       : { color: 'rgba(255,255,255,0.5)' },
                   ]}
                 >
-                  СЕКТОР {sector.id} · {sector.name.toUpperCase()}
+                  {t('ui.planets.sector_header', { id: String(sector.id), name: sector.name.toUpperCase() })}
                 </Text>
                 {lockReason && (
                   <Text style={styles.sectorLockHint}>{lockReason}</Text>
@@ -395,18 +396,18 @@ export function PlanetsScreen({
                 </Text>
                 <Text style={styles.cardMeta}>
                   {unlocked
-                    ? `${p.resource}`
+                    ? t('ui.planets.card_resource')
                     : isBattling
-                      ? `⚔️ Бой с ${alien?.name ?? 'противником'}`
+                      ? t('ui.planets.card_battling', { name: alien?.name ?? t('ui.battle.enemy_fallback') })
                       : !sectorUnlocked
-                        ? '🔒 Сектор заблокирован'
+                        ? t('ui.planets.card_sector_locked')
                         : alien
-                          ? `👾 Оккупирована: ${alien.name} · ${p.resource}`
-                          : 'Недоступна'}
+                          ? t('ui.planets.card_occupied', { name: alien.name })
+                          : t('ui.planets.card_unavailable')}
                 </Text>
               </View>
-              {active && <Text style={styles.activeLabel}>АКТИВНА</Text>}
-              {isBattling && <Text style={styles.battleLabel}>БОЙ</Text>}
+              {active && <Text style={styles.activeLabel}>{t('ui.planets.card_active')}</Text>}
+              {isBattling && <Text style={styles.battleLabel}>{t('ui.planets.card_battle_label')}</Text>}
             </Pressable>
           );
         }}

@@ -292,6 +292,43 @@ model CrmActivity {
   @@index([dealId])
 }
 
+// ── IAP Packs ─────────────────────────────────────────────────────────────────
+// Catalog of in-app purchase packs (rewarded-ad + Apple/Google IAP).
+// kind: "ad" | "iap"
+// name / lore: i18n keys resolved via the config namespace (e.g. "iap_pack.credits_ad.name")
+model IapPack {
+  id        String   @id   // "credits_ad" | "credits_100" | "credits_300" | "credits_800" | "credits_2000"
+  kind      String         // "ad" | "iap"
+  icon      String
+  credits   Int
+  name      String         // i18n key in config namespace
+  lore      String         // i18n key in config namespace
+  productId String?        // Apple/Google store product ID (null for kind="ad")
+  basePrice String?        // Fallback display price, e.g. "$0.99" (null for kind="ad")
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ── Localisation ─────────────────────────────────────────────────────────────
+// Stores translated string bundles, one row per (app, namespace, locale).
+// messages: JSON object { "key": "translated value" }
+// version increments on every write.
+model LocaleBundle {
+  id          String   @id @default(cuid())
+  app         String   // "mobile" | "crm"
+  namespace   String   // "ui" | "alerts" | "story" | "dialogues" | "config"
+  locale      String   // "ru" | "en" | …
+  messages    Json     // { "key": "value" }
+  version     Int      @default(1)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([app, namespace, locale])
+  @@index([app, namespace])
+}
+
 // ── Legal Consents ────────────────────────────────────────────────────────────
 // Records each consent grant/revocation for compliance (GDPR Art. 7, 152-ФЗ ст. 9).
 // consentType: "privacy_policy" | "terms_of_service" | "telegram_data" | "marketing"

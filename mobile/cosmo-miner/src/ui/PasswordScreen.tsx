@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { t } from "../game/i18n";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -31,8 +32,8 @@ export function PasswordScreen({ onUnlock }: { onUnlock: () => void }) {
     >
       <View style={styles.box}>
         <Text style={styles.icon}>🔒</Text>
-        <Text style={styles.title}>ДОСТУП ЗАКРЫТ</Text>
-        <Text style={styles.subtitle}>Введите код для входа</Text>
+        <Text style={styles.title}>{t('ui.password.title')}</Text>
+        <Text style={styles.subtitle}>{t('ui.password.subtitle')}</Text>
 
         <TextInput
           style={[styles.input, error ? styles.inputError : null]}
@@ -47,14 +48,14 @@ export function PasswordScreen({ onUnlock }: { onUnlock: () => void }) {
         />
 
         {error && (
-          <Text style={styles.errorText}>Неверный код</Text>
+          <Text style={styles.errorText}>{t('ui.password.error')}</Text>
         )}
 
         <Pressable
           onPress={handleSubmit}
           style={({ pressed }) => [styles.btn, pressed ? { opacity: 0.85 } : null]}
         >
-          <Text style={styles.btnText}>ВОЙТИ</Text>
+          <Text style={styles.btnText}>{t('ui.password.action')}</Text>
         </Pressable>
       </View>
     </KeyboardAvoidingView>

@@ -4,12 +4,12 @@ export type UpgradeId = number;
 
 export type UpgradeResolved = {
   id: number;
-  name: string;
+  nameKey: string;
   icon: string;
   baseCost: number;
   clickBonus: number;
   passiveBonus: number;
-  lore: string;
+  loreKey: string;
 };
 
 export type UpgradeDefinition = UpgradeResolved;

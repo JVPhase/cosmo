@@ -25,11 +25,11 @@ export type LootEntry = {
 
 export type ShopItem = {
   id: ShopItemId;
-  name: string;
+  nameKey: string;
   icon: string;
   category: ShopCategory;
   creditCost: number;
-  lore: string;
+  loreKey: string;
   boostEffect?: BoostEffect;
   metalReward?: { metalId: MetalId; amount: number }[];
   lootPool?: LootEntry[];

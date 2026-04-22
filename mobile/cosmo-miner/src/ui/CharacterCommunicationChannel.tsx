@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { getAliens } from '../game/ALIENS';
 import { logEvent } from '../game/analytics';
+import { t } from '../game/i18n';
 import { CHARACTER_IMAGES, type CharacterId } from '../game/CHARACTERS';
 import type { DialogueCharacter } from '../game/dialogues';
 import { ModalSheet } from './ModalSheet';
@@ -91,16 +92,14 @@ export function CharacterCommunicationChannel({
     return (
       <ModalSheet
         visible={visible}
-        title="◈ ВХОДЯЩИЙ СИГНАЛ · КЛЕРК-7 ◈"
+        title={t('ui.channel.title_incoming')}
         onClose={handleClose}
       >
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.clerkRow}>
             <Text style={styles.clerkEmoji}>🤖</Text>
             <Text style={styles.clerkText}>
-              {
-                'Зафиксированы 4 входящих сигнала из неизвестных источников.\n\nСогласно регламенту МММРДР, одновременная обработка более одного канала связи требует лицензии категории КС-4. Форма подана. Ответа нет. Поэтому — выберите одного адресата.\n\nОстальные сигналы будут архивированы. Или потеряны. Технически — разницы нет.'
-              }
+              {t('ui.channel.select_text')}
             </Text>
           </View>
 
@@ -154,7 +153,7 @@ export function CharacterCommunicationChannel({
                 !pendingId && styles.actionBtnTextDisabled
               ]}
             >
-              ПОДТВЕРДИТЬ
+              {t('ui.channel.confirm')}
             </Text>
           </Pressable>
         </ScrollView>
@@ -166,7 +165,7 @@ export function CharacterCommunicationChannel({
   return (
     <ModalSheet
       visible={visible}
-      title={`◈ ПРЯМОЙ КАНАЛ · ${chosenCharacter.name.toUpperCase()} ◈`}
+      title={t('ui.channel.title_active', { name: chosenCharacter.name.toUpperCase() })}
       onClose={handleClose}
     >
       <ScrollView contentContainerStyle={styles.content}>
@@ -199,7 +198,7 @@ export function CharacterCommunicationChannel({
             <Text
               style={[styles.tabText, tab === 'inbox' && styles.tabTextActive]}
             >
-              ВХОДЯЩИЕ
+              {t('ui.channel.tab_inbox')}
             </Text>
           </Pressable>
           <Pressable
@@ -216,7 +215,7 @@ export function CharacterCommunicationChannel({
                 tab === 'history' && styles.tabTextActive
               ]}
             >
-              ИСТОРИЯ
+              {t('ui.channel.tab_history')}
             </Text>
           </Pressable>
         </View>
@@ -225,7 +224,7 @@ export function CharacterCommunicationChannel({
         {tab === 'inbox' && step === 'message' && characterMessage && (
           <>
             <View style={styles.messageBox}>
-              <Text style={styles.messageLabel}>📨 ВХОДЯЩЕЕ СООБЩЕНИЕ</Text>
+              <Text style={styles.messageLabel}>{t('ui.channel.incoming_message')}</Text>
               <Text style={styles.bodyText}>{characterMessage}</Text>
             </View>
             <Pressable
@@ -239,7 +238,7 @@ export function CharacterCommunicationChannel({
               }}
             >
               <Text style={styles.actionBtnText}>
-                {hasMoreDialogueLines ? 'ДАЛЕЕ' : 'ПРОЧИТАНО'}
+                {hasMoreDialogueLines ? t('ui.channel.next') : t('ui.channel.read')}
               </Text>
             </Pressable>
           </>
@@ -249,8 +248,8 @@ export function CharacterCommunicationChannel({
           <>
             {characterMessageHistory.length === 0 ? (
               <View style={styles.signalBox}>
-                <Text style={styles.signalLabel}>📁 ИСТОРИЯ</Text>
-                <Text style={styles.bodyText}>Сообщений пока нет.</Text>
+                <Text style={styles.signalLabel}>{t('ui.channel.history_label')}</Text>
+                <Text style={styles.bodyText}>{t('ui.channel.no_messages')}</Text>
               </View>
             ) : (
               <View style={styles.historyList}>
@@ -260,7 +259,7 @@ export function CharacterCommunicationChannel({
                     style={styles.historyItem}
                   >
                     <Text style={styles.historyLabel}>
-                      СООБЩЕНИЕ #{characterMessageHistory.length - idx}
+                      {t('ui.channel.message_n', { n: String(characterMessageHistory.length - idx) })}
                     </Text>
                     <Text style={styles.bodyText}>{msg}</Text>
                   </View>
@@ -275,10 +274,10 @@ export function CharacterCommunicationChannel({
           <>
             <View style={styles.signalBox}>
               <Text style={styles.signalLabel}>
-                📡 СТАТУС КАНАЛА · СИГНАЛ 12%
+                {t('ui.channel.signal_blocked_label')}
               </Text>
               <Text style={styles.bodyText}>
-                {`Канал нестабилен. Источник помех — ${getAliens()[8].name}.\n\nПока они активны, связь не восстановится. Победи их — и канал будет работать в полную силу.`}
+                {t('ui.channel.signal_blocked_text', { alien: getAliens()[8].name })}
               </Text>
             </View>
             <Pressable
@@ -288,7 +287,7 @@ export function CharacterCommunicationChannel({
               ]}
               onPress={handleClose}
             >
-              <Text style={styles.actionBtnText}>ПОНЯЛ</Text>
+              <Text style={styles.actionBtnText}>{t('ui.channel.understood')}</Text>
             </Pressable>
           </>
         )}
@@ -297,8 +296,8 @@ export function CharacterCommunicationChannel({
         {tab === 'inbox' && step === 'idle' && planet10Unlocked && (
           <>
             <View style={styles.signalBox}>
-              <Text style={styles.signalLabel}>📡 СТАТУС КАНАЛА · АКТИВЕН</Text>
-              <Text style={styles.bodyText}>Новых сообщений нет.</Text>
+              <Text style={styles.signalLabel}>{t('ui.channel.signal_active_label')}</Text>
+              <Text style={styles.bodyText}>{t('ui.channel.no_new_messages')}</Text>
             </View>
             <Pressable
               style={({ pressed }) => [
@@ -307,7 +306,7 @@ export function CharacterCommunicationChannel({
               ]}
               onPress={handleClose}
             >
-              <Text style={styles.actionBtnText}>ЗАКРЫТЬ</Text>
+              <Text style={styles.actionBtnText}>{t('ui.channel.close')}</Text>
             </Pressable>
           </>
         )}

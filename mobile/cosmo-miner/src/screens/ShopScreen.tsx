@@ -3,29 +3,31 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  View
+  View,
 } from 'react-native';
 import { getShopItems, type ShopCategory, type ShopItemId } from '../game/SHOP';
-import { CREDIT_PACKS } from '../game/CREDIT_PACKS';
+import { CREDIT_PACKS, type CreditPack } from '../game/CREDIT_PACKS';
 import type { ActiveBoost } from '../game/types';
 import type { MetalId } from '../game/METALS';
 import { getMetals } from '../game/METALS';
+import { t } from '../game/i18n';
 import { watchRewardedAd } from '../services/ads';
 import {
   initIAP,
   purchasePack,
   getProducts,
-  type IAPProduct
+  type IAPProduct,
 } from '../services/iap';
 import { getCachedRemoteConfig } from '../game/remoteConfig';
 import { isTelegramRuntime } from '../telegram/runtime';
 import {
   StarsShopTab,
-  type StarsPurchasedItem
+  type StarsPurchasedItem,
 } from '../telegram/StarsShopTab';
 
 export type ShopScreenProps = {
@@ -39,41 +41,53 @@ export type ShopScreenProps = {
       convertTo?: string;
       convertAmount?: number;
       onLootResult?: (drops: Partial<Record<MetalId, number>>) => void;
-    }
+    },
   ) => void;
   onAddCredits: (amount: number) => void;
   /** Called after a successful Telegram Stars purchase to apply the effect to game state. */
-  onStarsPurchaseApplied?: (item: StarsPurchasedItem) => Promise<boolean> | boolean;
+  onStarsPurchaseApplied?: (
+    item: StarsPurchasedItem,
+  ) => Promise<boolean> | boolean;
 };
 
 type ShopTab = ShopCategory | 'credits' | 'stars';
-const ALL_TABS: { id: ShopTab; label: string }[] = [
-  // until android release
-  // { id: 'credits', label: '💳 КРЕДИТЫ' },
-  { id: 'boosters', label: '⚡ БУСТЕРЫ' },
-  { id: 'metals', label: '⛏️ МЕТАЛЛЫ' },
-  { id: 'lootboxes', label: '📦 КОНТЕЙН.' },
-  { id: 'converter', label: '🔄 КОНВЕРТЕР' }
-];
-const STARS_TAB = { id: 'stars' as ShopTab, label: '💳 КРЕДИТЫ' };
+function getShopTabs(): { id: ShopTab; label: string }[] {
+  return [
+    { id: 'boosters', label: t('ui.shop.tab_boosters') },
+    { id: 'metals', label: t('ui.shop.tab_metals') },
+    { id: 'lootboxes', label: t('ui.shop.tab_containers') },
+    { id: 'converter', label: t('ui.shop.tab_converter') },
+  ];
+}
+function getCreditsTab() {
+  return { id: 'credits' as ShopTab, label: t('ui.shop.tab_credits') };
+}
+function getStarsTab() {
+  return { id: 'stars' as ShopTab, label: t('ui.shop.tab_credits') };
+}
 
 const METAL_ORDER: MetalId[] = [
   'iron',
   'titan',
   'iridium',
   'voidCrystal',
-  'echoShard'
+  'echoShard',
 ];
 
 function formatMs(ms: number): string {
   const s = Math.ceil(ms / 1000);
-  if (s < 60) return `${s}с`;
+  if (s < 60) return t('ui.duration.s', { s: String(s) });
   const m = Math.floor(s / 60);
   const rem = s % 60;
-  if (m < 60) return rem > 0 ? `${m}м ${rem}с` : `${m}м`;
+  if (m < 60)
+    return rem > 0
+      ? t('ui.duration.ms', { m: String(m), s: String(rem) })
+      : t('ui.duration.m', { m: String(m) });
   const h = Math.floor(m / 60);
   const mr = m % 60;
-  return mr > 0 ? `${h}ч ${mr}м` : `${h}ч`;
+  return mr > 0
+    ? t('ui.duration.hm', { h: String(h), m: String(mr) })
+    : t('ui.duration.h', { h: String(h) });
 }
 
 // ─── Active boosts banner ─────────────────────────────────────────────────────
@@ -100,14 +114,18 @@ function ActiveBoostsBanner({ boosts }: { boosts: ActiveBoost[] }) {
 
   return (
     <View style={styles.activeBanner}>
-      <Text style={styles.activeBannerTitle}>⏱ АКТИВНЫЕ БУСТЕРЫ</Text>
+      <Text style={styles.activeBannerTitle}>
+        {t('ui.shop.active_boosters')}
+      </Text>
       {active.map((b) => {
         const item = SHOP.find((s) => s.id === b.shopItemId);
         const remaining = b.expiresAt - now;
         return (
           <View key={b.instanceId} style={styles.activeRow}>
             <Text style={styles.activeIcon}>{item?.icon ?? '⚡'}</Text>
-            <Text style={styles.activeName}>{item?.name ?? b.shopItemId}</Text>
+            <Text style={styles.activeName}>
+              {item ? t('config.' + item.nameKey) : b.shopItemId}
+            </Text>
             <Text style={styles.activeTimer}>{formatMs(remaining)}</Text>
           </View>
         );
@@ -121,7 +139,7 @@ function ActiveBoostsBanner({ boosts }: { boosts: ActiveBoost[] }) {
 function ConverterPanel({
   credits,
   metals,
-  onBuy
+  onBuy,
 }: {
   credits: number;
   metals: Record<MetalId, number>;
@@ -147,7 +165,7 @@ function ConverterPanel({
     currentIdx: number,
     direction: 1 | -1,
     excludeIdx: number,
-    setIdx: (i: number) => void
+    setIdx: (i: number) => void,
   ) {
     let next =
       (currentIdx + direction + METAL_ORDER.length) % METAL_ORDER.length;
@@ -159,15 +177,17 @@ function ConverterPanel({
   return (
     <View style={styles.converterWrap}>
       <Text style={styles.converterTitle}>
-        Обмен металлов по курсу {rate > 0 ? `${totalFrom}:${amount}` : '—'}
+        {t('ui.shop.converter_title', {
+          ratio: rate > 0 ? `${totalFrom}:${amount}` : '—',
+        })}
       </Text>
       <Text style={styles.converterSubtitle}>
-        Курс 3:1 за каждый уровень тира
+        {t('ui.shop.converter_subtitle')}
       </Text>
 
       {/* From metal */}
       <View style={styles.converterRow}>
-        <Text style={styles.converterLabel}>ОТДАТЬ:</Text>
+        <Text style={styles.converterLabel}>{t('ui.shop.converter_give')}</Text>
         <View style={styles.metalPicker}>
           <Pressable
             onPress={() => cycleMetal(fromIdx, -1, toIdx, setFromIdx)}
@@ -176,7 +196,7 @@ function ConverterPanel({
             <Text style={styles.arrowText}>◀</Text>
           </Pressable>
           <Text style={styles.metalPickerText}>
-            {metalDef(fromId).icon} {metalDef(fromId).name}
+            {metalDef(fromId).icon} {t('config.' + metalDef(fromId).nameKey)}
           </Text>
           <Pressable
             onPress={() => cycleMetal(fromIdx, 1, toIdx, setFromIdx)}
@@ -186,14 +206,22 @@ function ConverterPanel({
           </Pressable>
         </View>
         <Text style={styles.converterStock}>
-          В наличии: {metals[fromId] ?? 0}
-          {totalFrom > 0 ? `  (нужно: ${totalFrom})` : ''}
+          {totalFrom > 0
+            ? t('ui.shop.converter_stock_full', {
+                stock: String(metals[fromId] ?? 0),
+                needed: String(totalFrom),
+              })
+            : t('ui.shop.converter_stock', {
+                stock: String(metals[fromId] ?? 0),
+              })}
         </Text>
       </View>
 
       {/* To metal */}
       <View style={styles.converterRow}>
-        <Text style={styles.converterLabel}>ПОЛУЧИТЬ:</Text>
+        <Text style={styles.converterLabel}>
+          {t('ui.shop.converter_receive')}
+        </Text>
         <View style={styles.metalPicker}>
           <Pressable
             onPress={() => cycleMetal(toIdx, -1, fromIdx, setToIdx)}
@@ -202,7 +230,7 @@ function ConverterPanel({
             <Text style={styles.arrowText}>◀</Text>
           </Pressable>
           <Text style={styles.metalPickerText}>
-            {metalDef(toId).icon} {metalDef(toId).name}
+            {metalDef(toId).icon} {t('config.' + metalDef(toId).nameKey)}
           </Text>
           <Pressable
             onPress={() => cycleMetal(toIdx, 1, fromIdx, setToIdx)}
@@ -211,7 +239,9 @@ function ConverterPanel({
             <Text style={styles.arrowText}>▶</Text>
           </Pressable>
         </View>
-        <Text style={styles.converterStock}>Количество: {amount}</Text>
+        <Text style={styles.converterStock}>
+          {t('ui.shop.converter_amount', { amount: String(amount) })}
+        </Text>
       </View>
 
       {/* Amount buttons */}
@@ -225,7 +255,7 @@ function ConverterPanel({
             <Text
               style={[
                 styles.amountText,
-                amount === n && styles.amountTextActive
+                amount === n && styles.amountTextActive,
               ]}
             >
               ×{n}
@@ -236,7 +266,7 @@ function ConverterPanel({
 
       {rate === 0 && (
         <Text style={styles.converterError}>
-          Конвертация возможна только в металл высшего тира
+          {t('ui.shop.converter_error')}
         </Text>
       )}
 
@@ -247,11 +277,13 @@ function ConverterPanel({
           onBuy('converter', {
             convertFrom: fromId,
             convertTo: toId,
-            convertAmount: amount
+            convertAmount: amount,
           });
         }}
       >
-        <Text style={styles.convertBtnText}>ОБМЕНЯТЬ 💳 {creditCost}</Text>
+        <Text style={styles.convertBtnText}>
+          {t('ui.shop.converter_btn', { cost: String(creditCost) })}
+        </Text>
       </Pressable>
     </View>
   );
@@ -259,12 +291,27 @@ function ConverterPanel({
 
 // ─── Credits tab ─────────────────────────────────────────────────────────────
 
+const IAP_CATALOG_URL =
+  (process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000') +
+  '/shop/iap-packs';
+
 function CreditsTab({ onAddCredits }: { onAddCredits: (n: number) => void }) {
   const [adLoading, setAdLoading] = useState(false);
   const [iapLoading, setIapLoading] = useState<string | null>(null);
   const [products, setProducts] = useState<IAPProduct[]>([]);
+  const [packs, setPacks] = useState<readonly CreditPack[]>(CREDIT_PACKS);
 
   useEffect(() => {
+    // Fetch catalog from server; fall back to bundled CREDIT_PACKS on any error.
+    fetch(IAP_CATALOG_URL)
+      .then((r) => r.json() as Promise<{ packs: CreditPack[] }>)
+      .then(({ packs: remote }) => {
+        if (remote?.length) setPacks(remote);
+      })
+      .catch(() => {
+        /* keep static fallback */
+      });
+
     void initIAP()
       .then(() => getProducts().then(setProducts))
       .catch(() => {
@@ -272,8 +319,10 @@ function CreditsTab({ onAddCredits }: { onAddCredits: (n: number) => void }) {
       });
   }, []);
 
-  const iapPacks = CREDIT_PACKS.filter((p) => p.kind === 'iap');
-  const adPack = CREDIT_PACKS.find((p) => p.kind === 'ad')!;
+  const iapPacks = packs.filter((p) => p.kind === 'iap');
+  const adPack =
+    packs.find((p) => p.kind === 'ad') ??
+    CREDIT_PACKS.find((p) => p.kind === 'ad')!;
 
   async function handleWatchAd() {
     setAdLoading(true);
@@ -281,7 +330,7 @@ function CreditsTab({ onAddCredits }: { onAddCredits: (n: number) => void }) {
       const rewarded = await watchRewardedAd();
       if (rewarded) onAddCredits(adPack.credits);
     } catch {
-      Alert.alert('Ошибка', 'Не удалось загрузить рекламу.');
+      Alert.alert(t('ui.shop.ad_error_title'), t('ui.shop.ad_error_text'));
     } finally {
       setAdLoading(false);
     }
@@ -294,7 +343,11 @@ function CreditsTab({ onAddCredits }: { onAddCredits: (n: number) => void }) {
       onAddCredits(earned || credits);
     } catch (e) {
       const msg = String(e);
-      if (msg !== 'cancelled') Alert.alert('Ошибка', 'Покупка не завершена.');
+      if (msg !== 'cancelled')
+        Alert.alert(
+          t('ui.shop.purchase_error_title'),
+          t('ui.shop.purchase_error_text'),
+        );
     } finally {
       setIapLoading(null);
     }
@@ -306,14 +359,18 @@ function CreditsTab({ onAddCredits }: { onAddCredits: (n: number) => void }) {
       <View style={[styles.creditCard, styles.creditCardAd]}>
         <Text style={styles.creditCardIcon}>{adPack.icon}</Text>
         <View style={styles.creditCardBody}>
-          <Text style={styles.creditCardName}>{adPack.name}</Text>
+          <Text style={styles.creditCardName}>
+            {t('config.' + adPack.name)}
+          </Text>
           <Text style={styles.creditCardAmount}>+{adPack.credits} 💳</Text>
-          <Text style={styles.creditCardLore}>{adPack.lore}</Text>
+          <Text style={styles.creditCardLore}>
+            {t('config.' + adPack.lore)}
+          </Text>
         </View>
         <Pressable
           style={[
             styles.creditBuyBtn,
-            adLoading && styles.creditBuyBtnDisabled
+            adLoading && styles.creditBuyBtnDisabled,
           ]}
           onPress={handleWatchAd}
           disabled={adLoading}
@@ -321,7 +378,9 @@ function CreditsTab({ onAddCredits }: { onAddCredits: (n: number) => void }) {
           {adLoading ? (
             <ActivityIndicator size="small" color="#00d4ff" />
           ) : (
-            <Text style={styles.creditBuyBtnText}>СМОТРЕТЬ</Text>
+            <Text style={styles.creditBuyBtnText}>
+              {t('ui.shop.watch_btn')}
+            </Text>
           )}
         </Pressable>
       </View>
@@ -329,7 +388,7 @@ function CreditsTab({ onAddCredits }: { onAddCredits: (n: number) => void }) {
       {/* IAP packs */}
       {iapPacks.map((pack) => {
         const storeProduct = products.find(
-          (p) => p.productId === pack.productId
+          (p) => p.productId === pack.productId,
         );
         const priceLabel = storeProduct?.price ?? pack.basePrice ?? '—';
         const loading = iapLoading === pack.productId;
@@ -337,15 +396,19 @@ function CreditsTab({ onAddCredits }: { onAddCredits: (n: number) => void }) {
           <View key={pack.id} style={[styles.creditCard, styles.creditCardIAP]}>
             <Text style={styles.creditCardIcon}>{pack.icon}</Text>
             <View style={styles.creditCardBody}>
-              <Text style={styles.creditCardName}>{pack.name}</Text>
+              <Text style={styles.creditCardName}>
+                {t('config.' + pack.name)}
+              </Text>
               <Text style={styles.creditCardAmount}>+{pack.credits} 💳</Text>
-              <Text style={styles.creditCardLore}>{pack.lore}</Text>
+              <Text style={styles.creditCardLore}>
+                {t('config.' + pack.lore)}
+              </Text>
             </View>
             <Pressable
               style={[
                 styles.creditBuyBtn,
                 styles.creditBuyBtnIAP,
-                loading && styles.creditBuyBtnDisabled
+                loading && styles.creditBuyBtnDisabled,
               ]}
               onPress={() => handleIAP(pack.productId!, pack.credits)}
               disabled={loading || iapLoading !== null}
@@ -375,19 +438,30 @@ export function ShopScreen({
   metals,
   onBuyShopItem,
   onAddCredits,
-  onStarsPurchaseApplied
+  onStarsPurchaseApplied,
 }: ShopScreenProps) {
   const METALS = getMetals();
   const SHOP = getShopItems();
   const monetizationEnabled =
     getCachedRemoteConfig()?.monetizationEnabled ?? false;
   const inTelegram = isTelegramRuntime();
+  const allTabs = getShopTabs();
   const baseTabs = monetizationEnabled
-    ? ALL_TABS
-    : ALL_TABS.filter((t) => t.id !== 'credits');
-  const TABS = inTelegram ? [STARS_TAB, ...baseTabs] : baseTabs;
+    ? allTabs
+    : allTabs.filter((tab) => tab.id !== 'credits');
+  const TABS = inTelegram
+    ? [getStarsTab(), ...baseTabs]
+    : Platform.OS === 'android'
+      ? [getCreditsTab(), ...baseTabs]
+      : baseTabs;
   const [tab, setTab] = useState<ShopTab>(
-    monetizationEnabled ? (inTelegram ? 'stars' : 'credits') : 'boosters'
+    monetizationEnabled
+      ? inTelegram
+        ? 'stars'
+        : Platform.OS === 'android'
+          ? 'credits'
+          : 'boosters'
+      : 'boosters',
   );
   const [lootResult, setLootResult] = useState<Partial<
     Record<MetalId, number>
@@ -399,7 +473,7 @@ export function ShopScreen({
     const item = SHOP.find((s) => s.id === id)!;
     if (item.category === 'lootboxes') {
       onBuyShopItem(id, {
-        onLootResult: (drops) => setLootResult(drops)
+        onLootResult: (drops) => setLootResult(drops),
       });
     } else {
       onBuyShopItem(id);
@@ -410,7 +484,7 @@ export function ShopScreen({
     <View style={styles.screen}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>🛒 МАГАЗИН</Text>
+        <Text style={styles.headerTitle}>{t('ui.shop.header_title')}</Text>
         <View style={styles.creditsChip}>
           <Text style={styles.creditsChipText}>💳 {credits}</Text>
         </View>
@@ -441,18 +515,20 @@ export function ShopScreen({
       {/* Loot result toast */}
       {lootResult && (
         <Pressable style={styles.lootToast} onPress={() => setLootResult(null)}>
-          <Text style={styles.lootToastTitle}>📦 Содержимое контейнера:</Text>
+          <Text style={styles.lootToastTitle}>{t('ui.shop.loot_title')}</Text>
           {(Object.entries(lootResult) as [MetalId, number][])
             .filter(([, n]) => n > 0)
             .map(([id, n]) => {
               const m = METALS.find((x) => x.id === id)!;
               return (
                 <Text key={id} style={styles.lootToastLine}>
-                  {m.icon} {m.name}: +{n}
+                  {m.icon} {t('config.' + m.nameKey)}: +{n}
                 </Text>
               );
             })}
-          <Text style={styles.lootToastDismiss}>Нажмите чтобы закрыть</Text>
+          <Text style={styles.lootToastDismiss}>
+            {t('ui.shop.loot_dismiss')}
+          </Text>
         </Pressable>
       )}
 
@@ -494,17 +570,21 @@ export function ShopScreen({
               <View
                 style={[
                   styles.card,
-                  canAfford ? styles.cardAffordable : styles.cardLocked
+                  canAfford ? styles.cardAffordable : styles.cardLocked,
                 ]}
               >
                 <Text style={styles.cardIcon}>{item.icon}</Text>
                 <View style={styles.cardBody}>
-                  <Text style={styles.cardName}>{item.name}</Text>
+                  <Text style={styles.cardName}>
+                    {t('config.' + item.nameKey)}
+                  </Text>
                   {item.boostEffect && (
                     <Text style={styles.cardEffect}>
-                      ×{item.boostEffect.multiplier}{' '}
-                      {effectLabel(item.boostEffect.stat)} на{' '}
-                      {formatMs(item.boostEffect.durationMs)}
+                      {t('ui.shop.boost_effect_line', {
+                        multiplier: String(item.boostEffect.multiplier),
+                        stat: effectLabel(item.boostEffect.stat),
+                        duration: formatMs(item.boostEffect.durationMs),
+                      })}
                     </Text>
                   )}
                   {item.metalReward && (
@@ -527,7 +607,9 @@ export function ShopScreen({
                         .join('  ')}
                     </Text>
                   )}
-                  <Text style={styles.cardLore}>{item.lore}</Text>
+                  <Text style={styles.cardLore}>
+                    {t('config.' + item.loreKey)}
+                  </Text>
                 </View>
                 <View style={styles.cardRight}>
                   <Text
@@ -535,7 +617,7 @@ export function ShopScreen({
                       styles.cardCost,
                       canAfford
                         ? styles.cardCostAffordable
-                        : styles.cardCostLocked
+                        : styles.cardCostLocked,
                     ]}
                   >
                     💳 {item.creditCost}
@@ -545,7 +627,9 @@ export function ShopScreen({
                     onPress={() => handleBuy(item.id)}
                     disabled={!canAfford}
                   >
-                    <Text style={styles.buyBtnText}>КУПИТЬ</Text>
+                    <Text style={styles.buyBtnText}>
+                      {t('ui.shop.buy_btn')}
+                    </Text>
                   </Pressable>
                 </View>
               </View>
@@ -560,15 +644,15 @@ export function ShopScreen({
 function effectLabel(stat: string): string {
   switch (stat) {
     case 'clickMultiplier':
-      return 'добыча кликом';
+      return t('ui.shop.effect_click');
     case 'passiveMultiplier':
-      return 'пассивный доход';
+      return t('ui.shop.effect_passive');
     case 'metalDropBonus':
-      return 'шанс металлов';
+      return t('ui.shop.effect_metal');
     case 'xpMultiplier':
-      return 'опыт';
+      return t('ui.shop.effect_xp');
     case 'damageMultiplier':
-      return 'урон';
+      return t('ui.shop.effect_damage');
     default:
       return stat;
   }
@@ -579,7 +663,7 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 0,
     backgroundColor: '#050918',
-    userSelect: 'none'
+    userSelect: 'none',
   },
 
   header: {
@@ -588,13 +672,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingTop: 16,
-    paddingBottom: 8
+    paddingBottom: 8,
   },
   headerTitle: {
     fontSize: 16,
     fontWeight: '800',
     color: '#fff',
-    letterSpacing: 1
+    letterSpacing: 1,
   },
   creditsChip: {
     backgroundColor: 'rgba(0,212,255,0.12)',
@@ -602,20 +686,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderWidth: 1,
-    borderColor: 'rgba(0,212,255,0.3)'
+    borderColor: 'rgba(0,212,255,0.3)',
   },
   creditsChipText: { fontSize: 14, fontWeight: '700', color: '#00d4ff' },
 
   tabsScroll: {
     flexGrow: 0,
     flexShrink: 0,
-    minHeight: 48
+    minHeight: 48,
   },
   tabsRow: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     gap: 6,
-    alignItems: 'center'
+    alignItems: 'center',
   },
   tab: {
     flexShrink: 0,
@@ -626,17 +710,17 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: 'rgba(0,212,255,0.12)',
-    backgroundColor: 'rgba(255,255,255,0.03)'
+    backgroundColor: 'rgba(255,255,255,0.03)',
   },
   tabActive: {
     backgroundColor: 'rgba(0,212,255,0.12)',
-    borderColor: 'rgba(0,212,255,0.4)'
+    borderColor: 'rgba(0,212,255,0.4)',
   },
   tabText: {
     fontSize: 11,
     fontWeight: '700',
     color: 'rgba(255,255,255,0.35)',
-    letterSpacing: 0.5
+    letterSpacing: 0.5,
   },
   tabTextActive: { color: '#00d4ff' },
 
@@ -647,19 +731,19 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: 'rgba(0,212,255,0.1)',
     borderWidth: 1,
-    borderColor: 'rgba(0,212,255,0.35)'
+    borderColor: 'rgba(0,212,255,0.35)',
   },
   lootToastTitle: {
     fontSize: 13,
     fontWeight: '700',
     color: '#00d4ff',
-    marginBottom: 6
+    marginBottom: 6,
   },
   lootToastLine: { fontSize: 13, color: '#fff', marginBottom: 2 },
   lootToastDismiss: {
     fontSize: 10,
     color: 'rgba(255,255,255,0.35)',
-    marginTop: 6
+    marginTop: 6,
   },
 
   activeBanner: {
@@ -669,20 +753,20 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: 'rgba(255,200,0,0.07)',
     borderWidth: 1,
-    borderColor: 'rgba(255,200,0,0.25)'
+    borderColor: 'rgba(255,200,0,0.25)',
   },
   activeBannerTitle: {
     fontSize: 10,
     fontWeight: '700',
     color: 'rgba(255,200,0,0.7)',
     letterSpacing: 1,
-    marginBottom: 6
+    marginBottom: 6,
   },
   activeRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 4
+    marginBottom: 4,
   },
   activeIcon: { fontSize: 16 },
   activeName: { flex: 1, fontSize: 12, color: '#fff' },
@@ -696,15 +780,15 @@ const styles = StyleSheet.create({
     padding: 14,
     borderRadius: 12,
     marginBottom: 10,
-    borderWidth: 1
+    borderWidth: 1,
   },
   cardAffordable: {
     backgroundColor: 'rgba(0,212,255,0.05)',
-    borderColor: 'rgba(0,212,255,0.25)'
+    borderColor: 'rgba(0,212,255,0.25)',
   },
   cardLocked: {
     backgroundColor: 'rgba(255,255,255,0.02)',
-    borderColor: 'rgba(255,255,255,0.07)'
+    borderColor: 'rgba(255,255,255,0.07)',
   },
   cardIcon: { fontSize: 28, marginTop: 2 },
   cardBody: { flex: 1 },
@@ -721,17 +805,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderWidth: 1,
-    borderColor: 'rgba(0,212,255,0.4)'
+    borderColor: 'rgba(0,212,255,0.4)',
   },
   buyBtnDisabled: {
     backgroundColor: 'rgba(255,255,255,0.03)',
-    borderColor: 'rgba(255,255,255,0.1)'
+    borderColor: 'rgba(255,255,255,0.1)',
   },
   buyBtnText: {
     fontSize: 11,
     fontWeight: '700',
     color: '#00d4ff',
-    letterSpacing: 0.5
+    letterSpacing: 0.5,
   },
 
   // Converter
@@ -740,12 +824,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#fff',
-    marginBottom: 4
+    marginBottom: 4,
   },
   converterSubtitle: {
     fontSize: 11,
     color: 'rgba(255,255,255,0.4)',
-    marginBottom: 16
+    marginBottom: 16,
   },
   converterRow: { marginBottom: 16 },
   converterLabel: {
@@ -753,7 +837,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: 'rgba(255,255,255,0.4)',
     letterSpacing: 1,
-    marginBottom: 6
+    marginBottom: 6,
   },
   metalPicker: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   arrow: { padding: 8 },
@@ -763,12 +847,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 14,
     fontWeight: '700',
-    color: '#fff'
+    color: '#fff',
   },
   converterStock: {
     fontSize: 11,
     color: 'rgba(255,255,255,0.5)',
-    marginTop: 4
+    marginTop: 4,
   },
   amountRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
   amountBtn: {
@@ -778,18 +862,18 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: 'rgba(255,200,0,0.2)',
-    backgroundColor: 'rgba(255,255,255,0.03)'
+    backgroundColor: 'rgba(255,255,255,0.03)',
   },
   amountBtnActive: {
     backgroundColor: 'rgba(255,200,0,0.12)',
-    borderColor: 'rgba(255,200,0,0.5)'
+    borderColor: 'rgba(255,200,0,0.5)',
   },
   amountText: { fontSize: 13, fontWeight: '700', color: 'rgba(255,200,0,0.4)' },
   amountTextActive: { color: '#ffd700' },
   converterError: {
     fontSize: 12,
     color: 'rgba(255,100,100,0.8)',
-    marginBottom: 12
+    marginBottom: 12,
   },
   convertBtn: {
     backgroundColor: 'rgba(0,212,255,0.15)',
@@ -797,17 +881,17 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(0,212,255,0.4)'
+    borderColor: 'rgba(0,212,255,0.4)',
   },
   convertBtnDisabled: {
     backgroundColor: 'rgba(255,255,255,0.03)',
-    borderColor: 'rgba(255,255,255,0.1)'
+    borderColor: 'rgba(255,255,255,0.1)',
   },
   convertBtnText: {
     fontSize: 13,
     fontWeight: '700',
     color: '#00d4ff',
-    letterSpacing: 0.5
+    letterSpacing: 0.5,
   },
 
   // Credits tab
@@ -818,15 +902,15 @@ const styles = StyleSheet.create({
     gap: 12,
     padding: 14,
     borderRadius: 12,
-    borderWidth: 1
+    borderWidth: 1,
   },
   creditCardAd: {
     backgroundColor: 'rgba(0,212,255,0.05)',
-    borderColor: 'rgba(0,212,255,0.25)'
+    borderColor: 'rgba(0,212,255,0.25)',
   },
   creditCardIAP: {
     backgroundColor: 'rgba(255,200,0,0.05)',
-    borderColor: 'rgba(255,200,0,0.2)'
+    borderColor: 'rgba(255,200,0,0.2)',
   },
   creditCardIcon: { fontSize: 30 },
   creditCardBody: { flex: 1 },
@@ -834,18 +918,18 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: '#fff',
-    marginBottom: 2
+    marginBottom: 2,
   },
   creditCardAmount: {
     fontSize: 15,
     fontWeight: '800',
     color: '#00d4ff',
-    marginBottom: 3
+    marginBottom: 3,
   },
   creditCardLore: {
     fontSize: 10,
     color: 'rgba(255,255,255,0.4)',
-    lineHeight: 14
+    lineHeight: 14,
   },
   creditBuyBtn: {
     backgroundColor: 'rgba(0,212,255,0.15)',
@@ -855,18 +939,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(0,212,255,0.4)',
     minWidth: 80,
-    alignItems: 'center'
+    alignItems: 'center',
   },
   creditBuyBtnIAP: {
     backgroundColor: 'rgba(255,200,0,0.12)',
-    borderColor: 'rgba(255,200,0,0.4)'
+    borderColor: 'rgba(255,200,0,0.4)',
   },
   creditBuyBtnDisabled: { opacity: 0.5 },
   creditBuyBtnText: {
     fontSize: 12,
     fontWeight: '700',
     color: '#00d4ff',
-    letterSpacing: 0.5
+    letterSpacing: 0.5,
   },
-  creditBuyBtnTextIAP: { color: '#ffd700' }
+  creditBuyBtnTextIAP: { color: '#ffd700' },
 });

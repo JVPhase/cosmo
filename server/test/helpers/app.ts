@@ -11,6 +11,7 @@ import { crmRoutes } from '../../src/routes/crm';
 import { savesRoutes } from '../../src/routes/saves';
 import { telegramRoutes } from '../../src/routes/telegram';
 import { syncRoutes } from '../../src/routes/sync';
+import { i18nRoutes } from '../../src/routes/i18n';
 
 export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({ logger: false });
@@ -22,6 +23,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(savesRoutes, { prefix: '/saves' });
   await app.register(telegramRoutes, { prefix: '/telegram' });
   await app.register(syncRoutes, { prefix: '/sync' });
+  await app.register(i18nRoutes);
   await app.ready();
   return app;
 }

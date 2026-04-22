@@ -177,19 +177,20 @@ export type TelegramGameSummaryDto = {
  * All canonical shop item ids.
  *
  * Sources:
- *   - Server DB (server/prisma/seed.ts ShopItem rows) — authoritative for purchases
+ *   - Server DB ShopItem rows (server/prisma/seed.ts) — authoritative for Stars purchases
+ *   - Server DB IapPack rows (server/prisma/seed.ts) — authoritative for IAP/ad packs
  *   - Mobile in-game credit shop (SHOP_DATA in game-config/src/shop.ts)
- *   - Mobile IAP credit packs (mobile/cosmo-miner/src/game/CREDIT_PACKS.ts)
+ *   - Mobile static fallback (mobile/cosmo-miner/src/game/CREDIT_PACKS.ts)
  *
- * Server SKU set (seed.ts):
+ * Server ShopItem SKU set (seed.ts):
  *   boosters: booster_mining_1h, booster_xp_1h, booster_metal_1h, booster_battle_30m
  *   metals:   metal_iron, metal_titan, metal_iridium, metal_void, metal_echo
  *   loot:     loot_box_basic, loot_box_advanced, loot_box_premium
  *   premium:  premium_sector_skip, premium_research_reset
  *   credits:  credits_100, credits_1000, credits_10000
  *
- * Mobile-only credit packs (CREDIT_PACKS.ts, IAP — no server ShopItem row):
- *   credits_ad, credits_300, credits_800, credits_2000
+ * Server IapPack SKU set (seed.ts) — served via GET /shop/iap-packs:
+ *   credits_ad, credits_100, credits_300, credits_800, credits_2000
  *
  * Mobile-only credit shop item not in server seed:
  *   converter
@@ -216,7 +217,7 @@ export type ShopItemIdCanonical =
   // ── Server premium unlocks (seed.ts, deliveryMode: unsupported in P0) ─────
   | 'premium_sector_skip'
   | 'premium_research_reset'
-  // ── Mobile-only IAP credit packs (CREDIT_PACKS.ts, no server ShopItem) ───
+  // ── IAP credit packs (IapPack table, served via GET /shop/iap-packs) ────────
   | 'credits_ad'
   | 'credits_300'
   | 'credits_800'

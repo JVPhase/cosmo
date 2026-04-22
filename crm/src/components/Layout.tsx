@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, NavLink, Outlet } from 'react-router-dom'
-import { Gamepad2, Layers, LifeBuoy, Sparkles, Target, TrendingUp, UserRound, Users, ShoppingBag } from 'lucide-react'
+import { Gamepad2, Languages, Layers, LifeBuoy, Sparkles, Target, TrendingUp, UserRound, Users, ShoppingBag } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { clearTokens, fetchMe } from '@/lib/api'
@@ -13,6 +13,7 @@ const baseNav = [
   { label: 'Activity', to: '/activity', icon: LifeBuoy },
   { label: 'Game config', to: '/game-config', icon: Gamepad2 },
   { label: 'Stars shop', to: '/stars-shop', icon: ShoppingBag },
+  { label: 'Translations', to: '/translations', icon: Languages },
   { label: 'Players', to: '/players', icon: Users }
 ]
 

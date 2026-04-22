@@ -3,10 +3,12 @@ import { FlatList, StyleSheet, Text, View } from 'react-native';
 import type { CharacterId } from '../game/CHARACTERS';
 import type { DialogueCharacter } from '../game/dialogues';
 import {
-  STORY_LOG,
+  getStoryLog,
   getCharacterContactEntry,
+  STORY_LOG_COUNT,
   type StoryContext,
 } from '../game/STORY_LOG';
+import { t } from '../game/i18n';
 
 type Props = {
   characters: readonly DialogueCharacter[];
@@ -22,7 +24,7 @@ export function StoryLogScreen({ characters, unlockedPlanetIds, chosenCharacterI
     ? characters.find((c) => c.id === chosenCharacterId) ?? null
     : null;
 
-  const unlockedEntries = STORY_LOG.filter((e) => e.isUnlocked(ctx)).reverse();
+  const unlockedEntries = getStoryLog().filter((e) => e.isUnlocked(ctx)).reverse();
 
   return (
     <View style={styles.screen}>
@@ -32,7 +34,7 @@ export function StoryLogScreen({ characters, unlockedPlanetIds, chosenCharacterI
         contentContainerStyle={styles.content}
         ListHeaderComponent={
           <Text style={styles.subtitle}>
-            {unlockedEntries.length}/{STORY_LOG.length} записей получено
+            {t('story.log_subtitle', { unlocked: String(unlockedEntries.length), total: String(STORY_LOG_COUNT) })}
           </Text>
         }
         renderItem={({ item: entry }) => {

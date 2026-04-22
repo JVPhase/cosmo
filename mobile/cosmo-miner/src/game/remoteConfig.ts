@@ -23,17 +23,17 @@ export type FormulaConstantsConfig = {
 
 export type UpgradeConfig = {
   id: number;
-  name: string;
+  nameKey: string;
   icon: string;
   baseCost: number;
   clickBonus: number;
   passiveBonus: number;
-  lore: string;
+  loreKey: string;
 };
 
 export type ShipConfig = {
   id: string;
-  name: string;
+  nameKey: string;
   icon: string;
   imageKey: string;
   damageMultiplier: number;
@@ -41,37 +41,37 @@ export type ShipConfig = {
   unlockLevel: number;
   baseCost: Record<string, number>;
   repairCost: Record<string, number>;
-  lore: string;
+  loreKey: string;
 };
 
 export type CannonConfig = {
   id: string;
-  name: string;
+  nameKey: string;
   icon: string;
   imageKey: string;
   damagePerLevel: number;
   baseCost: Record<string, number>;
-  lore: string;
+  loreKey: string;
 };
 
 export type ExpeditionConfig = {
   id: string;
-  name: string;
+  nameKey: string;
   icon: string;
   durationMs: number;
   metalRewards: Record<string, number>;
   xpReward: number;
-  lore: string;
+  loreKey: string;
 };
 
 export type ModuleConfig = {
   id: string;
-  name: string;
+  nameKey: string;
   icon: string;
-  lore: string;
+  loreKey: string;
   cost: Record<string, number>;
-  ultName: string;
-  ultDescription: string;
+  ultNameKey: string;
+  ultDescriptionKey: string;
   ultDurationMs: number;
   hitsToCharge: number;
 };
@@ -83,11 +83,11 @@ export type ModulesConfig = {
 
 export type ShopItemConfig = {
   id: string;
-  name: string;
+  nameKey: string;
   icon: string;
   category: string;
   creditCost: number;
-  lore: string;
+  loreKey: string;
   boostEffect?: { stat: string; multiplier: number; durationMs: number };
   metalReward?: { metalId: string; amount: number }[];
   lootPool?: { metalId: string; min: number; max: number; chance: number }[];
@@ -100,14 +100,14 @@ export type ShopConfig = {
 
 export type ResearchConfig = {
   id: string;
-  name: string;
+  nameKey: string;
   icon: string;
   branch: string;
   requiredLevel: number;
   energyCost: number;
   requires: string[];
   effect: { type: string; value: number; metalId?: string };
-  lore: string;
+  loreKey: string;
 };
 
 export type PlayerConfig = {
@@ -123,10 +123,10 @@ export type AchievementTargetConfig =
 
 export type AchievementConfig = {
   id: number;
-  name: string;
+  nameKey: string;
   icon: string;
   target: AchievementTargetConfig;
-  lore: string;
+  loreKey: string;
 };
 
 export type AchievementsConfig = {
@@ -137,24 +137,24 @@ export type AchievementsConfig = {
 export type PlanetOverrideConfig = {
   id: number;
   sectorId: number;
-  name: string;
+  nameKey: string;
   icon: string;
   imageKey: string;
   unlocked: boolean;
   cost: number;
   bonus: number;
-  resource: string;
+  resourceKey: string;
   color: string;
-  lore: string;
+  loreKey: string;
 };
 
 export type PlanetZoneThemeConfig = {
   zoneIndex: number;
-  namePrefix: string;
+  namePrefixKey: string;
   iconPool: string[];
-  resourcePool: string[];
+  resourcePoolKeys: string[];
   colorPool: string[];
-  lore: string;
+  loreKey: string;
   bonusBase: number;
   bonusSectorScale: number;
 };
@@ -169,17 +169,17 @@ export type AlienZoneConfig = {
   baseXP: number;
   zoneStart: number;
   sectorScale: number;
-  namePool: string[];
+  namePoolKeys: string[];
   iconPool: string[];
-  lore: string;
+  loreKey: string;
 };
 
 export type HardcodedAlienConfig = {
   planetId: number;
-  name: string;
+  nameKey: string;
   icon: string;
   imageKey: string;
-  lore: string;
+  loreKey: string;
   ability?: { type: string; intervalMs: number; durationMs: number };
 };
 
@@ -191,7 +191,7 @@ export type AliensConfig = {
 
 export type MetalConfig = {
   id: string;
-  name: string;
+  nameKey: string;
   icon: string;
   imageKey: string;
 };
@@ -205,9 +205,9 @@ export type MetalsConfig = {
 
 export type ZoneConfig = {
   index: number;
-  name: string;
+  nameKey: string;
   icon: string;
-  lore: string;
+  loreKey: string;
   sectorScale: number;
   minLevel: number;
 };
