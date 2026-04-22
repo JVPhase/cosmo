@@ -1,5 +1,11 @@
 import { StatusBar } from 'expo-status-bar';
-import React, { useCallback, useEffect, useRef, useState, Component } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  Component,
+} from 'react';
 import {
   SafeAreaProvider,
   SafeAreaView as RNSAView,
@@ -14,7 +20,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  View
+  View,
 } from 'react-native';
 import {
   clearAnalytics,
@@ -23,7 +29,7 @@ import {
   getAnalyticsSizeKb,
   initAnalytics,
   logError,
-  logEvent
+  logEvent,
 } from './src/game/analytics';
 import { AchievementsScreen } from './src/screens/AchievementsScreen';
 import { StoryLogScreen } from './src/screens/StoryLogScreen';
@@ -52,7 +58,7 @@ import {
   saveGame,
   saveGameEnvelope,
   saveIntroSeen,
-  saveUnlocked
+  saveUnlocked,
 } from './src/game/storage';
 import { getAliens } from './src/game/ALIENS';
 import { getStoryLogUnlockedEntries } from './src/game/STORY_LOG';
@@ -60,24 +66,27 @@ import { isSectorUnlocked } from './src/game/SECTORS';
 import { fetchDialogues, type DialoguesPayload } from './src/game/dialogues';
 import {
   loadRemoteConfigFromCache,
-  fetchAndCacheRemoteConfig
+  fetchAndCacheRemoteConfig,
 } from './src/game/remoteConfig';
 import { loadI18n, loadSavedLocale, saveLocale, t } from './src/game/i18n';
 import { invalidatePlanetsCache } from './src/game/PLANETS';
 import { invalidateAliensCache } from './src/game/ALIENS';
-import { LocalePickerOverlay, type SupportedLocale } from './src/ui/LocalePickerOverlay';
+import {
+  LocalePickerOverlay,
+  type SupportedLocale,
+} from './src/ui/LocalePickerOverlay';
 import {
   fetchCloudSave,
   getAccessToken,
   getCloudRev,
   pushCloudSave,
   fetchPendingGrants,
-  ackGrants
+  ackGrants,
 } from './src/game/cloudSave';
 import {
   serializeGameplaySaveV2,
   deserializeGameplaySaveEnvelope,
-  pickNewerEnvelope
+  pickNewerEnvelope,
 } from './src/game/saveContract';
 import { applyGrants } from './src/game/grants';
 import {
@@ -95,7 +104,7 @@ import { getCannons, computeCannonCost } from './src/game/CANNONS';
 import {
   computeUpgradeCost,
   getUpgrades,
-  UpgradeId
+  UpgradeId,
 } from './src/game/UPGRADES';
 import { getResearchNodes } from './src/game/RESEARCH';
 import type { GameState, GameStateInit } from './src/game/types';
@@ -130,9 +139,32 @@ class GameAppErrorBoundary extends Component<
   render() {
     if (this.state.error) {
       return (
-        <View style={{ flex: 1, backgroundColor: '#050918', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-          <Text style={{ color: '#ff4444', fontSize: 13, fontWeight: '800', marginBottom: 8 }}>CRASH</Text>
-          <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11, textAlign: 'center' }}>
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: '#050918',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 24,
+          }}
+        >
+          <Text
+            style={{
+              color: '#ff4444',
+              fontSize: 13,
+              fontWeight: '800',
+              marginBottom: 8,
+            }}
+          >
+            CRASH
+          </Text>
+          <Text
+            style={{
+              color: 'rgba(255,255,255,0.7)',
+              fontSize: 11,
+              textAlign: 'center',
+            }}
+          >
             {this.state.error.message}
           </Text>
         </View>
@@ -148,7 +180,7 @@ function GameApp({
   dialogues,
   tab,
   onSetTab,
-  onReset
+  onReset,
 }: {
   initial: GameStateInit;
   initialAppliedGrantSeq: number;
@@ -170,7 +202,7 @@ function GameApp({
     Math.max(0, tgInsets.sysTop - safeInsets.top) + tgInsets.contentTop;
   const game = useGame(initial, dialogues);
   const minAttackEnergy = Math.min(
-    ...getAliens().map((a) => a.attackEnergyCost)
+    ...getAliens().map((a) => a.attackEnergyCost),
   );
   const screenGreetedRef = useRef<Set<string>>(new Set());
   const [researchOpen, setResearchOpen] = useState(false);
@@ -207,34 +239,41 @@ function GameApp({
         .then(setAnalyticsSizeKb)
         .catch(() => {});
     } catch (e: any) {
-      Alert.alert(t('alerts.export_error.title'), e?.message ?? t('alerts.export_error.text'));
+      Alert.alert(
+        t('alerts.export_error.title'),
+        e?.message ?? t('alerts.export_error.text'),
+      );
     }
   }, []);
 
   const handleClearAnalytics = useCallback(() => {
-    Alert.alert(t('alerts.analytics_clear.title'), t('alerts.analytics_clear.text'), [
-      { text: t('alerts.analytics_clear.cancel'), style: 'cancel' },
-      {
-        text: t('alerts.analytics_clear.confirm'),
-        style: 'destructive',
-        onPress: async () => {
-          await clearAnalytics();
-          setAnalyticsSizeKb(0);
-        }
-      }
-    ]);
+    Alert.alert(
+      t('alerts.analytics_clear.title'),
+      t('alerts.analytics_clear.text'),
+      [
+        { text: t('alerts.analytics_clear.cancel'), style: 'cancel' },
+        {
+          text: t('alerts.analytics_clear.confirm'),
+          style: 'destructive',
+          onPress: async () => {
+            await clearAnalytics();
+            setAnalyticsSizeKb(0);
+          },
+        },
+      ],
+    );
   }, []);
   const [editorFields, setEditorFields] = useState({
     energy: '0',
     iron: '0',
     titan: '0',
     iridium: '0',
-    playerXP: '0'
+    playerXP: '0',
   });
   const [editorToggles, setEditorToggles] = useState({
     unlockUpgrades: false,
     unlockShipyard: false,
-    unlockPlanets: false
+    unlockPlanets: false,
   });
 
   // Show CLERK-7 onboarding hint the first time each screen is opened
@@ -243,7 +282,7 @@ function GameApp({
       upgrades: 'screen_upgrades',
       battle: 'screen_battle',
       shipyard: 'screen_shipyard',
-      planets: 'screen_planets'
+      planets: 'screen_planets',
     };
     const trigger = screenTriggers[tab];
     if (trigger && !screenGreetedRef.current.has(tab)) {
@@ -265,12 +304,12 @@ function GameApp({
       iron: String(game.metals.iron),
       titan: String(game.metals.titan),
       iridium: String(game.metals.iridium),
-      playerXP: String(game.playerXP)
+      playerXP: String(game.playerXP),
     });
     setEditorToggles({
       unlockUpgrades: upgradesUnlocked,
       unlockShipyard: shipyardUnlocked,
-      unlockPlanets: planetsUnlocked
+      unlockPlanets: planetsUnlocked,
     });
     setEditorOpen(true);
   };
@@ -291,8 +330,8 @@ function GameApp({
       tabsUnlocked: {
         upgrades: editorToggles.unlockUpgrades,
         shipyard: editorToggles.unlockShipyard,
-        planets: editorToggles.unlockPlanets
-      }
+        planets: editorToggles.unlockPlanets,
+      },
     });
     setEditorOpen(false);
   };
@@ -404,7 +443,7 @@ function GameApp({
       getAccessToken().then((token) => {
         if (!token) return;
         getCloudRev().then((rev) =>
-          pushCloudSave(envelope, rev ?? undefined).catch(() => {})
+          pushCloudSave(envelope, rev ?? undefined).catch(() => {}),
         );
       });
     }, 3000);
@@ -468,7 +507,7 @@ function GameApp({
                   id: game.achievementToast.id,
                   nameKey: game.achievementToast.nameKey,
                   icon: game.achievementToast.icon,
-                  loreKey: game.achievementToast.loreKey
+                  loreKey: game.achievementToast.loreKey,
                 }
               : null
           }
@@ -491,7 +530,7 @@ function GameApp({
               game.energy >= n.energyCost &&
               (n.branch === 'mining' ||
                 (n.branch === 'battle' && battleUnlocked) ||
-                (n.branch === 'expedition' && shipyardUnlocked))
+                (n.branch === 'expedition' && shipyardUnlocked)),
           )}
           onOpenResearch={() => {
             if (!screenGreetedRef.current.has('research')) {
@@ -522,11 +561,9 @@ function GameApp({
           onOpenStoryLog={() => {
             const ctx = {
               unlockedPlanetIds: game.unlockedPlanetIds,
-              chosenCharacterId: game.chosenCharacterId
+              chosenCharacterId: game.chosenCharacterId,
             };
-            setSeenStoryCount(
-              getStoryLogUnlockedEntries(ctx).length
-            );
+            setSeenStoryCount(getStoryLogUnlockedEntries(ctx).length);
             logEvent('modal_open', { modal: 'story_log' });
             setStoryLogOpen(true);
           }}
@@ -537,7 +574,10 @@ function GameApp({
               blocked: !game.canPrestige,
               blockedReason: game.prestigeBlockedReason ?? undefined,
             });
-            if (!game.canPrestige && game.prestigeBlockedReason === 'level_too_low') {
+            if (
+              !game.canPrestige &&
+              game.prestigeBlockedReason === 'level_too_low'
+            ) {
               logEvent('prestige_popup_blocked', {
                 playerLevel: game.playerLevel,
                 blockedReason: 'level_too_low',
@@ -550,7 +590,7 @@ function GameApp({
           hasNewStoryEntry={
             getStoryLogUnlockedEntries({
               unlockedPlanetIds: game.unlockedPlanetIds,
-              chosenCharacterId: game.chosenCharacterId
+              chosenCharacterId: game.chosenCharacterId,
             }).length > seenStoryCount
           }
           hasUnreadChannelMessage={!!game.characterMessage}
@@ -654,7 +694,7 @@ function GameApp({
           equippedModule={(() => {
             const shipId = game.battle?.shipId ?? game.fleet.selectedShipId;
             const owned = game.fleet.ownedShips.find(
-              (s) => s.shipId === shipId
+              (s) => s.shipId === shipId,
             );
             const modId = owned?.equippedModuleId ?? null;
             return modId ? getModuleById(modId) : null;
@@ -662,7 +702,7 @@ function GameApp({
           equippedModuleLevel={(() => {
             const shipId = game.battle?.shipId ?? game.fleet.selectedShipId;
             const owned = game.fleet.ownedShips.find(
-              (s) => s.shipId === shipId
+              (s) => s.shipId === shipId,
             );
             const modId = owned?.equippedModuleId ?? null;
             return modId ? (game.moduleLevels[modId] ?? 0) : 0;
@@ -684,7 +724,13 @@ function GameApp({
   }
 
   return (
-    <RNSAView edges={['top']} style={[styles.container, tgTopPadding > 0 ? { paddingTop: tgTopPadding } : null]}>
+    <RNSAView
+      edges={['top']}
+      style={[
+        styles.container,
+        tgTopPadding > 0 ? { paddingTop: tgTopPadding } : null,
+      ]}
+    >
       <StatusBar style="light" />
       <View style={styles.content}>{tabContent}</View>
 
@@ -780,7 +826,7 @@ function GameApp({
         onAction={() => {
           logEvent('toast_action', {
             toast: 'achievements_unlock',
-            action: 'open_achievements'
+            action: 'open_achievements',
           });
           setAchievementsOpen(true);
         }}
@@ -800,7 +846,7 @@ function GameApp({
         onAction={() => {
           logEvent('toast_action', {
             toast: 'upgrades_unlock',
-            action: 'open_upgrades'
+            action: 'open_upgrades',
           });
           goToTab('upgrades');
         }}
@@ -812,7 +858,7 @@ function GameApp({
         onClose={() => {
           logEvent('toast_close', {
             toast: 'unlock',
-            id: game.currentUnlockToast?.id
+            id: game.currentUnlockToast?.id,
           });
           game.dismissUnlockToast();
         }}
@@ -831,18 +877,22 @@ function GameApp({
           game.closeFirstShipToast();
         }}
         image={getShips()[0].image}
-        text={t('alerts.first_ship.text', { minEnergy: String(minAttackEnergy) })}
+        text={t('alerts.first_ship.text', {
+          minEnergy: String(minAttackEnergy),
+        })}
         clerk
         headerEmoji="🚀"
         actionLabel={
           planetsUnlocked
             ? t('alerts.first_ship.action_go_planets')
-            : t('alerts.first_ship.action_earn', { energy: String(minAttackEnergy) })
+            : t('alerts.first_ship.action_earn', {
+                energy: String(minAttackEnergy),
+              })
         }
         onAction={() => {
           logEvent('toast_action', {
             toast: 'first_ship',
-            action: planetsUnlocked ? 'go_planets' : 'go_game'
+            action: planetsUnlocked ? 'go_planets' : 'go_game',
           });
           game.closeFirstShipToast();
           goToTab(planetsUnlocked ? 'planets' : 'game');
@@ -863,7 +913,7 @@ function GameApp({
         onAction={() => {
           logEvent('toast_action', {
             toast: 'planets_unlock',
-            action: 'open_planets'
+            action: 'open_planets',
           });
           goToTab('planets');
         }}
@@ -883,7 +933,7 @@ function GameApp({
         onAction={() => {
           logEvent('toast_action', {
             toast: 'shipyard_unlock',
-            action: 'open_shipyard'
+            action: 'open_shipyard',
           });
           goToTab('shipyard');
         }}
@@ -895,14 +945,17 @@ function GameApp({
         onClose={() => {
           logEvent('toast_close', {
             toast: 'planet_unlock',
-            planetId: game.planetUnlockToast?.id
+            planetId: game.planetUnlockToast?.id,
           });
           game.closePlanetUnlockToast();
         }}
         image={game.planetUnlockToast?.image}
         text={
           game.planetUnlockToast
-            ? t('alerts.planet_unlock.text', { name: game.planetUnlockToast.name, lore: game.planetUnlockToast.lore })
+            ? t('alerts.planet_unlock.text', {
+                name: game.planetUnlockToast.name,
+                lore: game.planetUnlockToast.lore,
+              })
             : ''
         }
         clerk
@@ -911,7 +964,7 @@ function GameApp({
           logEvent('toast_action', {
             toast: 'planet_unlock',
             action: 'start_mining',
-            planetId: game.planetUnlockToast?.id
+            planetId: game.planetUnlockToast?.id,
           });
           goToTab('game');
         }}
@@ -968,24 +1021,24 @@ function GameApp({
         const METAL_INFO: Record<MetalId, { title: string; text: string }> = {
           iron: {
             title: '◈ ЖЕЛЕЗО™ · КЛЕРК-7 ◈',
-            text: 'Железо — базовый промышленный металл. Добывайте его как можно больше.\n\nПо регламенту МММРДР, минимальная норма сбора не установлена. Это не значит, что её нет — просто форма МН-2 «Установление нормы» находится на согласовании с 2341 года.\n\nВывод: добывайте. Много. Пока не спросили.'
+            text: 'Железо — базовый промышленный металл. Добывайте его как можно больше.\n\nПо регламенту МММРДР, минимальная норма сбора не установлена. Это не значит, что её нет — просто форма МН-2 «Установление нормы» находится на согласовании с 2341 года.\n\nВывод: добывайте. Много. Пока не спросили.',
           },
           titan: {
             title: '◈ ТИТАН · КЛЕРК-7 ◈',
-            text: 'Титан — металл с исключительно высокой прочностью. Применяется в обшивке боевых кораблей и производстве пушечных компонентов.\n\nСогласно директиве МММРДР № 7.4.2, каждый образец подлежит взвешиванию, маркировке и трёхкратной инвентаризации. Форма ТТ-19 «Учёт титана» выдаётся в окошке 3. Окошко 3 закрыто на переучёт.\n\nВывод: полезный металл. Добывайте, пока никто не взвешивает.'
+            text: 'Титан — металл с исключительно высокой прочностью. Применяется в обшивке боевых кораблей и производстве пушечных компонентов.\n\nСогласно директиве МММРДР № 7.4.2, каждый образец подлежит взвешиванию, маркировке и трёхкратной инвентаризации. Форма ТТ-19 «Учёт титана» выдаётся в окошке 3. Окошко 3 закрыто на переучёт.\n\nВывод: полезный металл. Добывайте, пока никто не взвешивает.',
           },
           iridium: {
             title: '◈ ИРИДИЙ · КЛЕРК-7 ◈',
-            text: 'Иридий — редкоземельный металл с повышенной устойчивостью к внешним воздействиям. Применяется в высокотехнологичных компонентах орудий и корпусных усилителей.\n\nВстречается реже, чем железо или титан. По мнению МММРДР, это «не баг, а особенность распределения ресурсов». Форма ИР-7 «Жалоба на редкость иридия» официально не рассматривается.\n\nВывод: ценнее, чем кажется. Копите.'
+            text: 'Иридий — редкоземельный металл с повышенной устойчивостью к внешним воздействиям. Применяется в высокотехнологичных компонентах орудий и корпусных усилителей.\n\nВстречается реже, чем железо или титан. По мнению МММРДР, это «не баг, а особенность распределения ресурсов». Форма ИР-7 «Жалоба на редкость иридия» официально не рассматривается.\n\nВывод: ценнее, чем кажется. Копите.',
           },
           voidCrystal: {
             title: '◈ КРИСТАЛЛ ПУСТОТЫ · КЛЕРК-7 ◈',
-            text: 'Кристалл Пустоты — экзотический материал, обнаруженный исключительно в Секторе 3. Природа его образования не изучена. МММРДР не спешит изучать.\n\nОфициальная классификация: «объект неустановленной категории». Форма КП-0 «Идентификация неизвестного вещества» находится в разработке с момента открытия Сектора 3.\n\nВывод: что-то важное. Точно.'
+            text: 'Кристалл Пустоты — экзотический материал, обнаруженный исключительно в Секторе 3. Природа его образования не изучена. МММРДР не спешит изучать.\n\nОфициальная классификация: «объект неустановленной категории». Форма КП-0 «Идентификация неизвестного вещества» находится в разработке с момента открытия Сектора 3.\n\nВывод: что-то важное. Точно.',
           },
           echoShard: {
             title: '◈ ОСКОЛОК ЭХА · КЛЕРК-7 ◈',
-            text: 'Осколок Эха — фрагментарный материал, излучающий слабый резонансный сигнал. Встречается в глубинах Сектора 3.\n\nПо непроверенным данным, звук, исходящий от осколка — это отголоски сигналов, поглощённых Пустотой. МММРДР официально опровергает эту теорию, не приводя альтернативной.\n\nВывод: берите. Пригодится.'
-          }
+            text: 'Осколок Эха — фрагментарный материал, излучающий слабый резонансный сигнал. Встречается в глубинах Сектора 3.\n\nПо непроверенным данным, звук, исходящий от осколка — это отголоски сигналов, поглощённых Пустотой. МММРДР официально опровергает эту теорию, не приводя альтернативной.\n\nВывод: берите. Пригодится.',
+          },
         };
         const metal = metalInfoOpenId
           ? getMetals().find((m) => m.id === metalInfoOpenId)
@@ -998,7 +1051,7 @@ function GameApp({
             onClose={() => {
               logEvent('toast_close', {
                 toast: 'metal_info',
-                metalId: metalInfoOpenId
+                metalId: metalInfoOpenId,
               });
               setMetalInfoOpenId(null);
             }}
@@ -1029,7 +1082,7 @@ function GameApp({
                 const hasExpeditionDone =
                   tabDef.id === 'shipyard' &&
                   game.expeditions.some(
-                    (e) => (game.expeditionRemainingMap[e.shipId] ?? 1) === 0
+                    (e) => (game.expeditionRemainingMap[e.shipId] ?? 1) === 0,
                   );
                 const hasAffordableUpgrade =
                   tabDef.id === 'upgrades' &&
@@ -1039,15 +1092,15 @@ function GameApp({
                       game.energy >=
                       computeUpgradeCost(
                         u,
-                        game.upgrades[u.id as UpgradeId] ?? 0
-                      )
+                        game.upgrades[u.id as UpgradeId] ?? 0,
+                      ),
                   );
                 const hasAttackablePlanet =
                   tabDef.id === 'planets' &&
                   tab !== 'planets' &&
                   getAliens().some((alien) => {
                     const planet = getPlanets().find(
-                      (p) => p.id === alien.planetId
+                      (p) => p.id === alien.planetId,
                     );
                     if (!planet) return false;
                     return (
@@ -1055,7 +1108,7 @@ function GameApp({
                       isSectorUnlocked(
                         planet.sectorId,
                         game.unlockedPlanetIds,
-                        game.playerLevel
+                        game.playerLevel,
                       ) &&
                       game.battle?.planetId !== alien.planetId &&
                       game.energy >= alien.attackEnergyCost
@@ -1067,13 +1120,13 @@ function GameApp({
                   (getShips().some(
                     (ship) =>
                       !game.fleet.ownedShips.some(
-                        (o) => o.shipId === ship.id
+                        (o) => o.shipId === ship.id,
                       ) &&
                       Object.entries(ship.baseCost).every(
                         ([m, qty]) =>
                           (game.metals[m as keyof typeof game.metals] ?? 0) >=
-                          (qty ?? 0)
-                      )
+                          (qty ?? 0),
+                      ),
                   ) ||
                     (game.fleet.ownedShips.length > 0 &&
                       getCannons().some((cannon) =>
@@ -1081,27 +1134,30 @@ function GameApp({
                           .filter(
                             (ship) =>
                               !game.expeditions.some(
-                                (e) => e.shipId === ship.shipId
-                              )
+                                (e) => e.shipId === ship.shipId,
+                              ),
                           )
                           .some((ship) => {
                             const cost = computeCannonCost(
                               cannon,
-                              ship.cannons[cannon.id] ?? 0
+                              ship.cannons[cannon.id] ?? 0,
                             );
                             return Object.entries(cost).every(
                               ([m, qty]) =>
                                 (game.metals[m as keyof typeof game.metals] ??
-                                  0) >= (qty ?? 0)
+                                  0) >= (qty ?? 0),
                             );
-                          })
+                          }),
                       )));
 
                 return (
                   <Pressable
                     key={tabDef.id}
                     onPress={() => {
-                      logEvent('tab_switch', { tab: tabDef.id, via: 'tab_bar' });
+                      logEvent('tab_switch', {
+                        tab: tabDef.id,
+                        via: 'tab_bar',
+                      });
                       onSetTab(tabDef.id);
                     }}
                     style={styles.tabBtn}
@@ -1110,7 +1166,7 @@ function GameApp({
                     <Text
                       style={[
                         styles.tabLabel,
-                        active ? styles.tabLabelActive : null
+                        active ? styles.tabLabelActive : null,
                       ]}
                     >
                       {t(tabDef.labelKey)}
@@ -1120,7 +1176,7 @@ function GameApp({
                       <View
                         style={[
                           styles.tabBadge,
-                          hasDefeat ? { backgroundColor: '#ff9900' } : {}
+                          hasDefeat ? { backgroundColor: '#ff9900' } : {},
                         ]}
                       />
                     ) : null}
@@ -1128,7 +1184,7 @@ function GameApp({
                       <View
                         style={[
                           styles.tabBadge,
-                          { backgroundColor: '#ff3b3b' }
+                          { backgroundColor: '#ff3b3b' },
                         ]}
                       />
                     ) : null}
@@ -1136,7 +1192,7 @@ function GameApp({
                       <View
                         style={[
                           styles.tabBadge,
-                          { backgroundColor: '#ff3b3b' }
+                          { backgroundColor: '#ff3b3b' },
                         ]}
                       />
                     ) : null}
@@ -1144,7 +1200,7 @@ function GameApp({
                       <View
                         style={[
                           styles.tabBadge,
-                          { backgroundColor: '#ff3b30' }
+                          { backgroundColor: '#ff3b30' },
                         ]}
                       />
                     ) : null}
@@ -1214,8 +1270,14 @@ function GameApp({
               <View style={styles.editorDivider} />
               {(
                 [
-                  { key: 'unlockUpgrades', labelKey: 'ui.editor.upgrades_open' },
-                  { key: 'unlockShipyard', labelKey: 'ui.editor.shipyard_open' },
+                  {
+                    key: 'unlockUpgrades',
+                    labelKey: 'ui.editor.upgrades_open',
+                  },
+                  {
+                    key: 'unlockShipyard',
+                    labelKey: 'ui.editor.shipyard_open',
+                  },
                   { key: 'unlockPlanets', labelKey: 'ui.editor.planets_open' },
                 ] as { key: keyof typeof editorToggles; labelKey: string }[]
               ).map(({ key, labelKey }) => (
@@ -1223,22 +1285,27 @@ function GameApp({
                   <Text style={styles.editorFieldLabel}>{t(labelKey)}</Text>
                   <Pressable
                     onPress={() =>
-                      setEditorToggles((prev) => ({ ...prev, [key]: !prev[key] }))
+                      setEditorToggles((prev) => ({
+                        ...prev,
+                        [key]: !prev[key],
+                      }))
                     }
                     style={[
                       styles.editorToggle,
                       editorToggles[key]
                         ? styles.editorToggleOn
-                        : styles.editorToggleOff
+                        : styles.editorToggleOff,
                     ]}
                   >
                     <Text
                       style={[
                         styles.editorToggleText,
-                        editorToggles[key] ? styles.editorToggleTextOn : null
+                        editorToggles[key] ? styles.editorToggleTextOn : null,
                       ]}
                     >
-                      {editorToggles[key] ? t('ui.editor.toggle_on') : t('ui.editor.toggle_off')}
+                      {editorToggles[key]
+                        ? t('ui.editor.toggle_on')
+                        : t('ui.editor.toggle_off')}
                     </Text>
                   </Pressable>
                 </View>
@@ -1249,10 +1316,14 @@ function GameApp({
                 style={styles.resetCardCancel}
                 onPress={() => setEditorOpen(false)}
               >
-                <Text style={styles.resetCardCancelText}>{t('ui.editor.cancel')}</Text>
+                <Text style={styles.resetCardCancelText}>
+                  {t('ui.editor.cancel')}
+                </Text>
               </Pressable>
               <Pressable style={styles.resetCardConfirm} onPress={applyEditor}>
-                <Text style={styles.resetCardConfirmText}>{t('ui.editor.apply')}</Text>
+                <Text style={styles.resetCardConfirmText}>
+                  {t('ui.editor.apply')}
+                </Text>
               </Pressable>
             </View>
           </Pressable>
@@ -1271,9 +1342,7 @@ function GameApp({
         >
           <Pressable style={styles.resetCard} onPress={() => {}}>
             <Text style={styles.resetCardTitle}>{t('ui.reset.title')}</Text>
-            <Text style={styles.resetCardText}>
-              {t('ui.reset.body')}
-            </Text>
+            <Text style={styles.resetCardText}>{t('ui.reset.body')}</Text>
             <Pressable
               style={styles.resetCheckboxRow}
               onPress={() => setResetShowIntro((v) => !v)}
@@ -1281,21 +1350,25 @@ function GameApp({
               <View
                 style={[
                   styles.resetCheckbox,
-                  resetShowIntro && styles.resetCheckboxChecked
+                  resetShowIntro && styles.resetCheckboxChecked,
                 ]}
               >
                 {resetShowIntro ? (
                   <Text style={styles.resetCheckboxMark}>✓</Text>
                 ) : null}
               </View>
-              <Text style={styles.resetCheckboxLabel}>{t('ui.reset.show_intro')}</Text>
+              <Text style={styles.resetCheckboxLabel}>
+                {t('ui.reset.show_intro')}
+              </Text>
             </Pressable>
             <View style={styles.resetCardButtons}>
               <Pressable
                 style={styles.resetCardCancel}
                 onPress={() => setResetConfirmOpen(false)}
               >
-                <Text style={styles.resetCardCancelText}>{t('ui.reset.cancel')}</Text>
+                <Text style={styles.resetCardCancelText}>
+                  {t('ui.reset.cancel')}
+                </Text>
               </Pressable>
               <Pressable
                 style={styles.resetCardConfirm}
@@ -1306,7 +1379,9 @@ function GameApp({
                   setResetShowIntro(false);
                 }}
               >
-                <Text style={styles.resetCardConfirmText}>{t('ui.reset.confirm')}</Text>
+                <Text style={styles.resetCardConfirmText}>
+                  {t('ui.reset.confirm')}
+                </Text>
               </Pressable>
             </View>
           </Pressable>
@@ -1330,10 +1405,13 @@ export default function App() {
   const [configError, setConfigError] = useState<string | null>(null);
   const [localeChecked, setLocaleChecked] = useState(false);
   const [showLocalePicker, setShowLocalePicker] = useState(false);
-  const [tgInsets, setTgInsets] = useState<TelegramSafeAreaInsets>({ sysTop: 0, contentTop: 0 });
+  const [tgInsets, setTgInsets] = useState<TelegramSafeAreaInsets>({
+    sysTop: 0,
+    contentTop: 0,
+  });
 
   const sessionIdRef = useRef(
-    Math.random().toString(36).slice(2) + Date.now().toString(36)
+    Math.random().toString(36).slice(2) + Date.now().toString(36),
   );
 
   const retryDialogues = useCallback(() => {
@@ -1354,7 +1432,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    loadUnlocked().then(was => setUnlocked(was ? true : false));
+    loadUnlocked().then((was) => setUnlocked(was ? true : false));
   }, []);
 
   useEffect(() => {
@@ -1462,7 +1540,7 @@ export default function App() {
       const [localLoaded, seen, token] = await Promise.all([
         loadGame(),
         loadIntroSeen(),
-        getAccessToken()
+        getAccessToken(),
       ]);
       if (!mounted) return;
 
@@ -1472,7 +1550,7 @@ export default function App() {
             version: 2 as const,
             savedAt: localLoaded.savedAt,
             appliedGrantSeq: localLoaded.appliedGrantSeq,
-            state: localLoaded.state
+            state: localLoaded.state,
           }
         : null;
       let cloudRev: number | undefined;
@@ -1485,7 +1563,7 @@ export default function App() {
           if (cloudResult.ok) {
             localEnvelope = pickNewerEnvelope(
               localEnvelope,
-              cloudResult.envelope
+              cloudResult.envelope,
             );
             cloudRev = cloud.rev;
           }
@@ -1513,7 +1591,7 @@ export default function App() {
               version: 2,
               savedAt: Date.now(),
               appliedGrantSeq: newSeq,
-              state: stateWithGrants
+              state: stateWithGrants,
             };
             appliedGrantSeq = newSeq;
 
@@ -1563,11 +1641,11 @@ export default function App() {
           const planets = getPlanets();
           const planet =
             planets.find(
-              (p) => p.id === (state.selectedPlanetId ?? planets[0].id)
+              (p) => p.id === (state.selectedPlanetId ?? planets[0].id),
             ) ?? planets[0];
           const passiveRate = basePassive * planet.bonus;
           const earnings = Math.floor(
-            passiveRate * Math.min(elapsedSeconds, 8 * 3600)
+            passiveRate * Math.min(elapsedSeconds, 8 * 3600),
           );
           if (earnings > 0) {
             state.energy = (state.energy ?? 0) + earnings;
@@ -1617,7 +1695,11 @@ export default function App() {
         </View>
       );
     }
-    return <View style={styles.container}><StatusBar style="light" /></View>;
+    return (
+      <View style={styles.container}>
+        <StatusBar style="light" />
+      </View>
+    );
   }
 
   if (unlocked !== true) {
@@ -1635,7 +1717,9 @@ export default function App() {
       <View style={styles.container}>
         <StatusBar style="light" />
         <View style={styles.loading}>
-          <Text style={styles.loadingText}>{t('ui.loading.config_failed')}</Text>
+          <Text style={styles.loadingText}>
+            {t('ui.loading.config_failed')}
+          </Text>
           <Text style={[styles.loadingText, { marginTop: 8, opacity: 0.6 }]}>
             {configError}
           </Text>
@@ -1660,7 +1744,9 @@ export default function App() {
       <View style={styles.container}>
         <StatusBar style="light" />
         <View style={styles.loading}>
-          <Text style={styles.loadingText}>{t('ui.loading.dialogues_failed')}</Text>
+          <Text style={styles.loadingText}>
+            {t('ui.loading.dialogues_failed')}
+          </Text>
           <Text style={[styles.loadingText, { marginTop: 8, opacity: 0.6 }]}>
             {dialoguesError}
           </Text>
@@ -1714,7 +1800,9 @@ export default function App() {
             visible={offlineEarnings > 0}
             title={t('ui.offline.title')}
             headerEmoji="⚡"
-            text={t('ui.offline.text', { earnings: formatNum(offlineEarnings) })}
+            text={t('ui.offline.text', {
+              earnings: formatNum(offlineEarnings),
+            })}
             onClose={() => setOfflineEarnings(0)}
           />
         </View>
@@ -1724,7 +1812,7 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#050918', userSelect: 'none' },
+  container: { flex: 1, backgroundColor: '#091131', userSelect: 'none' },
   content: { flex: 1 },
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   loadingText: { color: 'rgba(0,212,255,0.7)', fontWeight: '800' },
@@ -1734,17 +1822,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: 'rgba(0,212,255,0.4)'
+    borderColor: 'rgba(0,212,255,0.4)',
   },
   retryBtnText: { color: '#00d4ff', fontWeight: '800', fontSize: 12 },
   tabBarOuter: {
     borderTopWidth: 1,
     borderTopColor: 'rgba(0,212,255,0.15)',
-    backgroundColor: 'rgba(0,10,30,0.95)'
+    backgroundColor: 'rgba(0,10,30,0.95)',
   },
   tabBar: {
     flexDirection: 'row',
-    alignItems: 'flex-start'
+    alignItems: 'flex-start',
   },
   tabBtn: {
     flex: 1,
@@ -1752,7 +1840,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 1,
-    position: 'relative'
+    position: 'relative',
   },
   tabIcon: { fontSize: 14 },
   tabLabel: {
@@ -1760,7 +1848,7 @@ const styles = StyleSheet.create({
     fontSize: 7,
     letterSpacing: 0.3,
     color: 'rgba(255,255,255,0.3)',
-    fontWeight: '800'
+    fontWeight: '800',
   },
   tabLabelActive: { color: '#00d4ff' },
   tabActiveLine: {
@@ -1769,7 +1857,7 @@ const styles = StyleSheet.create({
     right: 6,
     bottom: 5,
     height: 2,
-    backgroundColor: '#00d4ff'
+    backgroundColor: '#00d4ff',
   },
   resetBtn: { alignItems: 'center', gap: 2 },
   resetIcon: { fontSize: 12, color: 'rgba(255,80,80,0.55)' },
@@ -1777,14 +1865,14 @@ const styles = StyleSheet.create({
     fontSize: 6,
     color: 'rgba(255,80,80,0.45)',
     fontWeight: '800',
-    letterSpacing: 0.3
+    letterSpacing: 0.3,
   },
   resetOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,5,20,0.75)',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 24
+    padding: 24,
   },
   resetCard: {
     width: '100%',
@@ -1793,25 +1881,25 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,80,80,0.3)',
     borderRadius: 16,
     padding: 20,
-    gap: 12
+    gap: 12,
   },
   resetCardTitle: {
     fontSize: 10,
     fontWeight: '900',
     color: 'rgba(255,80,80,0.85)',
     letterSpacing: 2,
-    textAlign: 'center'
+    textAlign: 'center',
   },
   resetCardText: {
     fontSize: 13,
     color: 'rgba(200,230,255,0.85)',
     lineHeight: 20,
-    textAlign: 'center'
+    textAlign: 'center',
   },
   resetCardButtons: {
     flexDirection: 'row',
     gap: 10,
-    marginTop: 4
+    marginTop: 4,
   },
   resetCardCancel: {
     flex: 1,
@@ -1819,12 +1907,12 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: 'rgba(0,212,255,0.3)',
-    alignItems: 'center'
+    alignItems: 'center',
   },
   resetCardCancelText: {
     color: 'rgba(0,212,255,0.8)',
     fontWeight: '700',
-    fontSize: 13
+    fontSize: 13,
   },
   resetCardConfirm: {
     flex: 1,
@@ -1833,18 +1921,18 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(180,30,30,0.6)',
     borderWidth: 1,
     borderColor: 'rgba(255,80,80,0.4)',
-    alignItems: 'center'
+    alignItems: 'center',
   },
   resetCardConfirmText: {
     color: 'rgba(255,120,120,0.95)',
     fontWeight: '700',
-    fontSize: 13
+    fontSize: 13,
   },
   resetCheckboxRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    paddingVertical: 2
+    paddingVertical: 2,
   },
   resetCheckbox: {
     width: 18,
@@ -1853,21 +1941,21 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(0,212,255,0.4)',
     alignItems: 'center',
-    justifyContent: 'center'
+    justifyContent: 'center',
   },
   resetCheckboxChecked: {
     backgroundColor: 'rgba(0,212,255,0.15)',
-    borderColor: 'rgba(0,212,255,0.8)'
+    borderColor: 'rgba(0,212,255,0.8)',
   },
   resetCheckboxMark: {
     color: '#00d4ff',
     fontSize: 12,
     fontWeight: '900',
-    lineHeight: 14
+    lineHeight: 14,
   },
   resetCheckboxLabel: {
     fontSize: 13,
-    color: 'rgba(200,230,255,0.75)'
+    color: 'rgba(200,230,255,0.75)',
   },
   tabBadge: {
     position: 'absolute',
@@ -1876,7 +1964,7 @@ const styles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 4,
-    backgroundColor: '#ff4444'
+    backgroundColor: '#ff4444',
   },
   sideButtons: {
     position: 'absolute',
@@ -1884,7 +1972,7 @@ const styles = StyleSheet.create({
     top: '50%',
     transform: [{ translateY: -38 }],
     alignItems: 'center',
-    gap: 8
+    gap: 8,
   },
   editorBtn: { alignItems: 'center', gap: 2 },
   editorIcon: { fontSize: 14, color: 'rgba(0,212,255,0.55)' },
@@ -1892,7 +1980,7 @@ const styles = StyleSheet.create({
     fontSize: 6,
     color: 'rgba(0,212,255,0.45)',
     fontWeight: '800',
-    letterSpacing: 0.3
+    letterSpacing: 0.3,
   },
   editorCard: {
     width: '100%',
@@ -1901,14 +1989,14 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(0,212,255,0.3)',
     borderRadius: 16,
     padding: 20,
-    gap: 14
+    gap: 14,
   },
   editorCardTitle: {
     fontSize: 10,
     fontWeight: '900',
     color: 'rgba(0,212,255,0.85)',
     letterSpacing: 2,
-    textAlign: 'center'
+    textAlign: 'center',
   },
   editorScroll: { maxHeight: 280 },
   editorRow: {
@@ -1917,12 +2005,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 6,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,212,255,0.08)'
+    borderBottomColor: 'rgba(0,212,255,0.08)',
   },
   editorFieldLabel: {
     fontSize: 12,
     color: 'rgba(200,230,255,0.85)',
-    fontWeight: '600'
+    fontWeight: '600',
   },
   editorInput: {
     width: 130,
@@ -1935,33 +2023,33 @@ const styles = StyleSheet.create({
     color: '#00d4ff',
     fontSize: 13,
     fontWeight: '700',
-    textAlign: 'right'
+    textAlign: 'right',
   },
   editorDivider: {
     height: 1,
     backgroundColor: 'rgba(0,212,255,0.12)',
-    marginVertical: 6
+    marginVertical: 6,
   },
   editorToggle: {
     width: 70,
     paddingVertical: 5,
     borderRadius: 8,
     borderWidth: 1,
-    alignItems: 'center'
+    alignItems: 'center',
   },
   editorToggleOn: {
     backgroundColor: 'rgba(0,212,255,0.15)',
-    borderColor: 'rgba(0,212,255,0.5)'
+    borderColor: 'rgba(0,212,255,0.5)',
   },
   editorToggleOff: {
     backgroundColor: 'rgba(255,255,255,0.03)',
-    borderColor: 'rgba(255,255,255,0.12)'
+    borderColor: 'rgba(255,255,255,0.12)',
   },
   editorToggleText: {
     fontSize: 10,
     fontWeight: '800',
     letterSpacing: 0.5,
-    color: 'rgba(255,255,255,0.3)'
+    color: 'rgba(255,255,255,0.3)',
   },
-  editorToggleTextOn: { color: '#00d4ff' }
+  editorToggleTextOn: { color: '#00d4ff' },
 });
