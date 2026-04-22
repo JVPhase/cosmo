@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState, Component } from 'react';
 import {
   SafeAreaProvider,
   SafeAreaView as RNSAView
@@ -107,6 +107,32 @@ const TABS: Array<{ id: TabId; icon: string; labelKey: string }> = [
   { id: 'battle', icon: '⚔️', labelKey: 'ui.tabs.battle' },
   { id: 'shop', icon: '🛒', labelKey: 'ui.tabs.shop' },
 ];
+
+class GameAppErrorBoundary extends Component<
+  { children: React.ReactNode },
+  { error: Error | null }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { error: null };
+  }
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <View style={{ flex: 1, backgroundColor: '#050918', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+          <Text style={{ color: '#ff4444', fontSize: 13, fontWeight: '800', marginBottom: 8 }}>CRASH</Text>
+          <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11, textAlign: 'center' }}>
+            {this.state.error.message}
+          </Text>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 function GameApp({
   initial,
@@ -1643,15 +1669,17 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <View style={styles.container}>
-        <GameApp
-          key={gameKey}
-          initial={initial}
-          initialAppliedGrantSeq={initialAppliedGrantSeq}
-          dialogues={dialogues}
-          tab={tab}
-          onSetTab={setTab}
-          onReset={handleReset}
-        />
+        <GameAppErrorBoundary>
+          <GameApp
+            key={gameKey}
+            initial={initial}
+            initialAppliedGrantSeq={initialAppliedGrantSeq}
+            dialogues={dialogues}
+            tab={tab}
+            onSetTab={setTab}
+            onReset={handleReset}
+          />
+        </GameAppErrorBoundary>
         <IntroOverlay
           visible={!introSeen}
           onDone={async () => {
