@@ -259,23 +259,29 @@ function readCssPx(varName: string): number {
   return parseFloat(raw) || 0;
 }
 
-/** Returns the Telegram content safe area top inset in pixels, or 0 outside Telegram. */
+/**
+ * Returns the Telegram content safe area top inset (mini-app header height)
+ * in pixels, or 0 when not inside a real Telegram WebApp.
+ *
+ * Intentionally bypasses isTelegramTestMode() so the value is correct even
+ * when EXPO_PUBLIC_TELEGRAM_TEST_MODE=true is set while running in real Telegram.
+ */
 export function getTelegramSafeTop(): number {
-  const tg = getTelegramWebApp();
-  if (!tg) return 0;
+  // Only applies when the real Telegram SDK is injected into the window.
+  // Mock (test-mode-only) contexts don't have Telegram chrome so need no padding.
+  const realTg = readTelegramWebAppFromWindow();
+  if (!realTg) return 0;
 
-  // JS API (Bot API 8.0+)
-  const fromContent = tg.contentSafeAreaInset?.top ?? 0;
+  // Bot API 8.0+: exact mini-app header height
+  const fromContent = realTg.contentSafeAreaInset?.top ?? 0;
   if (fromContent > 0) return fromContent;
 
-  // CSS variable set automatically by Telegram SDK
+  // CSS variable set automatically by the Telegram SDK on older clients
   const fromCss = readCssPx('--tg-content-safe-area-inset-top');
   if (fromCss > 0) return fromCss;
 
-  // Older clients: the mini-app header bar is consistently ~44 px
-  if (isTelegramRuntime() && !isTelegramTestMode()) return 44;
-
-  return 0;
+  // Fallback: Telegram mini-app header is consistently ~44 px across all clients
+  return 44;
 }
 
 /**
@@ -283,7 +289,7 @@ export function getTelegramSafeTop(): number {
  * updated top inset. Returns an unsubscribe function.
  */
 export function subscribeTelegramSafeTop(onChange: (top: number) => void): () => void {
-  const tg = getTelegramWebApp();
+  const tg = readTelegramWebAppFromWindow();
   if (!tg) return () => {};
 
   const update = () => onChange(getTelegramSafeTop());
