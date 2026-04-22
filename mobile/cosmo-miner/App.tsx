@@ -1,7 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useRef, useState, Component } from 'react';
 import {
-  SafeAreaInsetsContext,
   SafeAreaProvider,
   SafeAreaView as RNSAView,
   useSafeAreaInsets,
@@ -86,6 +85,7 @@ import {
   ensureTelegramWebApp,
   getTelegramSafeAreaInsets,
   subscribeTelegramSafeAreaInsets,
+  TelegramSafeAreaInsetsCtx,
   type TelegramSafeAreaInsets,
 } from './src/telegram/runtime';
 import { telegramAuthIfNeeded } from './src/telegram/auth';
@@ -142,21 +142,6 @@ class GameAppErrorBoundary extends Component<
   }
 }
 
-function TelegramAwareInsets({ children, tgInsets }: { children: React.ReactNode; tgInsets: TelegramSafeAreaInsets }) {
-  const insets = useSafeAreaInsets();
-  const adjusted = React.useMemo(() => ({
-    ...insets,
-    // Use the better of browser-measured vs Telegram-reported system inset,
-    // then add the Telegram mini-app header (contentTop) on top.
-    top: Math.max(insets.top, tgInsets.sysTop) + tgInsets.contentTop,
-  }), [insets, tgInsets]);
-  return (
-    <SafeAreaInsetsContext.Provider value={adjusted}>
-      {children}
-    </SafeAreaInsetsContext.Provider>
-  );
-}
-
 function GameApp({
   initial,
   initialAppliedGrantSeq,
@@ -177,6 +162,12 @@ function GameApp({
   // when new grants are applied during a session (P1). For P0, it is fixed
   // at the bootstrap value.
   const appliedGrantSeqRef = useRef(initialAppliedGrantSeq);
+  const safeInsets = useSafeAreaInsets();
+  const tgInsets = React.useContext(TelegramSafeAreaInsetsCtx);
+  // Extra top padding for Telegram: header (contentTop) + any system safe area
+  // not already covered by react-native-safe-area-context (sysTop - insets.top).
+  const tgTopPadding =
+    Math.max(0, tgInsets.sysTop - safeInsets.top) + tgInsets.contentTop;
   const game = useGame(initial, dialogues);
   const minAttackEnergy = Math.min(
     ...getAliens().map((a) => a.attackEnergyCost)
@@ -693,7 +684,7 @@ function GameApp({
   }
 
   return (
-    <RNSAView edges={['top']} style={styles.container}>
+    <RNSAView edges={['top']} style={[styles.container, tgTopPadding > 0 ? { paddingTop: tgTopPadding } : null]}>
       <StatusBar style="light" />
       <View style={styles.content}>{tabContent}</View>
 
@@ -1699,35 +1690,35 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <TelegramAwareInsets tgInsets={tgInsets}>
-      <View style={styles.container}>
-        <GameAppErrorBoundary>
-          <GameApp
-            key={gameKey}
-            initial={initial}
-            initialAppliedGrantSeq={initialAppliedGrantSeq}
-            dialogues={dialogues}
-            tab={tab}
-            onSetTab={setTab}
-            onReset={handleReset}
+      <TelegramSafeAreaInsetsCtx.Provider value={tgInsets}>
+        <View style={styles.container}>
+          <GameAppErrorBoundary>
+            <GameApp
+              key={gameKey}
+              initial={initial}
+              initialAppliedGrantSeq={initialAppliedGrantSeq}
+              dialogues={dialogues}
+              tab={tab}
+              onSetTab={setTab}
+              onReset={handleReset}
+            />
+          </GameAppErrorBoundary>
+          <IntroOverlay
+            visible={!introSeen}
+            onDone={async () => {
+              setIntroSeen(true);
+              await saveIntroSeen(true);
+            }}
           />
-        </GameAppErrorBoundary>
-        <IntroOverlay
-          visible={!introSeen}
-          onDone={async () => {
-            setIntroSeen(true);
-            await saveIntroSeen(true);
-          }}
-        />
-        <Popup
-          visible={offlineEarnings > 0}
-          title={t('ui.offline.title')}
-          headerEmoji="⚡"
-          text={t('ui.offline.text', { earnings: formatNum(offlineEarnings) })}
-          onClose={() => setOfflineEarnings(0)}
-        />
-      </View>
-      </TelegramAwareInsets>
+          <Popup
+            visible={offlineEarnings > 0}
+            title={t('ui.offline.title')}
+            headerEmoji="⚡"
+            text={t('ui.offline.text', { earnings: formatNum(offlineEarnings) })}
+            onClose={() => setOfflineEarnings(0)}
+          />
+        </View>
+      </TelegramSafeAreaInsetsCtx.Provider>
     </SafeAreaProvider>
   );
 }
