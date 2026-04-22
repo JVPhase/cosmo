@@ -52,7 +52,7 @@ export function GameHeader({
         <View>
           <Text style={styles.headerLabel}>{t('ui.game_header.org_label')}</Text>
           <Text style={[styles.planetLine, { color: planet.color }]}>
-            {planet.icon} {planet.name} · {planet.resource}
+            {planet.icon} {planet.name}
           </Text>
           <Text style={styles.energy}>
             {formatNum(energy)} <Text style={styles.energyUnit}>⚡</Text>

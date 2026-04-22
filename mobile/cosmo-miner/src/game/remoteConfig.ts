@@ -83,11 +83,11 @@ export type ModulesConfig = {
 
 export type ShopItemConfig = {
   id: string;
-  name: string;
+  nameKey: string;
   icon: string;
   category: string;
   creditCost: number;
-  lore: string;
+  loreKey: string;
   boostEffect?: { stat: string; multiplier: number; durationMs: number };
   metalReward?: { metalId: string; amount: number }[];
   lootPool?: { metalId: string; min: number; max: number; chance: number }[];
@@ -143,7 +143,7 @@ export type PlanetOverrideConfig = {
   unlocked: boolean;
   cost: number;
   bonus: number;
-  resource: string;
+  resourceKey: string;
   color: string;
   loreKey: string;
 };

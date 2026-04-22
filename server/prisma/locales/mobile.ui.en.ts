@@ -240,7 +240,7 @@ export const messages: Record<string, string> = {
   'channel_btn.label': 'COMM CHANNEL',
   // ── MiningArea ───────────────────────────────────────────────────────────
   'mining.click_hint': 'TAP',
-  'mining.hint': '◈ MINE {resource} ◈',
+  'mining.hint': '◈ MINE ENERGIUM ◈',
   // ── CharacterCommunicationChannel (remaining) ─────────────────────────────
   'channel.established_garbled': 'Channel established: {name} [{role}].\n\nReceived a garbled message:',
   'channel.history_label': '📁 HISTORY',
@@ -256,9 +256,9 @@ export const messages: Record<string, string> = {
   'channel.no_new_messages': 'No new messages.',
   'channel.close': 'CLOSE',
   // ── PlanetsScreen ─────────────────────────────────────────────────────────
-  'planets.resource_label': 'Resource: {resource}',
+  'planets.resource_label': 'Resource: Energium™',
   'planets.dossier_title': '📋 PLANET DOSSIER · IMMDRE',
-  'planets.mined_resource': '⛏ Mined resource: {resource}',
+  'planets.mined_resource': '⛏ Mined resource: Energium™',
   'planets.metals_label': 'Metals:',
   'planets.occupied': '{icon} OCCUPIED · {name}',
   'planets.enemy_hp': 'Enemy HP: {hp}',
@@ -281,7 +281,8 @@ export const messages: Record<string, string> = {
   'planets.sector_header': 'SECTOR {id} · {name}',
   'planets.card_battling': '⚔️ Battle with {name}',
   'planets.card_sector_locked': '🔒 Sector locked',
-  'planets.card_occupied': '👾 Occupied: {name} · {resource}',
+  'planets.card_occupied': '👾 Occupied: {name}',
+  'planets.card_resource': '⚡ Energium™',
   'planets.card_unavailable': 'Unavailable',
   'planets.card_active': 'ACTIVE',
   'planets.card_battle_label': 'BATTLE',

@@ -94,7 +94,7 @@ export function PlanetsScreen({
             <Text style={[styles.planetName, { color: selPlanet.color }]}>
               {selPlanet.name}
             </Text>
-            <Text style={styles.meta}>{t('ui.planets.resource_label', { resource: selPlanet.resource })}</Text>
+            <Text style={styles.meta}>{t('ui.planets.resource_label')}</Text>
           </View>
 
           <View
@@ -102,7 +102,7 @@ export function PlanetsScreen({
           >
             <Text style={styles.dossierTitle}>{t('ui.planets.dossier_title')}</Text>
             <Text style={styles.dossierText}>
-              {t('ui.planets.mined_resource', { resource: selPlanet.resource })}
+              {t('ui.planets.mined_resource')}
             </Text>
             {(() => {
               const drops =
@@ -396,13 +396,13 @@ export function PlanetsScreen({
                 </Text>
                 <Text style={styles.cardMeta}>
                   {unlocked
-                    ? `${p.resource}`
+                    ? t('ui.planets.card_resource')
                     : isBattling
                       ? t('ui.planets.card_battling', { name: alien?.name ?? t('ui.battle.enemy_fallback') })
                       : !sectorUnlocked
                         ? t('ui.planets.card_sector_locked')
                         : alien
-                          ? t('ui.planets.card_occupied', { name: alien.name, resource: p.resource })
+                          ? t('ui.planets.card_occupied', { name: alien.name })
                           : t('ui.planets.card_unavailable')}
                 </Text>
               </View>

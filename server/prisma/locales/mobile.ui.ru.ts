@@ -240,7 +240,7 @@ export const messages: Record<string, string> = {
   'channel_btn.label': 'КАНАЛ СВЯЗИ',
   // ── MiningArea ───────────────────────────────────────────────────────────
   'mining.click_hint': 'КЛИКНИ',
-  'mining.hint': '◈ ДОБЫВАЙ {resource} ◈',
+  'mining.hint': '◈ ДОБЫВАЙ ЭНЕРГИУМ ◈',
   // ── CharacterCommunicationChannel (remaining) ─────────────────────────────
   'channel.established_garbled': 'Канал установлен: {name} [{role}].\n\nПолучено обрывистое сообщение:',
   'channel.history_label': '📁 ИСТОРИЯ',
@@ -256,9 +256,9 @@ export const messages: Record<string, string> = {
   'channel.no_new_messages': 'Новых сообщений нет.',
   'channel.close': 'ЗАКРЫТЬ',
   // ── PlanetsScreen ─────────────────────────────────────────────────────────
-  'planets.resource_label': 'Ресурс: {resource}',
+  'planets.resource_label': 'Ресурс: Энергиум™',
   'planets.dossier_title': '📋 ДОСЬЕ ПЛАНЕТЫ · МММРДР',
-  'planets.mined_resource': '⛏ Добываемый ресурс: {resource}',
+  'planets.mined_resource': '⛏ Добываемый ресурс: Энергиум™',
   'planets.metals_label': 'Металлы:',
   'planets.occupied': '{icon} ОККУПИРОВАНА · {name}',
   'planets.enemy_hp': 'HP противника: {hp}',
@@ -281,7 +281,8 @@ export const messages: Record<string, string> = {
   'planets.sector_header': 'СЕКТОР {id} · {name}',
   'planets.card_battling': '⚔️ Бой с {name}',
   'planets.card_sector_locked': '🔒 Сектор заблокирован',
-  'planets.card_occupied': '👾 Оккупирована: {name} · {resource}',
+  'planets.card_occupied': '👾 Оккупирована: {name}',
+  'planets.card_resource': '⚡ Энергиум™',
   'planets.card_unavailable': 'Недоступна',
   'planets.card_active': 'АКТИВНА',
   'planets.card_battle_label': 'БОЙ',
