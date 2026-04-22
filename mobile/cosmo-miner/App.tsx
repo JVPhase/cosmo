@@ -144,23 +144,12 @@ class GameAppErrorBoundary extends Component<
 
 function TelegramAwareInsets({ children, tgInsets }: { children: React.ReactNode; tgInsets: TelegramSafeAreaInsets }) {
   const insets = useSafeAreaInsets();
-  const adjusted = React.useMemo(() => {
-    if (!tgInsets.inTelegram) return insets;
-
-    let top: number;
-    if (tgInsets.contentTop > 0) {
-      // contentSafeAreaInset = Telegram header only → add to system safe area
-      top = insets.top + tgInsets.contentTop;
-    } else if (tgInsets.sysTop > 0) {
-      // safeAreaInset = total area (system + header) → use as replacement
-      top = Math.max(insets.top, tgInsets.sysTop);
-    } else {
-      // Values not yet available → 44 px header fallback
-      top = insets.top + 44;
-    }
-
-    return { ...insets, top };
-  }, [insets, tgInsets]);
+  const adjusted = React.useMemo(() => ({
+    ...insets,
+    // Use the better of browser-measured vs Telegram-reported system inset,
+    // then add the Telegram mini-app header (contentTop) on top.
+    top: Math.max(insets.top, tgInsets.sysTop) + tgInsets.contentTop,
+  }), [insets, tgInsets]);
   return (
     <SafeAreaInsetsContext.Provider value={adjusted}>
       {children}
@@ -1350,7 +1339,7 @@ export default function App() {
   const [configError, setConfigError] = useState<string | null>(null);
   const [localeChecked, setLocaleChecked] = useState(false);
   const [showLocalePicker, setShowLocalePicker] = useState(false);
-  const [tgInsets, setTgInsets] = useState<TelegramSafeAreaInsets>({ sysTop: 0, contentTop: 0, inTelegram: false });
+  const [tgInsets, setTgInsets] = useState<TelegramSafeAreaInsets>({ sysTop: 0, contentTop: 0 });
 
   const sessionIdRef = useRef(
     Math.random().toString(36).slice(2) + Date.now().toString(36)

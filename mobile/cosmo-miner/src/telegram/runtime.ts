@@ -264,8 +264,6 @@ export type TelegramSafeAreaInsets = {
   sysTop: number;
   /** Telegram UI chrome height (mini-app header). CSS: --tg-content-safe-area-inset-top */
   contentTop: number;
-  /** True when window.Telegram.WebApp is present (real Telegram, not test mock) */
-  inTelegram: boolean;
 };
 
 /**
@@ -281,23 +279,18 @@ export type TelegramSafeAreaInsets = {
  */
 export function getTelegramSafeAreaInsets(): TelegramSafeAreaInsets {
   const realTg = readTelegramWebAppFromWindow();
-  if (!realTg) return { sysTop: 0, contentTop: 0, inTelegram: false };
+  if (!realTg) return { sysTop: 0, contentTop: 0 };
 
-  // Bot API 7.0+: system-level safe area (status bar + possibly Telegram nav).
-  // CSS: var(--tg-safe-area-inset-top)
   const sysTop =
-    (realTg.safeAreaInset?.top || 0) ||
+    realTg.safeAreaInset?.top ??
     readCssPx('--tg-safe-area-inset-top');
 
-  // Bot API 8.0+: Telegram UI chrome only (mini-app header bar).
-  // CSS: var(--tg-content-safe-area-inset-top)
-  // No fallback here — fallback (44 px) is applied in TelegramAwareInsets
-  // so sysTop/contentTop = 0 can signal "not yet available".
   const contentTop =
     (realTg.contentSafeAreaInset?.top || 0) ||
-    readCssPx('--tg-content-safe-area-inset-top');
+    readCssPx('--tg-content-safe-area-inset-top') ||
+    44; // Telegram header is consistently ~44 px across all client versions
 
-  return { sysTop, contentTop, inTelegram: true };
+  return { sysTop, contentTop };
 }
 
 /** @deprecated Use subscribeTelegramSafeAreaInsets */
