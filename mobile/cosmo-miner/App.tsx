@@ -1812,7 +1812,7 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#091131', userSelect: 'none' },
+  container: { flex: 1, backgroundColor: '#050918', userSelect: 'none' },
   content: { flex: 1 },
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   loadingText: { color: 'rgba(0,212,255,0.7)', fontWeight: '800' },
