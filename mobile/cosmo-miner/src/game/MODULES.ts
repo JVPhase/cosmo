@@ -5,12 +5,12 @@ export type ModuleId = 'surge' | 'warp' | 'dispel';
 
 export type ModuleDefinition = {
   id: ModuleId;
-  name: string;
+  nameKey: string;
   icon: string;
-  lore: string;
+  loreKey: string;
   cost: Partial<MetalsState>;
-  ultName: string;
-  ultDescription: string;
+  ultNameKey: string;
+  ultDescriptionKey: string;
   ultDurationMs: number;
   hitsToCharge: number;
 };

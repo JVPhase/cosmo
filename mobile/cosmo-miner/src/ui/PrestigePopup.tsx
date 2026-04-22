@@ -19,6 +19,7 @@ import {
 } from '../game/prestige';
 import type { PrestigeState } from '../game/types';
 import type { PrestigeBlockedReason } from '../game/prestige';
+import { t } from '../game/i18n';
 
 type Props = {
   visible: boolean;
@@ -30,23 +31,27 @@ type Props = {
   onConfirm: () => void;
 };
 
-const BLOCKED_MESSAGES: Record<PrestigeBlockedReason, string> = {
-  level_too_low:        '', // handled separately
-  active_battle:        'Завершите бой перед престижем.',
-  active_expeditions:   'Заберите все экспедиции перед престижем.',
-};
+function getBlockedMessages(): Record<PrestigeBlockedReason, string> {
+  return {
+    level_too_low:      '',
+    active_battle:      t('ui.prestige.blocked_battle'),
+    active_expeditions: t('ui.prestige.blocked_expeditions'),
+  };
+}
 
-const RESET_LIST = [
-  'Энергиум и весь добытый ресурс',
-  'Улучшения (апгрейды)',
-  'Планеты и сектора',
-  'Металлы и флот',
-  'Исследования',
-  'Экспедиции',
-  'Опыт и уровень игрока',
-  'Персонаж и история сообщений',
-  'Боевые модули',
-];
+function getResetList(): string[] {
+  return [
+    t('ui.prestige.reset_energy'),
+    t('ui.prestige.reset_upgrades'),
+    t('ui.prestige.reset_planets'),
+    t('ui.prestige.reset_metals'),
+    t('ui.prestige.reset_research'),
+    t('ui.prestige.reset_expeditions'),
+    t('ui.prestige.reset_xp'),
+    t('ui.prestige.reset_character'),
+    t('ui.prestige.reset_modules'),
+  ];
+}
 
 export function PrestigePopup({
   visible,
@@ -76,7 +81,7 @@ export function PrestigePopup({
         <Pressable style={styles.overlay} onPress={onClose}>
           <Pressable style={styles.card} onPress={() => {}}>
             <View style={styles.header}>
-              <Text style={styles.title}>ПРЕСТИЖ НЕДОСТУПЕН</Text>
+              <Text style={styles.title}>{t('ui.prestige.not_available')}</Text>
               <Pressable onPress={onClose} hitSlop={10}>
                 <Text style={styles.close}>✕</Text>
               </Pressable>
@@ -85,28 +90,26 @@ export function PrestigePopup({
             <View style={styles.body}>
               <Text style={styles.bigIcon}>♻️</Text>
               <View style={styles.statusRow}>
-                <StatusChip label="Уровень" value={String(playerLevel)} />
-                <StatusChip label="Престижей" value={String(prestige.count)} />
+                <StatusChip label={t('ui.prestige.level_label')} value={String(playerLevel)} />
+                <StatusChip label={t('ui.prestige.count_label')} value={String(prestige.count)} />
               </View>
               <Text style={styles.infoText}>
-                {'Престиж открывается на '}
-                <Text style={styles.highlight}>{PRESTIGE_LEVEL_THRESHOLD} уровне</Text>
-                {'.'}
+                {t('ui.prestige.locked_text', { level: String(PRESTIGE_LEVEL_THRESHOLD) })}
               </Text>
 
               <View style={styles.divider} />
-              <Text style={styles.sectionLabel}>ПОСЛЕ ПРЕСТИЖА ВЫ ПОЛУЧАЕТЕ:</Text>
+              <Text style={styles.sectionLabel}>{t('ui.prestige.after_heading')}</Text>
               <BonusRow
-                label="Добыча энергиума"
-                value={`+${(PRESTIGE_ENERGY_BONUS_PER * 100).toFixed(0)}% за каждый престиж`}
+                label={t('ui.prestige.energy_label')}
+                value={t('ui.prestige.energy_bonus', { pct: (PRESTIGE_ENERGY_BONUS_PER * 100).toFixed(0) })}
               />
               <BonusRow
-                label="Шанс дропа металлов"
-                value={`+${(PRESTIGE_METAL_BONUS_PER * 100).toFixed(0)} п.п. за каждый престиж`}
+                label={t('ui.prestige.metal_label')}
+                value={t('ui.prestige.metal_bonus', { pp: (PRESTIGE_METAL_BONUS_PER * 100).toFixed(0) })}
               />
               <BonusRow
-                label="Урон в бою"
-                value={`+${(PRESTIGE_ATTACK_BONUS_PER * 100).toFixed(0)}% за каждый престиж`}
+                label={t('ui.prestige.damage_label')}
+                value={t('ui.prestige.damage_bonus', { pct: (PRESTIGE_ATTACK_BONUS_PER * 100).toFixed(0) })}
               />
             </View>
 
@@ -114,7 +117,7 @@ export function PrestigePopup({
               onPress={onClose}
               style={({ pressed }) => [styles.btn, styles.btnCancel, pressed && { opacity: 0.8 }]}
             >
-              <Text style={styles.btnCancelText}>ПОНЯТНО</Text>
+              <Text style={styles.btnCancelText}>{t('ui.prestige.action_ok')}</Text>
             </Pressable>
           </Pressable>
         </Pressable>
@@ -138,7 +141,7 @@ export function PrestigePopup({
       <Pressable style={styles.overlay} onPress={onClose}>
         <Pressable style={styles.card} onPress={() => {}}>
           <View style={styles.header}>
-            <Text style={styles.title}>ПОДТВЕРДИТЬ ПРЕСТИЖ</Text>
+            <Text style={styles.title}>{t('ui.prestige.confirm')}</Text>
             <Pressable onPress={onClose} hitSlop={10}>
               <Text style={styles.close}>✕</Text>
             </Pressable>
@@ -149,32 +152,32 @@ export function PrestigePopup({
 
             {/* Current status */}
             <View style={styles.statusRow}>
-              <StatusChip label="Уровень" value={String(playerLevel)} />
-              <StatusChip label="Престижей" value={String(prestige.count)} />
+              <StatusChip label={t('ui.prestige.level_label')} value={String(playerLevel)} />
+              <StatusChip label={t('ui.prestige.count_label')} value={String(prestige.count)} />
             </View>
 
             {/* Current bonuses */}
             {prestige.count > 0 && (
               <>
-                <Text style={styles.sectionLabel}>ТЕКУЩИЕ БОНУСЫ:</Text>
-                <BonusRow label="Добыча энергиума" value={`+${curEnergy}%`} />
-                <BonusRow label="Дроп металлов"    value={`+${curMetal} п.п.`} />
-                <BonusRow label="Урон в бою"        value={`+${curAttack}%`} />
+                <Text style={styles.sectionLabel}>{t('ui.prestige.current_bonuses')}</Text>
+                <BonusRow label={t('ui.prestige.energy_label')} value={`+${curEnergy}%`} />
+                <BonusRow label={t('ui.prestige.metal_label')}  value={`+${curMetal} ${t('ui.prestige.pp_unit')}`} />
+                <BonusRow label={t('ui.prestige.damage_label')} value={`+${curAttack}%`} />
                 <View style={styles.divider} />
               </>
             )}
 
             {/* New bonuses */}
-            <Text style={styles.sectionLabel}>ПОСЛЕ СЛЕДУЮЩЕГО ПРЕСТИЖА:</Text>
-            <BonusRow label="Добыча энергиума" value={`+${nextEnergy}%`} accent />
-            <BonusRow label="Дроп металлов"    value={`+${nextMetal} п.п.`} accent />
-            <BonusRow label="Урон в бою"        value={`+${nextAttack}%`} accent />
+            <Text style={styles.sectionLabel}>{t('ui.prestige.next_bonuses')}</Text>
+            <BonusRow label={t('ui.prestige.energy_label')} value={`+${nextEnergy}%`} accent />
+            <BonusRow label={t('ui.prestige.metal_label')}  value={`+${nextMetal} ${t('ui.prestige.pp_unit')}`} accent />
+            <BonusRow label={t('ui.prestige.damage_label')} value={`+${nextAttack}%`} accent />
 
             <View style={styles.divider} />
 
             {/* Reset list */}
-            <Text style={styles.sectionLabel}>БУДЕТ СБРОШЕНО:</Text>
-            {RESET_LIST.map((item) => (
+            <Text style={styles.sectionLabel}>{t('ui.prestige.reset_heading')}</Text>
+            {getResetList().map((item) => (
               <Text key={item} style={styles.resetItem}>{'• ' + item}</Text>
             ))}
 
@@ -182,7 +185,7 @@ export function PrestigePopup({
             {hardBlocked && blockedReason && (
               <View style={styles.blockBox}>
                 <Text style={styles.blockText}>
-                  ⚠️ {BLOCKED_MESSAGES[blockedReason]}
+                  ⚠️ {getBlockedMessages()[blockedReason]}
                 </Text>
               </View>
             )}
@@ -193,14 +196,14 @@ export function PrestigePopup({
               onPress={onClose}
               style={({ pressed }) => [styles.btn, styles.btnCancel, pressed && { opacity: 0.8 }]}
             >
-              <Text style={styles.btnCancelText}>ОТМЕНА</Text>
+              <Text style={styles.btnCancelText}>{t('ui.prestige.cancel')}</Text>
             </Pressable>
             {!hardBlocked && (
               <Pressable
                 onPress={() => { onConfirm(); onClose(); }}
                 style={({ pressed }) => [styles.btn, styles.btnConfirm, pressed && { opacity: 0.8 }]}
               >
-                <Text style={styles.btnConfirmText}>СДЕЛАТЬ ПРЕСТИЖ</Text>
+                <Text style={styles.btnConfirmText}>{t('ui.prestige.do_prestige')}</Text>
               </Pressable>
             )}
           </View>

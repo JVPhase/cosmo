@@ -23,6 +23,7 @@ import {
   formatDuration,
   sharedStyles,
 } from './shipyardUtils';
+import { t } from '../../game/i18n';
 
 export type ShipCardProps = {
   ship: ShipDefinition;
@@ -110,21 +111,22 @@ export function ShipCard({
               },
             ]}
           >
-            {ship.name}
+            {t('config.' + ship.nameKey)}
             {isBroken ? '  💥' : isOnExpedition ? '  🚀' : isSelected ? '  ✓' : ''}
           </Text>
-          <Text style={styles.shipLore}>{ship.lore}</Text>
+          <Text style={styles.shipLore}>{t('config.' + ship.loreKey)}</Text>
           <View style={styles.shipStatsRow}>
-            <Text style={styles.shipMult}>×{ship.damageMultiplier} урон</Text>
+            <Text style={styles.shipMult}>{t('ui.shipcard.damage_mult', { mult: String(ship.damageMultiplier) })}</Text>
             {isOwned && !isOnExpedition && (
-              <Text style={styles.shipTotalDmg}>⚔️ {totalShipDmg}/клик</Text>
+              <Text style={styles.shipTotalDmg}>{t('ui.shipcard.damage_total', { damage: totalShipDmg })}</Text>
             )}
             {isOnExpedition && (
               <Text style={styles.expeditionStatus}>
-                ЭКСПЕДИЦИЯ ·{' '}
-                {(expeditionRemainingMap[ship.id] ?? 0) > 0
-                  ? formatDuration(expeditionRemainingMap[ship.id])
-                  : 'ГОТОВО!'}
+                {t('ui.shipcard.expedition_status', {
+                  status: (expeditionRemainingMap[ship.id] ?? 0) > 0
+                    ? formatDuration(expeditionRemainingMap[ship.id])
+                    : t('ui.shipcard.expedition_done'),
+                })}
               </Text>
             )}
           </View>
@@ -156,7 +158,7 @@ export function ShipCard({
                   { color: canBuild ? '#ffd700' : 'rgba(255,255,255,0.2)' },
                 ]}
               >
-                ПОСТРОИТЬ
+                {t('ui.shipcard.build_btn')}
               </Text>
             </Pressable>
           </>
@@ -181,12 +183,12 @@ export function ShipCard({
                   { color: canRepair ? '#ff9900' : 'rgba(255,255,255,0.2)' },
                 ]}
               >
-                ПОЧИНИТЬ
+                {t('ui.shipcard.repair_btn')}
               </Text>
             </Pressable>
           </>
         ) : isOnExpedition ? (
-          <Text style={styles.expeditionLabel}>В ЭКСПЕДИЦИИ</Text>
+          <Text style={styles.expeditionLabel}>{t('ui.shipcard.expedition_label')}</Text>
         ) : !isSelected ? (
           <Pressable
             onPress={() => !isBattleActive && onSelectShip(ship.id)}
@@ -203,11 +205,11 @@ export function ShipCard({
                 { color: isBattleActive ? 'rgba(255,255,255,0.2)' : '#00ff88' },
               ]}
             >
-              В БОЙ
+              {t('ui.shipcard.battle_btn')}
             </Text>
           </Pressable>
         ) : (
-          <Text style={styles.activeLabel}>АКТИВЕН</Text>
+          <Text style={styles.activeLabel}>{t('ui.shipcard.active_label')}</Text>
         )}
       </View>
 
@@ -217,7 +219,7 @@ export function ShipCard({
             const mod = getModules().find((m) => m.id === owned.equippedModuleId);
             return mod ? (
               <Text style={styles.equippedModuleText}>
-                {mod.icon} {mod.name} · {mod.ultDescription}
+                {mod.icon} {t('config.' + mod.nameKey)} · {t('config.' + mod.ultDescriptionKey)}
               </Text>
             ) : null;
           })()}
@@ -226,7 +228,7 @@ export function ShipCard({
 
       {isOwned && isExpanded && !isOnExpedition && (
         <View style={styles.cannonsSection}>
-          <Text style={styles.cannonsSectionTitle}>🔫 ВООРУЖЕНИЕ</Text>
+          <Text style={styles.cannonsSectionTitle}>{t('ui.shipcard.cannons_section')}</Text>
           {getCannons().filter((c) =>
             costMetalsDiscovered(discoveredMetals, c.baseCost),
           ).map((cannon) => {
@@ -241,11 +243,11 @@ export function ShipCard({
                   resizeMode="contain"
                 />
                 <View style={styles.cannonInfo}>
-                  <Text style={styles.cannonName}>{cannon.name}</Text>
+                  <Text style={styles.cannonName}>{t('config.' + cannon.nameKey)}</Text>
                   <Text style={styles.cannonDmg}>
-                    +{cannon.damagePerLevel}/ур
+                    {t('ui.shipcard.cannon_dmg', { dmg: String(cannon.damagePerLevel) })}
                     {level > 0
-                      ? `  ·  Ур.${level} (+${cannon.damagePerLevel * level})`
+                      ? t('ui.shipcard.cannon_dmg_level', { level: String(level), bonus: String(cannon.damagePerLevel * level) })
                       : ''}
                   </Text>
                 </View>
@@ -269,7 +271,7 @@ export function ShipCard({
                         { color: canAfford ? '#ffd700' : 'rgba(255,255,255,0.2)' },
                       ]}
                     >
-                      {level === 0 ? 'КУПИТЬ' : 'УЛУ.'}
+                      {level === 0 ? t('ui.shipcard.cannon_buy_btn') : t('ui.shipcard.cannon_upgrade_btn')}
                     </Text>
                   </Pressable>
                 </View>

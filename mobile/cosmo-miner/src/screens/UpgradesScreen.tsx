@@ -3,6 +3,7 @@ import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { computeUpgradeCost, getUpgrades, type UpgradeId } from "../game/UPGRADES";
 import { formatNum } from "../game/formatNum";
 import type { UpgradesState } from "../game/types";
+import { t } from "../game/i18n";
 
 export type UpgradesScreenProps = {
   energy: number;
@@ -41,7 +42,7 @@ export function UpgradesScreen({ energy, upgrades, onBuyUpgrade }: UpgradesScree
           onPress={() => setTab('click')}
         >
           <Text style={[styles.tabText, tab === 'click' && styles.tabTextActive]}>
-            ⚡ АКТИВНАЯ
+            {t('ui.upgrades.tab_active')}
           </Text>
         </Pressable>
         <Pressable
@@ -49,7 +50,7 @@ export function UpgradesScreen({ energy, upgrades, onBuyUpgrade }: UpgradesScree
           onPress={() => setTab('passive')}
         >
           <Text style={[styles.tabText, tab === 'passive' && styles.tabTextActive]}>
-            🔄 ПАССИВНАЯ
+            {t('ui.upgrades.tab_passive')}
           </Text>
         </Pressable>
       </View>
@@ -73,11 +74,11 @@ export function UpgradesScreen({ energy, upgrades, onBuyUpgrade }: UpgradesScree
         data={data}
         keyExtractor={(upg) => String(upg.id)}
         contentContainerStyle={styles.content}
-        ListFooterComponent={<Text style={styles.energyFooter}>Энергий: {formatNum(energy)}</Text>}
+        ListFooterComponent={<Text style={styles.energyFooter}>{t('ui.upgrades.energy_footer', { energy: formatNum(energy) })}</Text>}
         renderItem={({ item: upg }) => {
           const level = upgrades[upg.id as UpgradeId] ?? 0;
           const baseBonus = upg.clickBonus > 0 ? upg.clickBonus : upg.passiveBonus;
-          const unit = upg.clickBonus > 0 ? '⚡/клик' : '⚡/сек';
+          const unit = upg.clickBonus > 0 ? t('ui.upgrades.unit_click') : t('ui.upgrades.unit_sec');
           const currentScale = level > 0 ? Math.pow(1.6, level) : 0;
           const currentOutput = baseBonus * currentScale;
 
@@ -119,18 +120,18 @@ export function UpgradesScreen({ energy, upgrades, onBuyUpgrade }: UpgradesScree
               <Text style={styles.icon}>{upg.icon}</Text>
 
               <View style={styles.mainText}>
-                <Text style={[styles.name, { color: canBuy ? "#00d4ff" : "rgba(255,255,255,0.5)" }]}>{upg.name}</Text>
-                <Text style={styles.desc}>{upg.lore}</Text>
+                <Text style={[styles.name, { color: canBuy ? "#00d4ff" : "rgba(255,255,255,0.5)" }]}>{t('config.' + upg.nameKey)}</Text>
+                <Text style={styles.desc}>{t('config.' + upg.loreKey)}</Text>
                 {level > 0 ? (
                   <Text style={styles.bonus}>
-                    {`${formatNum(currentOutput)} ${unit}  →  ${formatNum(nextOutput)} ${unit}`}
+                    {t('ui.upgrades.output_change', { current: formatNum(currentOutput), unit, next: formatNum(nextOutput) })}
                   </Text>
                 ) : (
                   <Text style={styles.bonus}>
-                    {`+${formatNum(nextOutput)} ${unit} после покупки`}
+                    {t('ui.upgrades.output_first_buy', { next: formatNum(nextOutput), unit })}
                   </Text>
                 )}
-                {level > 0 && <Text style={styles.level}>Ур. {level}</Text>}
+                {level > 0 && <Text style={styles.level}>{t('ui.upgrades.level', { level: String(level) })}</Text>}
               </View>
 
               <View style={styles.costBox}>
@@ -140,7 +141,7 @@ export function UpgradesScreen({ energy, upgrades, onBuyUpgrade }: UpgradesScree
                 {mult === Infinity && affordableCount > 0 && (
                   <Text style={styles.costCount}>×{affordableCount}</Text>
                 )}
-                <Text style={styles.costUnit}>⚡ энергий</Text>
+                <Text style={styles.costUnit}>{t('ui.upgrades.cost_unit')}</Text>
               </View>
             </Pressable>
           );

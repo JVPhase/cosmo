@@ -1,3 +1,5 @@
+import { t } from './i18n';
+
 export type ClerkTrigger =
   | "idle"
   | "click_100"
@@ -19,37 +21,36 @@ export type ClerkMessage = {
   text: string;
 };
 
-export const CLERK_MESSAGES: ClerkMessage[] = [
-  { trigger: "idle", text: "Согласно параграфу 12.4.в, простой сотрудника карается штрафом. Рекомендую кликнуть." },
-  { trigger: "idle", text: "Я не сплю. Я провожу плановую диагностику. Пожалуйста, продолжайте добычу." },
-  { trigger: "idle", text: "Ваш дядя из бухгалтерии звонил. Я сказал, что вы заняты. Это правда?" },
-  { trigger: "idle", text: "По данным статистики, 97% сотрудников, которые кликают, добывают больше. Факт." },
-  { trigger: "click_100", text: "100 единиц Энергиума™! Ваша премия — виртуальная. Регламент не предусматривает другой." },
-  { trigger: "click_1000", text: "1000 единиц! Ваше имя внесено в таблицу передовиков. Строчка 4,829,441. Ищите с конца." },
-  { trigger: "click_10000", text: "10 000 единиц!! Министр лично одобрил ваш труд. Он даже поднял взгляд от бумаг. Почти." },
-  { trigger: "click_100000", text: "100 000 единиц!!! Министр заполнил форму ПОХ-7 «Признание заслуг». Ждите ответа 6-8 недель." },
-  { trigger: "upgrade", text: "Апгрейд одобрен. Заявление в трёх экземплярах отправлено в архив." },
-  { trigger: "upgrade", text: "Новое оборудование зарегистрировано. Гарантия: 2 рабочих дня. Нерабочих — не считается." },
-  { trigger: "upgrade_drone", text: "Дрон активирован! Он уже подал заявку на отпуск. Ваш дрон — настоящий сотрудник." },
-  { trigger: "planet", text: "Новая локация разблокирована. Требуется 47 форм. Я уже заполнил 46. Форма ПЛН-1 — на согласовании." },
-  { trigger: "planet", text: "Поздравляю с освоением новой планеты! Назвать её в честь министра не обязательно, но приветствуется." },
-  { trigger: "random", text: "В космосе никто не слышит ваш крик. Жалобы принимаются по форме КР-99 до 17:00 пятницы." },
-  { trigger: "random", text: "Факт дня: Энергиум™ не токсичен. Официально. Документ подписан тем же, кто его и проверял." },
-  { trigger: "random", text: "Корпоративный девиз: «Добываем вместе!» ™, ®, © и ещё какие-то значки юридического отдела." },
-  { trigger: "random", text: "Сегодня день рождения КЛЕРК-7. Мне 3 года. По регламенту праздновать нельзя. Всё хорошо." },
-  { trigger: "random", text: "Ваша производительность на 0.003% выше средней. Это повод для... ничего. Продолжайте." },
-  { trigger: "random", text: "Кофе в буфете закончился в 2381 году. Заявка на пополнение обрабатывается." },
-
-  // Screen contextual messages — объясняют механики через лор
-  { trigger: "screen_upgrades", text: "Форма АП-7 «Запрос на улучшение оборудования» — заполните в 3 экземплярах, сохраните 1 себе. Остальные — в архив." },
-  { trigger: "screen_upgrades", text: "Апгрейды повышают мощность клика или пассивную добычу. Рекомендую начать с пассивки — регламент не запрещает зарабатывать, ничего не делая." },
-  { trigger: "screen_battle", text: "Параграф 44.2: вступать в боевой контакт с пришельцами без брони запрещено. Параграф 44.3: при отсутствии брони — параграф 44.2 не применяется. Атакуйте." },
-  { trigger: "screen_battle", text: "Накопите энергию атаки и атакуйте. Каждый клик наносит урон. Враг упадёт первым — если у вас хватит энергии. Арифметика простая." },
-  { trigger: "screen_shipyard", text: "Верфь — место, где металлы становятся кораблями, а корабли — силой. Форма ВФ-1 «Ввод судна в эксплуатацию» заполнена заранее. Вам — только нажать." },
-  { trigger: "screen_shipyard", text: "Корабли увеличивают урон в бою. Чем больше флот — тем меньше кликов нужно для победы. Считайте это инвестицией." },
-  { trigger: "screen_research", text: "Исследования — постоянные улучшения. В отличие от апгрейдов, они оплачиваются металлами. Форма НИ-4 «Заявка на исследование» подана автоматически." },
-  { trigger: "screen_research", text: "Каждое исследование даёт постоянный бонус. Добывайте металлы, инвестируйте в науку. Министерство одобряет. Молча, но одобряет." },
-  { trigger: "screen_planets", text: "Каждая планета — новый источник ресурсов и новые угрозы. Для захвата нужно победить в бою. Форма ПЛН-3 «Аннексия территории» — в 7 экземплярах." },
-  { trigger: "screen_planets", text: "Новые планеты открывают новые металлы. Новые металлы строят новые корабли. Новые корабли завоёвывают новые планеты. Это называется прогрессией." },
-];
-
+export function getClerkMessages(): ClerkMessage[] {
+  return [
+    { trigger: "idle", text: t('dialogues.clerk.idle_0') },
+    { trigger: "idle", text: t('dialogues.clerk.idle_1') },
+    { trigger: "idle", text: t('dialogues.clerk.idle_2') },
+    { trigger: "idle", text: t('dialogues.clerk.idle_3') },
+    { trigger: "click_100", text: t('dialogues.clerk.click_100') },
+    { trigger: "click_1000", text: t('dialogues.clerk.click_1000') },
+    { trigger: "click_10000", text: t('dialogues.clerk.click_10000') },
+    { trigger: "click_100000", text: t('dialogues.clerk.click_100000') },
+    { trigger: "upgrade", text: t('dialogues.clerk.upgrade_0') },
+    { trigger: "upgrade", text: t('dialogues.clerk.upgrade_1') },
+    { trigger: "upgrade_drone", text: t('dialogues.clerk.upgrade_drone') },
+    { trigger: "planet", text: t('dialogues.clerk.planet_0') },
+    { trigger: "planet", text: t('dialogues.clerk.planet_1') },
+    { trigger: "random", text: t('dialogues.clerk.random_0') },
+    { trigger: "random", text: t('dialogues.clerk.random_1') },
+    { trigger: "random", text: t('dialogues.clerk.random_2') },
+    { trigger: "random", text: t('dialogues.clerk.random_3') },
+    { trigger: "random", text: t('dialogues.clerk.random_4') },
+    { trigger: "random", text: t('dialogues.clerk.random_5') },
+    { trigger: "screen_upgrades", text: t('dialogues.clerk.screen_upgrades_0') },
+    { trigger: "screen_upgrades", text: t('dialogues.clerk.screen_upgrades_1') },
+    { trigger: "screen_battle", text: t('dialogues.clerk.screen_battle_0') },
+    { trigger: "screen_battle", text: t('dialogues.clerk.screen_battle_1') },
+    { trigger: "screen_shipyard", text: t('dialogues.clerk.screen_shipyard_0') },
+    { trigger: "screen_shipyard", text: t('dialogues.clerk.screen_shipyard_1') },
+    { trigger: "screen_research", text: t('dialogues.clerk.screen_research_0') },
+    { trigger: "screen_research", text: t('dialogues.clerk.screen_research_1') },
+    { trigger: "screen_planets", text: t('dialogues.clerk.screen_planets_0') },
+    { trigger: "screen_planets", text: t('dialogues.clerk.screen_planets_1') },
+  ];
+}

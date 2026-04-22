@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import type { CannonId } from '../../game/CANNONS';
 import { formatNum } from '../../game/formatNum';
+import { t } from '../../game/i18n';
 import { getMetals, type MetalId } from '../../game/METALS';
 import {
   computeModuleUpgradeCost,
@@ -89,15 +90,15 @@ export function FleetTab({
 
   const listHeader = (
     <>
-      <Text style={styles.title}>◈ ВЕРФЬ · МБК «ЗВЁЗДНЫЙ» ◈</Text>
+      <Text style={styles.title}>{t('ui.fleet.title')}</Text>
 
       {isBattleActive && (
         <View style={styles.battleBanner}>
           <Text style={styles.battleBannerText}>
-            ⚔️ БОЙ АКТИВЕН — ВЕРФЬ ЗАБЛОКИРОВАНА
+            {t('ui.fleet.battle_locked')}
           </Text>
           <Text style={styles.battleBannerHint}>
-            Завершите бой для доступа к улучшениям
+            {t('ui.fleet.battle_locked_hint')}
           </Text>
         </View>
       )}
@@ -123,11 +124,11 @@ export function FleetTab({
       </View>
 
       <View style={styles.damageBox}>
-        <Text style={styles.damageLabel}>⚔️ УРОН АКТИВНОГО КОРАБЛЯ</Text>
-        <Text style={styles.damageValue}>{formatNum(totalDamage)} / клик</Text>
+        <Text style={styles.damageLabel}>{t('ui.fleet.damage_label')}</Text>
+        <Text style={styles.damageValue}>{t('ui.fleet.damage_value', { damage: formatNum(totalDamage) })}</Text>
       </View>
 
-      <Text style={styles.sectionTitle}>ФЛОТ</Text>
+      <Text style={styles.sectionTitle}>{t('ui.fleet.section_fleet')}</Text>
     </>
   );
 
@@ -137,7 +138,7 @@ export function FleetTab({
         discoveredMetals.includes('echoShard') ||
         Object.keys(moduleLevels).length > 0) && (
         <>
-          <Text style={styles.sectionTitle}>⚡ МОДУЛИ</Text>
+          <Text style={styles.sectionTitle}>{t('ui.fleet.section_modules')}</Text>
           {getModules().map((mod) => {
             const level = moduleLevels[mod.id] ?? 0;
             const isCrafted = level > 0;
@@ -173,7 +174,7 @@ export function FleetTab({
                           isCrafted && { color: '#ffe066' },
                         ]}
                       >
-                        {mod.name}
+                        {t('config.' + mod.nameKey)}
                       </Text>
                       {isCrafted && (
                         <Text style={styles.moduleLevelBadge}>
@@ -181,22 +182,22 @@ export function FleetTab({
                         </Text>
                       )}
                     </View>
-                    <Text style={styles.moduleLore}>{mod.lore}</Text>
+                    <Text style={styles.moduleLore}>{t('config.' + mod.loreKey)}</Text>
                     <Text style={styles.moduleUlt}>
-                      ⚡ {mod.ultName} — {mod.ultDescription}
+                      ⚡ {t('config.' + mod.ultNameKey)} — {t('config.' + mod.ultDescriptionKey)}
                     </Text>
                     {isCrafted && (
                       <Text style={styles.moduleUltLimit}>
                         {maxUlts === -1
-                          ? '∞ ульт/бой'
-                          : `${maxUlts} ульт${maxUlts === 1 ? 'а' : 'ы'}/бой`}
+                          ? t('ui.fleet.ult_infinite')
+                          : maxUlts === 1
+                            ? t('ui.fleet.ult_count_single', { count: String(maxUlts) })
+                            : t('ui.fleet.ult_count_plural', { count: String(maxUlts) })}
                       </Text>
                     )}
                     {equippedOnShip && (
                       <Text style={styles.moduleEquippedOn}>
-                        Экипирован:{' '}
-                        {getShips().find((s) => s.id === equippedOnShip.shipId)
-                          ?.name ?? equippedOnShip.shipId}
+                        {t('ui.fleet.equipped', { name: (() => { const s = getShips().find((s) => s.id === equippedOnShip.shipId); return s ? t('config.' + s.nameKey) : equippedOnShip.shipId; })() })}
                       </Text>
                     )}
                   </View>
@@ -231,7 +232,7 @@ export function FleetTab({
                             },
                           ]}
                         >
-                          СОЗДАТЬ
+                          {t('ui.fleet.build_btn')}
                         </Text>
                       </Pressable>
                     </>
@@ -270,7 +271,7 @@ export function FleetTab({
                                 },
                               ]}
                             >
-                              УЛУ.
+                              {t('ui.fleet.upgrade_btn')}
                             </Text>
                           </Pressable>
                         </View>
@@ -322,10 +323,7 @@ export function FleetTab({
 
       <View style={styles.hint}>
         <Text style={styles.hintText}>
-          💡 Нажмите на корабль чтобы открыть его вооружение.
-          {expeditionsUnlocked
-            ? ' Отправляйте корабли в ЭКСПЕДИЦИИ за металлами.'
-            : ''}
+          {expeditionsUnlocked ? t('ui.fleet.hint_expeditions') : t('ui.fleet.hint')}
         </Text>
       </View>
     </>

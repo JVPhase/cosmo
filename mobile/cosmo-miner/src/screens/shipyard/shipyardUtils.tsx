@@ -2,6 +2,7 @@ import React from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
 import { getMetals, type MetalId } from '../../game/METALS';
 import type { MetalsState } from '../../game/types';
+import { t } from '../../game/i18n';
 
 export function MetalCost({
   cost,
@@ -53,9 +54,9 @@ export function formatDuration(ms: number): string {
   const h = Math.floor(ms / 3_600_000);
   const m = Math.floor((ms % 3_600_000) / 60_000);
   const s = Math.floor((ms % 60_000) / 1_000);
-  if (h > 0) return `${h}ч ${m}м`;
-  if (m > 0) return `${m}м ${s}с`;
-  return `${s}с`;
+  if (h > 0) return t('ui.duration.hm', { h: String(h), m: String(m) });
+  if (m > 0) return t('ui.duration.ms', { m: String(m), s: String(s) });
+  return t('ui.duration.s', { s: String(s) });
 }
 
 const styles = StyleSheet.create({

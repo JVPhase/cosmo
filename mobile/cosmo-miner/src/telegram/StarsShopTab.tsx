@@ -28,6 +28,7 @@ import {
 } from 'react-native';
 import { getTelegramWebApp, isTelegramTestMode } from './runtime';
 import { getAccessToken, refreshAccessToken } from '../game/cloudSave';
+import { t } from '../game/i18n';
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
 
@@ -114,21 +115,25 @@ function grantPendingMessage(item: StarShopItem): string {
 
   switch (item.type) {
     case 'currency_pack':
-      return `+${meta.creditAmount as number} 💳 кредитов будет зачислено при следующем запуске игры.`;
+      return t('ui.shop.pending_credits', { amount: String(meta.creditAmount as number) });
 
     case 'metal_pack': {
       const icon = METAL_ICONS[meta.metalId as string] ?? '🔩';
-      return `${icon} +${meta.quantity as number} ${meta.metalId as string} — будет добавлено при следующем запуске игры.`;
+      return t('ui.shop.pending_metal', {
+        icon,
+        quantity: String(meta.quantity as number),
+        metal: String(meta.metalId),
+      });
     }
 
     case 'booster':
-      return `${item.name} — будет активирован при следующем запуске игры.`;
+      return t('ui.shop.pending_booster', { name: t('config.' + item.name) });
 
     case 'loot_box':
-      return `${item.name} куплен. Содержимое появится при следующем запуске игры.`;
+      return t('ui.shop.pending_lootbox', { name: t('config.' + item.name) });
 
     default:
-      return `${item.name} куплен. Будет доставлен при следующем запуске игры.`;
+      return t('ui.shop.pending_lootbox', { name: t('config.' + item.name) });
   }
 }
 
@@ -137,21 +142,25 @@ function grantAppliedMessage(item: StarShopItem): string {
 
   switch (item.type) {
     case 'currency_pack':
-      return `+${meta.creditAmount as number} credits were added to your balance.`;
+      return t('ui.shop.stars_applied_credits', { amount: String(meta.creditAmount as number) });
 
     case 'metal_pack': {
       const icon = METAL_ICONS[meta.metalId as string] ?? '🔩';
-      return `${icon} ${meta.quantity as number} ${(meta.metalId as string) ?? 'metals'} were added to your inventory.`;
+      return t('ui.shop.stars_applied_metal', {
+        icon,
+        quantity: String(meta.quantity as number),
+        metalId: String(meta.metalId),
+      });
     }
 
     case 'booster':
-      return `${item.name} was delivered and activated immediately.`;
+      return t('ui.shop.stars_applied_booster', { name: t('config.' + item.name) });
 
     case 'loot_box':
-      return `${item.name} was delivered to your account.`;
+      return t('ui.shop.stars_applied_lootbox', { name: t('config.' + item.name) });
 
     default:
-      return `${item.name} was delivered to your account.`;
+      return t('ui.shop.stars_applied_lootbox', { name: t('config.' + item.name) });
   }
 }
 
@@ -180,7 +189,7 @@ export function StarsShopTab({ onPurchaseApplied }: StarsShopTabProps) {
         ),
       )
       .catch((err: unknown) =>
-        setError(err instanceof Error ? err.message : 'Не удалось загрузить каталог'),
+        setError(err instanceof Error ? err.message : t('ui.shop.stars_catalog_error')),
       )
       .finally(() => setLoading(false));
   }
@@ -193,8 +202,8 @@ export function StarsShopTab({ onPurchaseApplied }: StarsShopTabProps) {
     const tg = getTelegramWebApp();
     if (!tg) {
       Alert.alert(
-        'Telegram недоступен',
-        'Откройте Mini App внутри Telegram или включите EXPO_PUBLIC_TELEGRAM_TEST_MODE=true для локальной проверки каталога.',
+        t('ui.shop.stars_telegram_unavail_title'),
+        t('ui.shop.stars_telegram_unavail_text'),
       );
       return;
     }
@@ -226,13 +235,13 @@ export function StarsShopTab({ onPurchaseApplied }: StarsShopTabProps) {
               purchaseId,
             });
             if (appliedImmediately) {
-              Alert.alert('Purchase complete', grantAppliedMessage(item));
+              Alert.alert(t('ui.shop.stars_purchase_complete_title'), grantAppliedMessage(item));
               return;
             }
 
-            Alert.alert('Покупка завершена', grantPendingMessage(item));
+            Alert.alert(t('ui.shop.stars_purchase_pending_title'), grantPendingMessage(item));
           } else if (status !== 'cancelled') {
-            Alert.alert('Ошибка оплаты', `Статус: ${status}`);
+            Alert.alert(t('ui.shop.stars_payment_error_title'), t('ui.shop.stars_payment_error_text', { status }));
           }
         } catch (err: unknown) {
           console.error('[StarsShopTab] openInvoice callback error', err);
@@ -241,7 +250,7 @@ export function StarsShopTab({ onPurchaseApplied }: StarsShopTabProps) {
         }
       });
     } catch (err: unknown) {
-      Alert.alert('Ошибка', err instanceof Error ? err.message : 'Не удалось создать инвойс');
+      Alert.alert(t('ui.shop.stars_invoice_error_title'), err instanceof Error ? err.message : t('ui.shop.stars_invoice_error_text'));
       setBuying(null);
     }
   }
@@ -259,7 +268,7 @@ export function StarsShopTab({ onPurchaseApplied }: StarsShopTabProps) {
       <View style={styles.center}>
         <Text style={styles.errorText}>{error}</Text>
         <Pressable style={styles.retryBtn} onPress={loadCatalog}>
-          <Text style={styles.retryText}>Повторить</Text>
+          <Text style={styles.retryText}>{t('ui.shop.stars_retry')}</Text>
         </Pressable>
       </View>
     );
@@ -268,7 +277,7 @@ export function StarsShopTab({ onPurchaseApplied }: StarsShopTabProps) {
   if (items.length === 0) {
     return (
       <View style={styles.center}>
-        <Text style={styles.emptyText}>Нет доступных товаров</Text>
+        <Text style={styles.emptyText}>{t('ui.shop.stars_empty')}</Text>
       </View>
     );
   }
@@ -281,12 +290,8 @@ export function StarsShopTab({ onPurchaseApplied }: StarsShopTabProps) {
       ListHeaderComponent={
         telegramTestMode ? (
           <View style={styles.testModeBanner}>
-            <Text style={styles.testModeTitle}>TEST MODE</Text>
-            <Text style={styles.testModeText}>
-              Stars-вкладка включена локально для проверки каталога. Реальная оплата и webhook
-              подтверждение требуют запуска внутри Telegram. Для auth в dev-режиме можно
-              передать EXPO_PUBLIC_TELEGRAM_TEST_INIT_DATA.
-            </Text>
+            <Text style={styles.testModeTitle}>{t('ui.shop.stars_test_mode_title')}</Text>
+            <Text style={styles.testModeText}>{t('ui.shop.stars_test_mode_text')}</Text>
           </View>
         ) : null
       }
@@ -295,8 +300,8 @@ export function StarsShopTab({ onPurchaseApplied }: StarsShopTabProps) {
         return (
           <View style={styles.card}>
             <View style={styles.cardBody}>
-              <Text style={styles.cardName}>{item.name}</Text>
-              <Text style={styles.cardDesc}>{item.description}</Text>
+              <Text style={styles.cardName}>{t('config.' + item.name)}</Text>
+              <Text style={styles.cardDesc}>{t('config.' + item.description)}</Text>
             </View>
             <Pressable
               style={[styles.buyBtn, !!buying && styles.buyBtnDisabled]}

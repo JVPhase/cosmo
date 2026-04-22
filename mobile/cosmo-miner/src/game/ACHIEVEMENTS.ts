@@ -7,10 +7,10 @@ export type AchievementTarget = AchievementTargetConfig;
 
 export type AchievementDefinition = {
   id: AchievementId;
-  name: string;
+  nameKey: string;
   icon: string;
   target: AchievementTarget;
-  lore: string;
+  loreKey: string;
 };
 
 export function getAchievementClaimCredits(): number {

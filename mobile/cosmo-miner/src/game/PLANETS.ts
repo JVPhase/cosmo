@@ -1,4 +1,5 @@
 import { getCachedRemoteConfig } from './remoteConfig';
+import { t } from './i18n';
 import type { PlanetZoneThemeConfig } from './remoteConfig';
 
 export type PlanetDefinition = {
@@ -9,7 +10,6 @@ export type PlanetDefinition = {
   image: number;
   unlocked: boolean;
   cost: number;
-  resource: string;
   color: string;
   bonus: number;
   lore: string;
@@ -56,10 +56,19 @@ const PLANET_IMAGE_REGISTRY: Record<string, number> = {
 };
 
 const SECTOR_ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
-const PLANET_SUFFIXES = ['Альфа', 'Бета', 'Гамма', 'Дельта', 'Эпсилон'];
+
+function getPlanetSuffixes(): string[] {
+  return [
+    t('ui.planets.suffix_0'),
+    t('ui.planets.suffix_1'),
+    t('ui.planets.suffix_2'),
+    t('ui.planets.suffix_3'),
+    t('ui.planets.suffix_4'),
+  ];
+}
 
 function generatedPlanetName(theme: PlanetZoneThemeConfig, sectorInZone: number, planetIndex: number): string {
-  return `${theme.namePrefix}-${SECTOR_ROMAN[sectorInZone - 1]} ${PLANET_SUFFIXES[planetIndex]}`;
+  return `${t('config.' + theme.namePrefixKey)}-${SECTOR_ROMAN[sectorInZone - 1]} ${getPlanetSuffixes()[planetIndex]}`;
 }
 
 // Zone sector-start lookup (derived from zone index: zone 0 starts at sector 1, zone 1 at 11, etc.)
@@ -73,15 +82,14 @@ function buildHardcodedPlanets(): PlanetDefinition[] {
   return config.planets.overrides.map((o) => ({
     id: o.id,
     sectorId: o.sectorId,
-    name: o.name,
+    name: t('config.' + o.nameKey),
     icon: o.icon,
     image: PLANET_IMAGE_REGISTRY[o.imageKey] ?? PLANET_IMAGE_POOL[0],
     unlocked: o.unlocked,
     cost: o.cost,
     bonus: o.bonus,
-    resource: o.resource,
     color: o.color,
-    lore: o.lore,
+    lore: t('config.' + o.loreKey),
   }));
 }
 
@@ -110,10 +118,9 @@ function generatePlanets(): PlanetDefinition[] {
         image: PLANET_IMAGE_POOL[(id - 1) % PLANET_IMAGE_POOL.length],
         unlocked: false,
         cost: 0,
-        resource: theme.resourcePool[pi % theme.resourcePool.length],
         color: theme.colorPool[pi % theme.colorPool.length],
         bonus: Math.round(bonus),
-        lore: theme.lore,
+        lore: t('config.' + theme.loreKey),
       });
     }
   }

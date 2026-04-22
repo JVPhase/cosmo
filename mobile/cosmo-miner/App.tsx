@@ -54,13 +54,17 @@ import {
   saveUnlocked
 } from './src/game/storage';
 import { getAliens } from './src/game/ALIENS';
-import { STORY_LOG } from './src/game/STORY_LOG';
+import { getStoryLogUnlockedEntries } from './src/game/STORY_LOG';
 import { isSectorUnlocked } from './src/game/SECTORS';
 import { fetchDialogues, type DialoguesPayload } from './src/game/dialogues';
 import {
   loadRemoteConfigFromCache,
   fetchAndCacheRemoteConfig
 } from './src/game/remoteConfig';
+import { loadI18n, loadSavedLocale, saveLocale, t } from './src/game/i18n';
+import { invalidatePlanetsCache } from './src/game/PLANETS';
+import { invalidateAliensCache } from './src/game/ALIENS';
+import { LocalePickerOverlay, type SupportedLocale } from './src/ui/LocalePickerOverlay';
 import {
   fetchCloudSave,
   getAccessToken,
@@ -95,13 +99,13 @@ const GRANT_SYNC_ENABLED =
 
 type TabId = 'game' | 'upgrades' | 'planets' | 'shipyard' | 'battle' | 'shop';
 
-const TABS: Array<{ id: TabId; icon: string; label: string }> = [
-  { id: 'game', icon: '⛏️', label: 'ДОБЫЧА' },
-  { id: 'upgrades', icon: '⚡', label: 'АПГР.' },
-  { id: 'planets', icon: '🌍', label: 'ПЛАН.' },
-  { id: 'shipyard', icon: '🛠️', label: 'ВЕРФЬ' },
-  { id: 'battle', icon: '⚔️', label: 'БОЙ' },
-  { id: 'shop', icon: '🛒', label: 'МАГАЗ.' }
+const TABS: Array<{ id: TabId; icon: string; labelKey: string }> = [
+  { id: 'game', icon: '⛏️', labelKey: 'ui.tabs.game' },
+  { id: 'upgrades', icon: '⚡', labelKey: 'ui.tabs.upgrades' },
+  { id: 'planets', icon: '🌍', labelKey: 'ui.tabs.planets' },
+  { id: 'shipyard', icon: '🛠️', labelKey: 'ui.tabs.shipyard' },
+  { id: 'battle', icon: '⚔️', labelKey: 'ui.tabs.battle' },
+  { id: 'shop', icon: '🛒', labelKey: 'ui.tabs.shop' },
 ];
 
 function GameApp({
@@ -163,15 +167,15 @@ function GameApp({
         .then(setAnalyticsSizeKb)
         .catch(() => {});
     } catch (e: any) {
-      Alert.alert('Ошибка', e?.message ?? 'Не удалось экспортировать лог');
+      Alert.alert(t('alerts.export_error.title'), e?.message ?? t('alerts.export_error.text'));
     }
   }, []);
 
   const handleClearAnalytics = useCallback(() => {
-    Alert.alert('Очистить лог?', 'Все записи аналитики будут удалены.', [
-      { text: 'Отмена', style: 'cancel' },
+    Alert.alert(t('alerts.analytics_clear.title'), t('alerts.analytics_clear.text'), [
+      { text: t('alerts.analytics_clear.cancel'), style: 'cancel' },
       {
-        text: 'Удалить',
+        text: t('alerts.analytics_clear.confirm'),
         style: 'destructive',
         onPress: async () => {
           await clearAnalytics();
@@ -422,9 +426,9 @@ function GameApp({
             game.achievementToast
               ? {
                   id: game.achievementToast.id,
-                  name: game.achievementToast.name,
+                  nameKey: game.achievementToast.nameKey,
                   icon: game.achievementToast.icon,
-                  lore: game.achievementToast.lore
+                  loreKey: game.achievementToast.loreKey
                 }
               : null
           }
@@ -481,7 +485,7 @@ function GameApp({
               chosenCharacterId: game.chosenCharacterId
             };
             setSeenStoryCount(
-              STORY_LOG.filter((e) => e.isUnlocked(ctx)).length
+              getStoryLogUnlockedEntries(ctx).length
             );
             logEvent('modal_open', { modal: 'story_log' });
             setStoryLogOpen(true);
@@ -504,12 +508,10 @@ function GameApp({
           isPrestigeAvailable={game.canPrestige}
           prestigeCount={game.prestige.count}
           hasNewStoryEntry={
-            STORY_LOG.filter((e) =>
-              e.isUnlocked({
-                unlockedPlanetIds: game.unlockedPlanetIds,
-                chosenCharacterId: game.chosenCharacterId
-              })
-            ).length > seenStoryCount
+            getStoryLogUnlockedEntries({
+              unlockedPlanetIds: game.unlockedPlanetIds,
+              chosenCharacterId: game.chosenCharacterId
+            }).length > seenStoryCount
           }
           hasUnreadChannelMessage={!!game.characterMessage}
           chosenCharacter={game.chosenCharacter}
@@ -648,7 +650,7 @@ function GameApp({
 
       <ModalSheet
         visible={researchOpen}
-        title="◈ ИССЛЕДОВАНИЯ · МММРДР ◈"
+        title={t('ui.research.modal_title')}
         onClose={() => {
           logEvent('modal_close', { modal: 'research' });
           setResearchOpen(false);
@@ -667,7 +669,7 @@ function GameApp({
 
       <ModalSheet
         visible={storyLogOpen}
-        title="◈ БОРТОВОЙ ЖУРНАЛ ◈"
+        title={t('ui.story_log.modal_title')}
         onClose={() => {
           logEvent('modal_close', { modal: 'story_log' });
           setStoryLogOpen(false);
@@ -700,7 +702,7 @@ function GameApp({
 
       <ModalSheet
         visible={achievementsOpen}
-        title="◈ ЛИЧНОЕ ДЕЛО ◈"
+        title={t('ui.achievements.modal_title')}
         onClose={() => {
           logEvent('modal_close', { modal: 'achievements' });
           setAchievementsOpen(false);
@@ -714,31 +716,27 @@ function GameApp({
 
       <Popup
         visible={game.firstIronToast}
-        title="◈ ПЕРВАЯ НАХОДКА · КЛЕРК-7 ◈"
+        title={t('alerts.first_iron.title')}
         onClose={() => {
           logEvent('toast_close', { toast: 'first_iron' });
           game.closeFirstIronToast();
         }}
         image={getMetals().find((m) => m.id === 'iron')?.image}
-        text={
-          'Зафиксирован первый образец Железа™! За эту выдающуюся находку вам полагается премия — после заполнения форм ЖЛ-1 по ЖЛ-83, нотариально заверенного снимка астероида и справки с предыдущего места работы. P.S. Этот металл может пригодиться. Возможно.'
-        }
+        text={t('alerts.first_iron.text')}
         clerk
       />
 
       <Popup
         visible={game.achievementsUnlockToast}
-        title="◈ СИСТЕМА ДОСТИЖЕНИЙ · КЛЕРК-7 ◈"
+        title={t('alerts.achievements_unlock.title')}
         onClose={() => {
           logEvent('toast_close', { toast: 'achievements_unlock' });
           game.closeAchievementsUnlockToast();
         }}
-        text={
-          'Хочу вас подбодрить. Серьёзно. Поэтому внедряю систему достижений — специально для вас.\n\nКаждое достижение будет официально зафиксировано в личном деле. Форма ДСТ-1 уже направлена в архив в трёх экземплярах.\n\nТак держать, сотрудник №4,829,441. Вы справляетесь. Почти.'
-        }
+        text={t('alerts.achievements_unlock.text')}
         clerk
         headerEmoji="🏆"
-        actionLabel="ОТКРЫТЬ ДОСТИЖЕНИЯ"
+        actionLabel={t('alerts.achievements_unlock.action')}
         onAction={() => {
           logEvent('toast_action', {
             toast: 'achievements_unlock',
@@ -750,17 +748,15 @@ function GameApp({
 
       <Popup
         visible={game.upgradesUnlockToast}
-        title="◈ АПГРЕЙДЫ ДОСТУПНЫ · КЛЕРК-7 ◈"
+        title={t('alerts.upgrades_unlock.title')}
         onClose={() => {
           logEvent('toast_close', { toast: 'upgrades_unlock' });
           game.closeUpgradesUnlockToast();
         }}
-        text={
-          'Поздравляю — у вас достаточно энергии для первого улучшения оборудования!\n\nАпгрейды повышают мощность добычи и пассивный доход. Настоятельно рекомендую вкладывать всё, что есть.\n\nФорма АПГ-1 «Заявка на улучшение» заполнена автоматически. Можете не благодарить.'
-        }
+        text={t('alerts.upgrades_unlock.text')}
         clerk
         headerEmoji="⚡"
-        actionLabel="ОТКРЫТЬ АПГРЕЙДЫ"
+        actionLabel={t('alerts.upgrades_unlock.action')}
         onAction={() => {
           logEvent('toast_action', {
             toast: 'upgrades_unlock',
@@ -789,19 +785,19 @@ function GameApp({
 
       <Popup
         visible={game.firstShipToast}
-        title="◈ ПЕРВЫЙ КОРАБЛЬ · КЛЕРК-7 ◈"
+        title={t('alerts.first_ship.title')}
         onClose={() => {
           logEvent('toast_close', { toast: 'first_ship' });
           game.closeFirstShipToast();
         }}
         image={getShips()[0].image}
-        text={`Поздравляю с постройкой первого корабля!\n\nОднако для навигации необходимы данные из реестра МММРДР. Министерство готово их предоставить — как только вы выйдете на связь. Для этого потребуется ${minAttackEnergy} единиц энергии. Форма НВГ-1 «Запрос навигационных данных» будет заполнена автоматически.`}
+        text={t('alerts.first_ship.text', { minEnergy: String(minAttackEnergy) })}
         clerk
         headerEmoji="🚀"
         actionLabel={
           planetsUnlocked
-            ? 'ПЕРЕЙТИ К ПЛАНЕТАМ'
-            : `ДОБЫТЬ ${minAttackEnergy} ЭНЕРГИИ`
+            ? t('alerts.first_ship.action_go_planets')
+            : t('alerts.first_ship.action_earn', { energy: String(minAttackEnergy) })
         }
         onAction={() => {
           logEvent('toast_action', {
@@ -815,17 +811,15 @@ function GameApp({
 
       <Popup
         visible={game.planetsUnlockToast}
-        title="◈ ПЛАНЕТЫ ДОСТУПНЫ · КЛЕРК-7 ◈"
+        title={t('alerts.planets_unlock.title')}
         onClose={() => {
           logEvent('toast_close', { toast: 'planets_unlock' });
           game.closePlanetsUnlockToast();
         }}
         headerEmoji="🌍"
-        text={
-          'У вас достаточно энергии для атаки! Вкладка «ПЛАН.» разблокирована.\n\nЗдесь вы можете выбирать планеты и вступать в бой с инопланетными захватчиками. Победа откроет новые планеты с бонусами к добыче.\n\nМинистерство межпланетных отношений категорически не рекомендует вступать в контакт с пришельцами. Так что, возможно, сначала постройте корабль.'
-        }
+        text={t('alerts.planets_unlock.text')}
         clerk
-        actionLabel="ОТКРЫТЬ ПЛАНЕТЫ"
+        actionLabel={t('alerts.planets_unlock.action')}
         onAction={() => {
           logEvent('toast_action', {
             toast: 'planets_unlock',
@@ -837,17 +831,15 @@ function GameApp({
 
       <Popup
         visible={game.shipyardUnlockToast}
-        title="◈ ВЕРФЬ РАЗБЛОКИРОВАНА · КЛЕРК-7 ◈"
+        title={t('alerts.shipyard_unlock.title')}
         onClose={() => {
           logEvent('toast_close', { toast: 'shipyard_unlock' });
           game.closeShipyardUnlockToast();
         }}
         headerEmoji="🛠️"
-        text={
-          'У вас достаточно железа для постройки первого корабля!\n\nПерейдите во вкладку «ВЕРФЬ» — там можно строить корабли, устанавливать пушки и отправлять флот в экспедиции за металлами.\n\nМинистерство судостроения уведомлено. Форма СТР-1 «Разрешение на строительство» находится на рассмотрении с 2374 года. Стройте пока никто не заметил.'
-        }
+        text={t('alerts.shipyard_unlock.text')}
         clerk
-        actionLabel="ОТКРЫТЬ ВЕРФЬ"
+        actionLabel={t('alerts.shipyard_unlock.action')}
         onAction={() => {
           logEvent('toast_action', {
             toast: 'shipyard_unlock',
@@ -859,7 +851,7 @@ function GameApp({
 
       <Popup
         visible={!!game.planetUnlockToast}
-        title="◈ НОВАЯ ПЛАНЕТА · КЛЕРК-7 ◈"
+        title={t('alerts.planet_unlock.title')}
         onClose={() => {
           logEvent('toast_close', {
             toast: 'planet_unlock',
@@ -870,11 +862,11 @@ function GameApp({
         image={game.planetUnlockToast?.image}
         text={
           game.planetUnlockToast
-            ? `Планета ${game.planetUnlockToast.name} разблокирована!\n\n${game.planetUnlockToast.lore}`
+            ? t('alerts.planet_unlock.text', { name: game.planetUnlockToast.name, lore: game.planetUnlockToast.lore })
             : ''
         }
         clerk
-        actionLabel="НАЧАТЬ ДОБЫЧУ"
+        actionLabel={t('alerts.planet_unlock.action')}
         onAction={() => {
           logEvent('toast_action', {
             toast: 'planet_unlock',
@@ -978,29 +970,29 @@ function GameApp({
       })()}
 
       {(() => {
-        const visibleTabs = TABS.filter((t) => {
-          if (t.id === 'upgrades') return upgradesUnlocked;
-          if (t.id === 'shipyard') return shipyardUnlocked;
-          if (t.id === 'planets') return planetsUnlocked;
-          if (t.id === 'battle') return battleUnlocked;
-          if (t.id === 'shop') return shopUnlocked;
+        const visibleTabs = TABS.filter((tabDef) => {
+          if (tabDef.id === 'upgrades') return upgradesUnlocked;
+          if (tabDef.id === 'shipyard') return shipyardUnlocked;
+          if (tabDef.id === 'planets') return planetsUnlocked;
+          if (tabDef.id === 'battle') return battleUnlocked;
+          if (tabDef.id === 'shop') return shopUnlocked;
           return true;
         });
         if (visibleTabs.length < 2) return null;
         return (
           <RNSAView edges={['bottom']} style={styles.tabBarOuter}>
             <View style={styles.tabBar}>
-              {visibleTabs.map((t) => {
-                const active = tab === t.id;
-                const hasBattle = t.id === 'battle' && !!game.battle;
-                const hasDefeat = t.id === 'battle' && !!game.defeatInfo;
+              {visibleTabs.map((tabDef) => {
+                const active = tab === tabDef.id;
+                const hasBattle = tabDef.id === 'battle' && !!game.battle;
+                const hasDefeat = tabDef.id === 'battle' && !!game.defeatInfo;
                 const hasExpeditionDone =
-                  t.id === 'shipyard' &&
+                  tabDef.id === 'shipyard' &&
                   game.expeditions.some(
                     (e) => (game.expeditionRemainingMap[e.shipId] ?? 1) === 0
                   );
                 const hasAffordableUpgrade =
-                  t.id === 'upgrades' &&
+                  tabDef.id === 'upgrades' &&
                   tab !== 'upgrades' &&
                   getUpgrades().some(
                     (u) =>
@@ -1011,7 +1003,7 @@ function GameApp({
                       )
                   );
                 const hasAttackablePlanet =
-                  t.id === 'planets' &&
+                  tabDef.id === 'planets' &&
                   tab !== 'planets' &&
                   getAliens().some((alien) => {
                     const planet = getPlanets().find(
@@ -1030,7 +1022,7 @@ function GameApp({
                     );
                   });
                 const hasAffordableShipyard =
-                  t.id === 'shipyard' &&
+                  tabDef.id === 'shipyard' &&
                   tab !== 'shipyard' &&
                   (getShips().some(
                     (ship) =>
@@ -1067,21 +1059,21 @@ function GameApp({
 
                 return (
                   <Pressable
-                    key={t.id}
+                    key={tabDef.id}
                     onPress={() => {
-                      logEvent('tab_switch', { tab: t.id, via: 'tab_bar' });
-                      onSetTab(t.id);
+                      logEvent('tab_switch', { tab: tabDef.id, via: 'tab_bar' });
+                      onSetTab(tabDef.id);
                     }}
                     style={styles.tabBtn}
                   >
-                    <Text style={styles.tabIcon}>{t.icon}</Text>
+                    <Text style={styles.tabIcon}>{tabDef.icon}</Text>
                     <Text
                       style={[
                         styles.tabLabel,
                         active ? styles.tabLabelActive : null
                       ]}
                     >
-                      {t.label}
+                      {t(tabDef.labelKey)}
                     </Text>
                     {active ? <View style={styles.tabActiveLine} /> : null}
                     {hasBattle || hasDefeat ? (
@@ -1133,11 +1125,11 @@ function GameApp({
           style={styles.resetBtn}
         >
           <Text style={styles.resetIcon}>✕</Text>
-          <Text style={styles.resetLabel}>СБРОС</Text>
+          <Text style={styles.resetLabel}>{t('ui.reset.label')}</Text>
         </Pressable>
         <Pressable onPress={openEditor} style={styles.editorBtn}>
           <Text style={styles.editorIcon}>✎</Text>
-          <Text style={styles.editorLabel}>ПРОГ.</Text>
+          <Text style={styles.editorLabel}>{t('ui.editor.label')}</Text>
         </Pressable>
       </View>
 
@@ -1152,22 +1144,22 @@ function GameApp({
           onPress={() => setEditorOpen(false)}
         >
           <Pressable style={styles.editorCard} onPress={() => {}}>
-            <Text style={styles.editorCardTitle}>◈ РЕДАКТОР ПРОГРЕССА ◈</Text>
+            <Text style={styles.editorCardTitle}>{t('ui.editor.title')}</Text>
             <ScrollView
               style={styles.editorScroll}
               keyboardShouldPersistTaps="handled"
             >
               {(
                 [
-                  { key: 'energy', label: 'Энергия' },
-                  { key: 'playerXP', label: 'Опыт (XP)' },
-                  { key: 'iron', label: 'Железо' },
-                  { key: 'titan', label: 'Титан' },
-                  { key: 'iridium', label: 'Иридий' }
-                ] as { key: keyof typeof editorFields; label: string }[]
-              ).map(({ key, label }) => (
+                  { key: 'energy', labelKey: 'ui.editor.energy' },
+                  { key: 'playerXP', labelKey: 'ui.editor.xp' },
+                  { key: 'iron', labelKey: 'ui.editor.iron' },
+                  { key: 'titan', labelKey: 'ui.editor.titan' },
+                  { key: 'iridium', labelKey: 'ui.editor.iridium' },
+                ] as { key: keyof typeof editorFields; labelKey: string }[]
+              ).map(({ key, labelKey }) => (
                 <View key={key} style={styles.editorRow}>
-                  <Text style={styles.editorFieldLabel}>{label}</Text>
+                  <Text style={styles.editorFieldLabel}>{t(labelKey)}</Text>
                   <TextInput
                     style={styles.editorInput}
                     value={editorFields[key]}
@@ -1182,16 +1174,16 @@ function GameApp({
               <View style={styles.editorDivider} />
               {(
                 [
-                  { key: 'unlockUpgrades', label: 'Апгрейды открыты' },
-                  { key: 'unlockShipyard', label: 'Верфь открыта' },
-                  { key: 'unlockPlanets', label: 'Планеты открыты' }
-                ] as { key: keyof typeof editorToggles; label: string }[]
-              ).map(({ key, label }) => (
+                  { key: 'unlockUpgrades', labelKey: 'ui.editor.upgrades_open' },
+                  { key: 'unlockShipyard', labelKey: 'ui.editor.shipyard_open' },
+                  { key: 'unlockPlanets', labelKey: 'ui.editor.planets_open' },
+                ] as { key: keyof typeof editorToggles; labelKey: string }[]
+              ).map(({ key, labelKey }) => (
                 <View key={key} style={styles.editorRow}>
-                  <Text style={styles.editorFieldLabel}>{label}</Text>
+                  <Text style={styles.editorFieldLabel}>{t(labelKey)}</Text>
                   <Pressable
                     onPress={() =>
-                      setEditorToggles((t) => ({ ...t, [key]: !t[key] }))
+                      setEditorToggles((prev) => ({ ...prev, [key]: !prev[key] }))
                     }
                     style={[
                       styles.editorToggle,
@@ -1206,7 +1198,7 @@ function GameApp({
                         editorToggles[key] ? styles.editorToggleTextOn : null
                       ]}
                     >
-                      {editorToggles[key] ? 'ВКЛ' : 'ВЫКЛ'}
+                      {editorToggles[key] ? t('ui.editor.toggle_on') : t('ui.editor.toggle_off')}
                     </Text>
                   </Pressable>
                 </View>
@@ -1217,10 +1209,10 @@ function GameApp({
                 style={styles.resetCardCancel}
                 onPress={() => setEditorOpen(false)}
               >
-                <Text style={styles.resetCardCancelText}>Отмена</Text>
+                <Text style={styles.resetCardCancelText}>{t('ui.editor.cancel')}</Text>
               </Pressable>
               <Pressable style={styles.resetCardConfirm} onPress={applyEditor}>
-                <Text style={styles.resetCardConfirmText}>Применить</Text>
+                <Text style={styles.resetCardConfirmText}>{t('ui.editor.apply')}</Text>
               </Pressable>
             </View>
           </Pressable>
@@ -1238,9 +1230,9 @@ function GameApp({
           onPress={() => setResetConfirmOpen(false)}
         >
           <Pressable style={styles.resetCard} onPress={() => {}}>
-            <Text style={styles.resetCardTitle}>◈ СБРОС ПРОГРЕССА ◈</Text>
+            <Text style={styles.resetCardTitle}>{t('ui.reset.title')}</Text>
             <Text style={styles.resetCardText}>
-              Весь прогресс будет удалён без возможности восстановления.
+              {t('ui.reset.body')}
             </Text>
             <Pressable
               style={styles.resetCheckboxRow}
@@ -1256,14 +1248,14 @@ function GameApp({
                   <Text style={styles.resetCheckboxMark}>✓</Text>
                 ) : null}
               </View>
-              <Text style={styles.resetCheckboxLabel}>Показать интро</Text>
+              <Text style={styles.resetCheckboxLabel}>{t('ui.reset.show_intro')}</Text>
             </Pressable>
             <View style={styles.resetCardButtons}>
               <Pressable
                 style={styles.resetCardCancel}
                 onPress={() => setResetConfirmOpen(false)}
               >
-                <Text style={styles.resetCardCancelText}>Отмена</Text>
+                <Text style={styles.resetCardCancelText}>{t('ui.reset.cancel')}</Text>
               </Pressable>
               <Pressable
                 style={styles.resetCardConfirm}
@@ -1274,7 +1266,7 @@ function GameApp({
                   setResetShowIntro(false);
                 }}
               >
-                <Text style={styles.resetCardConfirmText}>Сбросить</Text>
+                <Text style={styles.resetCardConfirmText}>{t('ui.reset.confirm')}</Text>
               </Pressable>
             </View>
           </Pressable>
@@ -1296,6 +1288,8 @@ export default function App() {
   const [dialoguesError, setDialoguesError] = useState<string | null>(null);
   const [configReady, setConfigReady] = useState(false);
   const [configError, setConfigError] = useState<string | null>(null);
+  const [localeChecked, setLocaleChecked] = useState(false);
+  const [showLocalePicker, setShowLocalePicker] = useState(false);
 
   const sessionIdRef = useRef(
     Math.random().toString(36).slice(2) + Date.now().toString(36)
@@ -1357,6 +1351,29 @@ export default function App() {
         if (!mounted) return;
         setDialoguesError(err?.message ?? 'Failed to load dialogues');
       });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      const saved = await loadSavedLocale();
+      if (!mounted) return;
+
+      if (saved) {
+        await loadI18n(saved);
+        if (!mounted) return;
+        invalidatePlanetsCache();
+        invalidateAliensCache();
+        setShowLocalePicker(false);
+        setLocaleChecked(true);
+        return;
+      }
+
+      setShowLocalePicker(true);
+    })();
     return () => {
       mounted = false;
     };
@@ -1523,6 +1540,15 @@ export default function App() {
     };
   }, []);
 
+  const handleLocalePick = useCallback(async (locale: SupportedLocale) => {
+    await saveLocale(locale);
+    await loadI18n(locale);
+    invalidatePlanetsCache();
+    invalidateAliensCache();
+    setShowLocalePicker(false);
+    setLocaleChecked(true);
+  }, []);
+
   const handleReset = useCallback(async (showIntro?: boolean) => {
     await clearGame().catch(() => {});
     if (showIntro) {
@@ -1533,6 +1559,18 @@ export default function App() {
     setTab('game');
     setGameKey((k) => k + 1);
   }, []);
+
+  if (!localeChecked) {
+    if (showLocalePicker) {
+      return (
+        <View style={styles.container}>
+          <StatusBar style="light" />
+          <LocalePickerOverlay onPick={handleLocalePick} />
+        </View>
+      );
+    }
+    return <View style={styles.container}><StatusBar style="light" /></View>;
+  }
 
   if (unlocked !== true) {
     if (unlocked === null) return null;
@@ -1549,7 +1587,7 @@ export default function App() {
       <View style={styles.container}>
         <StatusBar style="light" />
         <View style={styles.loading}>
-          <Text style={styles.loadingText}>Не удалось загрузить конфиг.</Text>
+          <Text style={styles.loadingText}>{t('ui.loading.config_failed')}</Text>
           <Text style={[styles.loadingText, { marginTop: 8, opacity: 0.6 }]}>
             {configError}
           </Text>
@@ -1562,7 +1600,7 @@ export default function App() {
                 .catch((err: any) => setConfigError(err?.message ?? 'Ошибка'));
             }}
           >
-            <Text style={styles.retryBtnText}>Повторить</Text>
+            <Text style={styles.retryBtnText}>{t('ui.loading.retry')}</Text>
           </Pressable>
         </View>
       </View>
@@ -1574,12 +1612,12 @@ export default function App() {
       <View style={styles.container}>
         <StatusBar style="light" />
         <View style={styles.loading}>
-          <Text style={styles.loadingText}>�� ������� ��������� �������.</Text>
+          <Text style={styles.loadingText}>{t('ui.loading.dialogues_failed')}</Text>
           <Text style={[styles.loadingText, { marginTop: 8, opacity: 0.6 }]}>
             {dialoguesError}
           </Text>
           <Pressable style={styles.retryBtn} onPress={retryDialogues}>
-            <Text style={styles.retryBtnText}>���������</Text>
+            <Text style={styles.retryBtnText}>{t('ui.loading.retry')}</Text>
           </Pressable>
         </View>
       </View>
@@ -1596,7 +1634,7 @@ export default function App() {
       <View style={styles.container}>
         <StatusBar style="light" />
         <View style={styles.loading}>
-          <Text style={styles.loadingText}>��������...</Text>
+          <Text style={styles.loadingText}>{t('ui.loading.title')}</Text>
         </View>
       </View>
     );
@@ -1623,9 +1661,9 @@ export default function App() {
         />
         <Popup
           visible={offlineEarnings > 0}
-          title="ОФЛАЙН-ДОБЫЧА"
+          title={t('ui.offline.title')}
           headerEmoji="⚡"
-          text={`Пока вас не было, реакторы не простаивали.\n\nНакоплено: +${formatNum(offlineEarnings)} энергии.`}
+          text={t('ui.offline.text', { earnings: formatNum(offlineEarnings) })}
           onClose={() => setOfflineEarnings(0)}
         />
       </View>

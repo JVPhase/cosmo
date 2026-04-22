@@ -1,0 +1,68 @@
+name: cosmo-testlocal
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB in .env.test-local}
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env.test-local}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.test-local}
+    volumes:
+      - cosmo_testlocal_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  server:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    image: cosmo-server:test-local
+    restart: unless-stopped
+    env_file:
+      - .env.test-local
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    expose:
+      - "3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/health').then((res)=>{if(!res.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      API_DOMAIN: ${API_DOMAIN:?set API_DOMAIN in .env.test-local}
+    ports:
+      - "80:80"
+    volumes:
+      - ./infra/caddy/Caddyfile.http:/etc/caddy/Caddyfile:ro
+      - cosmo_testlocal_caddy_data:/data
+      - cosmo_testlocal_caddy_config:/config
+    depends_on:
+      server:
+        condition: service_healthy
+
+volumes:
+  cosmo_testlocal_pg_data:
+  cosmo_testlocal_caddy_data:
+  cosmo_testlocal_caddy_config:

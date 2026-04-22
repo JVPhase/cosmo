@@ -15,7 +15,20 @@ import {
   researchData,
   achievementsData,
   playerData,
+  dialoguesData,
 } from './configData';
+import { messages as localeUiRu } from './locales/mobile.ui.ru';
+import { messages as localeAlertsRu } from './locales/mobile.alerts.ru';
+import { messages as localeIntroRu } from './locales/mobile.intro.ru';
+import { messages as localeStoryRu } from './locales/mobile.story.ru';
+import { messages as localeDialoguesRu } from './locales/mobile.dialogues.ru';
+import { messages as localeConfigRu } from './locales/mobile.config.ru';
+import { messages as localeUiEn } from './locales/mobile.ui.en';
+import { messages as localeAlertsEn } from './locales/mobile.alerts.en';
+import { messages as localeIntroEn } from './locales/mobile.intro.en';
+import { messages as localeStoryEn } from './locales/mobile.story.en';
+import { messages as localeDialoguesEn } from './locales/mobile.dialogues.en';
+import { messages as localeConfigEn } from './locales/mobile.config.en';
 
 const prisma = new PrismaClient();
 
@@ -74,6 +87,7 @@ const CONFIG_ENTRIES: Array<{ key: string; data: unknown }> = [
   { key: 'aliens', data: aliensData },
   { key: 'achievements', data: achievementsData },
   { key: 'planets', data: planetsData },
+  { key: 'dialogues', data: dialoguesData },
 ];
 
 // ── Shop items seeded for Telegram Stars purchases ────────────────────────────
@@ -102,8 +116,8 @@ const SHOP_ITEMS: ShopItemSeed[] = [
   {
     id: 'booster_mining_1h',
     type: 'booster',
-    name: '⚡ Mining Boost ×2',
-    description: 'Doubles your click power for 1 hour.',
+    name: 'shop.booster_mining_1h.name',
+    description: 'shop.booster_mining_1h.description',
     priceStars: 25,
     priceCredits: 80,
     metadata: { effectType: 'clickMultiplier', multiplier: 2, durationMs: 3_600_000, deliveryMode: 'grant_sync' },
@@ -112,8 +126,8 @@ const SHOP_ITEMS: ShopItemSeed[] = [
   {
     id: 'booster_xp_1h',
     type: 'booster',
-    name: '🎓 XP Boost ×2',
-    description: 'Doubles XP earned for 1 hour.',
+    name: 'shop.booster_xp_1h.name',
+    description: 'shop.booster_xp_1h.description',
     priceStars: 20,
     priceCredits: 60,
     metadata: { effectType: 'xpMultiplier', multiplier: 2, durationMs: 3_600_000, deliveryMode: 'grant_sync' },
@@ -122,8 +136,8 @@ const SHOP_ITEMS: ShopItemSeed[] = [
   {
     id: 'booster_metal_1h',
     type: 'booster',
-    name: '🔩 Metal Drop +50%',
-    description: 'Increases metal drop chance by 50% for 1 hour.',
+    name: 'shop.booster_metal_1h.name',
+    description: 'shop.booster_metal_1h.description',
     priceStars: 30,
     priceCredits: 90,
     metadata: { effectType: 'metalDropBonus', bonus: 0.5, durationMs: 3_600_000, deliveryMode: 'grant_sync' },
@@ -132,8 +146,8 @@ const SHOP_ITEMS: ShopItemSeed[] = [
   {
     id: 'booster_battle_30m',
     type: 'booster',
-    name: '⚔️ Battle Boost ×1.5',
-    description: 'Increases battle damage by 1.5× for 30 minutes.',
+    name: 'shop.booster_battle_30m.name',
+    description: 'shop.booster_battle_30m.description',
     priceStars: 15,
     priceCredits: 50,
     metadata: { effectType: 'damageMultiplier', multiplier: 1.5, durationMs: 1_800_000, deliveryMode: 'grant_sync' },
@@ -144,8 +158,8 @@ const SHOP_ITEMS: ShopItemSeed[] = [
   {
     id: 'metal_iron',
     type: 'metal_pack',
-    name: '🪨 Iron Pack ×50',
-    description: '50 units of Iron delivered to your cargo hold.',
+    name: 'shop.metal_iron.name',
+    description: 'shop.metal_iron.description',
     priceStars: 10,
     priceCredits: 30,
     metadata: { metalId: 'iron', quantity: 50, deliveryMode: 'grant_sync' },
@@ -154,8 +168,8 @@ const SHOP_ITEMS: ShopItemSeed[] = [
   {
     id: 'metal_titan',
     type: 'metal_pack',
-    name: '⚙️ Titan Pack ×20',
-    description: '20 units of Titan.',
+    name: 'shop.metal_titan.name',
+    description: 'shop.metal_titan.description',
     priceStars: 25,
     priceCredits: 70,
     metadata: { metalId: 'titan', quantity: 20, deliveryMode: 'grant_sync' },
@@ -164,8 +178,8 @@ const SHOP_ITEMS: ShopItemSeed[] = [
   {
     id: 'metal_iridium',
     type: 'metal_pack',
-    name: '💎 Iridium Pack ×10',
-    description: '10 units of Iridium.',
+    name: 'shop.metal_iridium.name',
+    description: 'shop.metal_iridium.description',
     priceStars: 50,
     priceCredits: 140,
     metadata: { metalId: 'iridium', quantity: 10, deliveryMode: 'grant_sync' },
@@ -174,8 +188,8 @@ const SHOP_ITEMS: ShopItemSeed[] = [
   {
     id: 'metal_void',
     type: 'metal_pack',
-    name: '🌌 Void Crystal ×5',
-    description: '5 Void Crystals, rare tier-3 material.',
+    name: 'shop.metal_void.name',
+    description: 'shop.metal_void.description',
     priceStars: 90,
     priceCredits: 250,
     metadata: { metalId: 'voidCrystal', quantity: 5, deliveryMode: 'grant_sync' },
@@ -184,8 +198,8 @@ const SHOP_ITEMS: ShopItemSeed[] = [
   {
     id: 'metal_echo',
     type: 'metal_pack',
-    name: '🔊 Echo Shard ×5',
-    description: '5 Echo Shards, rare tier-3 material.',
+    name: 'shop.metal_echo.name',
+    description: 'shop.metal_echo.description',
     priceStars: 90,
     priceCredits: 250,
     metadata: { metalId: 'echoShard', quantity: 5, deliveryMode: 'grant_sync' },
@@ -196,8 +210,8 @@ const SHOP_ITEMS: ShopItemSeed[] = [
   {
     id: 'loot_box_basic',
     type: 'loot_box',
-    name: '📦 Basic Crate',
-    description: 'Contains a random amount of Iron, Titan, or Iridium.',
+    name: 'shop.loot_box_basic.name',
+    description: 'shop.loot_box_basic.description',
     priceStars: 15,
     priceCredits: 40,
     metadata: { tier: 'basic', pool: ['iron', 'titan', 'iridium'], deliveryMode: 'grant_sync' },
@@ -206,8 +220,8 @@ const SHOP_ITEMS: ShopItemSeed[] = [
   {
     id: 'loot_box_advanced',
     type: 'loot_box',
-    name: '📦 Advanced Crate',
-    description: 'All base metals plus a chance at rare materials.',
+    name: 'shop.loot_box_advanced.name',
+    description: 'shop.loot_box_advanced.description',
     priceStars: 40,
     priceCredits: 120,
     metadata: { tier: 'advanced', pool: ['iron', 'titan', 'iridium', 'voidCrystal', 'echoShard'], deliveryMode: 'grant_sync' },
@@ -216,8 +230,8 @@ const SHOP_ITEMS: ShopItemSeed[] = [
   {
     id: 'loot_box_premium',
     type: 'loot_box',
-    name: '🎁 Premium Crate',
-    description: 'Guaranteed rare materials with double quantities.',
+    name: 'shop.loot_box_premium.name',
+    description: 'shop.loot_box_premium.description',
     priceStars: 120,
     priceCredits: 350,
     metadata: { tier: 'premium', pool: ['voidCrystal', 'echoShard'], guaranteed: true, doubleQty: true, deliveryMode: 'grant_sync' },
@@ -229,8 +243,8 @@ const SHOP_ITEMS: ShopItemSeed[] = [
   {
     id: 'premium_sector_skip',
     type: 'premium_unlock',
-    name: '🚀 Sector Skip',
-    description: 'Instantly unlock the next sector without grinding the cost.',
+    name: 'shop.premium_sector_skip.name',
+    description: 'shop.premium_sector_skip.description',
     priceStars: 200,
     priceCredits: null,
     metadata: { effect: 'unlockNextSector', deliveryMode: 'unsupported' },
@@ -239,8 +253,8 @@ const SHOP_ITEMS: ShopItemSeed[] = [
   {
     id: 'premium_research_reset',
     type: 'premium_unlock',
-    name: '🔬 Research Reset',
-    description: 'Reset all research nodes and recover spent energy.',
+    name: 'shop.premium_research_reset.name',
+    description: 'shop.premium_research_reset.description',
     priceStars: 150,
     priceCredits: null,
     metadata: { effect: 'resetResearch', deliveryMode: 'unsupported' },
@@ -252,8 +266,8 @@ const SHOP_ITEMS: ShopItemSeed[] = [
   {
     id: 'credits_100',
     type: 'currency_pack',
-    name: '💰 100 Credits',
-    description: '100 in-game credits.',
+    name: 'shop.credits_100.name',
+    description: 'shop.credits_100.description',
     priceStars: 15,
     priceCredits: null,
     metadata: { creditAmount: 100, deliveryMode: 'grant_sync' },
@@ -262,8 +276,8 @@ const SHOP_ITEMS: ShopItemSeed[] = [
   {
     id: 'credits_1000',
     type: 'currency_pack',
-    name: '💰 1 000 Credits',
-    description: '1 000 in-game credits — saves 13% vs buying individually.',
+    name: 'shop.credits_1000.name',
+    description: 'shop.credits_1000.description',
     priceStars: 130,
     priceCredits: null,
     metadata: { creditAmount: 1000, deliveryMode: 'grant_sync' },
@@ -272,14 +286,169 @@ const SHOP_ITEMS: ShopItemSeed[] = [
   {
     id: 'credits_10000',
     type: 'currency_pack',
-    name: '💰 10 000 Credits',
-    description: '10 000 in-game credits — best value, saves 33%.',
+    name: 'shop.credits_10000.name',
+    description: 'shop.credits_10000.description',
     priceStars: 1000,
     priceCredits: null,
     metadata: { creditAmount: 10000, deliveryMode: 'grant_sync' },
     sortOrder: 52,
   },
 ];
+
+// ── IAP Packs ─────────────────────────────────────────────────────────────────
+
+type IapPackSeed = {
+  id: string;
+  kind: 'ad' | 'iap';
+  icon: string;
+  credits: number;
+  name: string;        // i18n key in config namespace
+  lore: string;        // i18n key in config namespace
+  productId: string | null;
+  basePrice: string | null;
+  sortOrder: number;
+};
+
+const IAP_PACKS: IapPackSeed[] = [
+  {
+    id: 'credits_ad',
+    kind: 'ad',
+    icon: '📺',
+    credits: 30,
+    name: 'iap_pack.credits_ad.name',
+    lore: 'iap_pack.credits_ad.lore',
+    productId: null,
+    basePrice: null,
+    sortOrder: 0,
+  },
+  {
+    id: 'credits_100',
+    kind: 'iap',
+    icon: '💳',
+    credits: 100,
+    name: 'iap_pack.credits_100.name',
+    lore: 'iap_pack.credits_100.lore',
+    productId: 'cosmo_credits_100',
+    basePrice: '$0.99',
+    sortOrder: 1,
+  },
+  {
+    id: 'credits_300',
+    kind: 'iap',
+    icon: '💰',
+    credits: 300,
+    name: 'iap_pack.credits_300.name',
+    lore: 'iap_pack.credits_300.lore',
+    productId: 'cosmo_credits_300',
+    basePrice: '$1.99',
+    sortOrder: 2,
+  },
+  {
+    id: 'credits_800',
+    kind: 'iap',
+    icon: '🌟',
+    credits: 800,
+    name: 'iap_pack.credits_800.name',
+    lore: 'iap_pack.credits_800.lore',
+    productId: 'cosmo_credits_800',
+    basePrice: '$4.99',
+    sortOrder: 3,
+  },
+  {
+    id: 'credits_2000',
+    kind: 'iap',
+    icon: '🏦',
+    credits: 2000,
+    name: 'iap_pack.credits_2000.name',
+    lore: 'iap_pack.credits_2000.lore',
+    productId: 'cosmo_credits_2000',
+    basePrice: '$9.99',
+    sortOrder: 4,
+  },
+];
+
+async function seedIapPacks() {
+  console.log('Seeding IapPack table...');
+  for (const pack of IAP_PACKS) {
+    await prisma.iapPack.upsert({
+      where: { id: pack.id },
+      update: {
+        kind: pack.kind,
+        icon: pack.icon,
+        credits: pack.credits,
+        name: pack.name,
+        lore: pack.lore,
+        productId: pack.productId,
+        basePrice: pack.basePrice,
+        sortOrder: pack.sortOrder,
+      },
+      create: {
+        id: pack.id,
+        kind: pack.kind,
+        icon: pack.icon,
+        credits: pack.credits,
+        name: pack.name,
+        lore: pack.lore,
+        productId: pack.productId,
+        basePrice: pack.basePrice,
+        sortOrder: pack.sortOrder,
+        isActive: true,
+      },
+    });
+    console.log(`  ✓ ${pack.id}`);
+  }
+}
+
+// ── Locale bundles ────────────────────────────────────────────────────────────
+
+type LocaleBundleSeed = {
+  app: string;
+  namespace: string;
+  locale: string;
+  messages: Record<string, string>;
+};
+
+const LOCALE_BUNDLES: LocaleBundleSeed[] = [
+  { app: 'mobile', namespace: 'ui',        locale: 'ru', messages: localeUiRu },
+  { app: 'mobile', namespace: 'alerts',    locale: 'ru', messages: localeAlertsRu },
+  { app: 'mobile', namespace: 'intro',     locale: 'ru', messages: localeIntroRu },
+  { app: 'mobile', namespace: 'story',     locale: 'ru', messages: localeStoryRu },
+  { app: 'mobile', namespace: 'dialogues', locale: 'ru', messages: localeDialoguesRu },
+  { app: 'mobile', namespace: 'config',    locale: 'ru', messages: localeConfigRu },
+  { app: 'mobile', namespace: 'ui',        locale: 'en', messages: localeUiEn },
+  { app: 'mobile', namespace: 'alerts',    locale: 'en', messages: localeAlertsEn },
+  { app: 'mobile', namespace: 'intro',     locale: 'en', messages: localeIntroEn },
+  { app: 'mobile', namespace: 'story',     locale: 'en', messages: localeStoryEn },
+  { app: 'mobile', namespace: 'dialogues', locale: 'en', messages: localeDialoguesEn },
+  { app: 'mobile', namespace: 'config',    locale: 'en', messages: localeConfigEn },
+];
+
+async function seedLocaleBundles() {
+  console.log('Seeding LocaleBundle table...');
+  for (const bundle of LOCALE_BUNDLES) {
+    await prisma.localeBundle.upsert({
+      where: {
+        app_namespace_locale: {
+          app: bundle.app,
+          namespace: bundle.namespace,
+          locale: bundle.locale,
+        },
+      },
+      update: {
+        messages: bundle.messages as object,
+        version: { increment: 1 },
+      },
+      create: {
+        app: bundle.app,
+        namespace: bundle.namespace,
+        locale: bundle.locale,
+        messages: bundle.messages as object,
+        version: 1,
+      },
+    });
+    console.log(`  ✓ ${bundle.app}/${bundle.namespace}/${bundle.locale}`);
+  }
+}
 
 async function main() {
   console.log('Seeding GameConfig table...');
@@ -301,7 +470,7 @@ async function main() {
         description: item.description,
         priceStars: item.priceStars,
         priceCredits: item.priceCredits,
-        metadata: item.metadata,
+        metadata: item.metadata as object,
         sortOrder: item.sortOrder,
       },
       create: {
@@ -311,7 +480,7 @@ async function main() {
         description: item.description,
         priceStars: item.priceStars,
         priceCredits: item.priceCredits,
-        metadata: item.metadata,
+        metadata: item.metadata as object,
         sortOrder: item.sortOrder,
         isActive: true,
       },
@@ -331,6 +500,10 @@ async function main() {
 
   console.log('Seeding CRM admin user...');
   await seedCrmAdmin();
+
+  await seedIapPacks();
+
+  await seedLocaleBundles();
 
   console.log('Done.');
 }
