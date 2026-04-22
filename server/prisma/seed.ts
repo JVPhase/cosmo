@@ -16,6 +16,7 @@ import {
   achievementsData,
   playerData,
   dialoguesData,
+  charactersData,
 } from './configData';
 import { messages as localeUiRu } from './locales/mobile.ui.ru';
 import { messages as localeAlertsRu } from './locales/mobile.alerts.ru';
@@ -88,6 +89,7 @@ const CONFIG_ENTRIES: Array<{ key: string; data: unknown }> = [
   { key: 'achievements', data: achievementsData },
   { key: 'planets', data: planetsData },
   { key: 'dialogues', data: dialoguesData },
+  { key: 'characters', data: charactersData },
 ];
 
 // ── Shop items seeded for Telegram Stars purchases ────────────────────────────
