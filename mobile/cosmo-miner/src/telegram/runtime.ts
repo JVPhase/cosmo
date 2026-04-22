@@ -44,9 +44,15 @@ export interface TelegramWebApp {
   };
   safeAreaInset?: { top: number; bottom: number; left: number; right: number };
   contentSafeAreaInset?: { top: number; bottom: number; left: number; right: number };
+  viewportHeight: number;
+  viewportStableHeight: number;
   ready(): void;
   expand(): void;
   disableVerticalSwipes?(): void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  onEvent(eventType: string, callback: (...args: any[]) => void): void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  offEvent(eventType: string, callback: (...args: any[]) => void): void;
   openInvoice(url: string, callback?: (status: InvoiceStatus) => void): void;
   hapticFeedback: {
     notificationOccurred(type: 'error' | 'success' | 'warning'): void;
@@ -89,8 +95,12 @@ function createMockTelegramWebApp(): TelegramWebApp {
       button_text_color: '#041018',
       secondary_bg_color: '#0c152d',
     },
+    viewportHeight: typeof window !== 'undefined' ? window.innerHeight : 0,
+    viewportStableHeight: typeof window !== 'undefined' ? window.innerHeight : 0,
     ready() {},
     expand() {},
+    onEvent() {},
+    offEvent() {},
     openInvoice(url: string, callback?: (status: InvoiceStatus) => void) {
       if (typeof window !== 'undefined') {
         window.open(url, '_blank', 'noopener,noreferrer');
@@ -247,5 +257,36 @@ export function bootstrapTelegram(): void {
 export function getTelegramSafeTop(): number {
   const tg = getTelegramWebApp();
   if (!tg) return 0;
-  return tg.contentSafeAreaInset?.top ?? tg.safeAreaInset?.top ?? 0;
+  const fromInset = tg.contentSafeAreaInset?.top ?? tg.safeAreaInset?.top ?? 0;
+  if (fromInset > 0) return fromInset;
+  // Fallback: difference between window height and Telegram's reported viewport
+  if (typeof window !== 'undefined' && tg.viewportStableHeight > 0) {
+    return Math.max(0, window.innerHeight - tg.viewportStableHeight);
+  }
+  return 0;
+}
+
+/**
+ * Subscribes to Telegram safe-area changes and calls `onChange` with the
+ * updated top inset. Returns an unsubscribe function.
+ */
+export function subscribeTelegramSafeTop(onChange: (top: number) => void): () => void {
+  const tg = getTelegramWebApp();
+  if (!tg) return () => {};
+
+  const update = () => onChange(getTelegramSafeTop());
+
+  tg.onEvent('safeAreaChanged', update);
+  tg.onEvent('contentSafeAreaChanged', update);
+  tg.onEvent('viewportChanged', update);
+
+  // Fire once after a short delay to catch values set synchronously after expand()
+  const timer = setTimeout(update, 150);
+
+  return () => {
+    clearTimeout(timer);
+    tg.offEvent('safeAreaChanged', update);
+    tg.offEvent('contentSafeAreaChanged', update);
+    tg.offEvent('viewportChanged', update);
+  };
 }

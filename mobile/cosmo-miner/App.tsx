@@ -79,7 +79,7 @@ import {
   pickNewerEnvelope
 } from './src/game/saveContract';
 import { applyGrants } from './src/game/grants';
-import { bootstrapTelegram, ensureTelegramWebApp, getTelegramSafeTop } from './src/telegram/runtime';
+import { bootstrapTelegram, ensureTelegramWebApp, getTelegramSafeTop, subscribeTelegramSafeTop } from './src/telegram/runtime';
 import { telegramAuthIfNeeded } from './src/telegram/auth';
 import { getPlanets } from './src/game/PLANETS';
 import { getShips } from './src/game/SHIPS';
@@ -1353,10 +1353,12 @@ export default function App() {
     });
 
     if (Platform.OS === 'web') {
+      let unsubTgSafeTop: (() => void) | undefined;
       void ensureTelegramWebApp().then((tg) => {
         if (tg) {
           bootstrapTelegram();
           setTgSafeTop(getTelegramSafeTop());
+          unsubTgSafeTop = subscribeTelegramSafeTop(setTgSafeTop);
         }
       });
 
@@ -1364,8 +1366,10 @@ export default function App() {
         logError(event.reason, { type: 'unhandledrejection' });
       };
       window.addEventListener('unhandledrejection', onUnhandled);
-      return () =>
+      return () => {
         window.removeEventListener('unhandledrejection', onUnhandled);
+        unsubTgSafeTop?.();
+      };
     }
   }, []);
 
