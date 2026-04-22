@@ -44,7 +44,7 @@ export function getCharacterById(
   dialogues: DialoguesPayload,
   id: CharacterId
 ): DialogueCharacter | null {
-  return dialogues.characters.find((c) => c.id === id) ?? null;
+  return dialogues.characters?.find((c) => c.id === id) ?? null;
 }
 
 export function getRandomMessage(
