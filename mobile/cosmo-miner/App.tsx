@@ -81,7 +81,13 @@ import {
   pickNewerEnvelope
 } from './src/game/saveContract';
 import { applyGrants } from './src/game/grants';
-import { bootstrapTelegram, ensureTelegramWebApp, getTelegramSafeTop, subscribeTelegramSafeTop } from './src/telegram/runtime';
+import {
+  bootstrapTelegram,
+  ensureTelegramWebApp,
+  getTelegramSafeAreaInsets,
+  subscribeTelegramSafeAreaInsets,
+  type TelegramSafeAreaInsets,
+} from './src/telegram/runtime';
 import { telegramAuthIfNeeded } from './src/telegram/auth';
 import { getPlanets } from './src/game/PLANETS';
 import { getShips } from './src/game/SHIPS';
@@ -136,12 +142,14 @@ class GameAppErrorBoundary extends Component<
   }
 }
 
-function TelegramAwareInsets({ children, extra }: { children: React.ReactNode; extra: number }) {
+function TelegramAwareInsets({ children, tgInsets }: { children: React.ReactNode; tgInsets: TelegramSafeAreaInsets }) {
   const insets = useSafeAreaInsets();
-  const adjusted = React.useMemo(
-    () => ({ ...insets, top: insets.top + extra }),
-    [insets, extra]
-  );
+  const adjusted = React.useMemo(() => ({
+    ...insets,
+    // Use the better of browser-measured vs Telegram-reported system inset,
+    // then add the Telegram mini-app header (contentTop) on top.
+    top: Math.max(insets.top, tgInsets.sysTop) + tgInsets.contentTop,
+  }), [insets, tgInsets]);
   return (
     <SafeAreaInsetsContext.Provider value={adjusted}>
       {children}
@@ -1331,7 +1339,7 @@ export default function App() {
   const [configError, setConfigError] = useState<string | null>(null);
   const [localeChecked, setLocaleChecked] = useState(false);
   const [showLocalePicker, setShowLocalePicker] = useState(false);
-  const [tgSafeTop, setTgSafeTop] = useState(0);
+  const [tgInsets, setTgInsets] = useState<TelegramSafeAreaInsets>({ sysTop: 0, contentTop: 0 });
 
   const sessionIdRef = useRef(
     Math.random().toString(36).slice(2) + Date.now().toString(36)
@@ -1372,8 +1380,8 @@ export default function App() {
       void ensureTelegramWebApp().then((tg) => {
         if (tg) {
           bootstrapTelegram();
-          setTgSafeTop(getTelegramSafeTop());
-          unsubTgSafeTop = subscribeTelegramSafeTop(setTgSafeTop);
+          setTgInsets(getTelegramSafeAreaInsets());
+          unsubTgSafeTop = subscribeTelegramSafeAreaInsets(setTgInsets);
         }
       });
 
@@ -1691,7 +1699,7 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <TelegramAwareInsets extra={tgSafeTop}>
+      <TelegramAwareInsets tgInsets={tgInsets}>
       <View style={styles.container}>
         <GameAppErrorBoundary>
           <GameApp
