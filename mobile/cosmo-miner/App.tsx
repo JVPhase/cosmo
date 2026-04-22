@@ -1,8 +1,10 @@
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useRef, useState, Component } from 'react';
 import {
+  SafeAreaInsetsContext,
   SafeAreaProvider,
-  SafeAreaView as RNSAView
+  SafeAreaView as RNSAView,
+  useSafeAreaInsets,
 } from 'react-native-safe-area-context';
 import {
   Alert,
@@ -132,6 +134,19 @@ class GameAppErrorBoundary extends Component<
     }
     return this.props.children;
   }
+}
+
+function TelegramAwareInsets({ children, extra }: { children: React.ReactNode; extra: number }) {
+  const insets = useSafeAreaInsets();
+  const adjusted = React.useMemo(
+    () => ({ ...insets, top: insets.top + extra }),
+    [insets, extra]
+  );
+  return (
+    <SafeAreaInsetsContext.Provider value={adjusted}>
+      {children}
+    </SafeAreaInsetsContext.Provider>
+  );
 }
 
 function GameApp({
@@ -1676,7 +1691,8 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <View style={[styles.container, tgSafeTop > 0 ? { paddingTop: tgSafeTop } : null]}>
+      <TelegramAwareInsets extra={tgSafeTop}>
+      <View style={styles.container}>
         <GameAppErrorBoundary>
           <GameApp
             key={gameKey}
@@ -1703,6 +1719,7 @@ export default function App() {
           onClose={() => setOfflineEarnings(0)}
         />
       </View>
+      </TelegramAwareInsets>
     </SafeAreaProvider>
   );
 }
