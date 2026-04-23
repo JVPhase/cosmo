@@ -104,10 +104,6 @@ export function MiningArea({
         </AnimatedMineEffects>
       </View>
 
-      <Text style={styles.hint}>
-        {t('ui.mining.hint')}
-      </Text>
-
       <View
         pointerEvents="none"
         style={[StyleSheet.absoluteFill, styles.metalFloatOverlay]}

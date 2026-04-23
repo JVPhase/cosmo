@@ -417,7 +417,7 @@ export function PlanetsScreen({
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#050918', userSelect: 'none' },
+  screen: { flex: 1, userSelect: 'none' },
   content: { paddingHorizontal: 16, paddingTop: 18, paddingBottom: 24 },
   title: {
     textAlign: 'center',
