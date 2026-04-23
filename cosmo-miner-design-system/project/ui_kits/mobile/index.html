@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Mine Cosmo — UI Kit</title>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: #111; overflow: hidden; }
+  @font-face {
+    font-family: 'Exo 2';
+    src: url('../../fonts/Exo2-VariableFont_wght.ttf') format('truetype');
+    font-weight: 100 900; font-style: normal;
+  }
+  @font-face {
+    font-family: 'Exo 2';
+    src: url('../../fonts/Exo2-Italic-VariableFont_wght.ttf') format('truetype');
+    font-weight: 100 900; font-style: italic;
+  }
+  * { font-family: 'Exo 2', -apple-system, sans-serif; }
+
+  /* Device frame */
+  .stage { height: 100vh; display: flex; align-items: center; justify-content: center; background: #0a0a12; gap: 24px; }
+  .device { width: 375px; height: 720px; border-radius: 44px; background: #050918; overflow: hidden; position: relative; display: flex; flex-direction: column; box-shadow: 0 0 0 1px rgba(0,212,255,0.15), 0 0 80px rgba(0,0,0,0.8), inset 0 0 0 1px rgba(255,255,255,0.04); }
+  .notch { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 120px; height: 28px; background: #050918; border-radius: 0 0 18px 18px; z-index: 100; display: flex; align-items: center; justify-content: center; gap: 6px; }
+  .notch-cam { width: 8px; height: 8px; border-radius: 50%; background: #1a1a2e; border: 1px solid rgba(255,255,255,0.1); }
+  .notch-bar { width: 40px; height: 4px; border-radius: 2px; background: #1a1a2e; }
+  .device-inner { flex: 1; display: flex; flex-direction: column; overflow: hidden; padding-top: 28px; }
+
+  /* Tweaks panel */
+  .tweaks { display: none; position: fixed; bottom: 20px; right: 20px; background: rgba(4,16,45,0.97); border: 1px solid rgba(0,212,255,0.3); border-radius: 14px; padding: 14px; width: 200px; z-index: 9999; }
+  .tweaks.show { display: block; }
+  .tweaks-title { font-size: 8px; font-weight: 900; letter-spacing: 2px; color: rgba(0,212,255,0.6); text-transform: uppercase; margin-bottom: 10px; font-family: -apple-system, sans-serif; }
+  .tweak-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font-family: -apple-system, sans-serif; }
+  .tweak-label { font-size: 10px; color: rgba(255,255,255,0.6); }
+  .tweak-val { font-size: 10px; font-weight: 700; color: #00d4ff; }
+  input[type=range] { accent-color: #00d4ff; width: 100%; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="device">
+    <div class="notch"><div class="notch-cam"></div><div class="notch-bar"></div><div class="notch-cam"></div></div>
+    <div class="device-inner" id="app"></div>
+  </div>
+</div>
+
+<div class="tweaks" id="tweaks">
+  <div class="tweaks-title">Tweaks</div>
+  <div class="tweak-row"><span class="tweak-label">Энергия</span><span class="tweak-val" id="tweak-energy-val">48 320</span></div>
+  <input type="range" id="tweak-energy" min="0" max="1000000" step="1000" value="48320">
+  <div style="height:8px"></div>
+  <div class="tweak-row"><span class="tweak-label">Уровень игрока</span><span class="tweak-val" id="tweak-level-val">7</span></div>
+  <input type="range" id="tweak-level" min="1" max="20" step="1" value="7">
+  <div style="height:8px"></div>
+  <div class="tweak-row"><span class="tweak-label">Урон/клик</span><span class="tweak-val" id="tweak-dmg-val">42</span></div>
+  <input type="range" id="tweak-dmg" min="1" max="500" step="1" value="42">
+</div>
+
+<script type="text/babel" src="SharedComponents.jsx"></script>
+<script type="text/babel" src="ResearchModal.jsx"></script>
+<script type="text/babel" src="GameScreen.jsx"></script>
+<script type="text/babel" src="BattleScreen.jsx"></script>
+<script type="text/babel" src="UpgradesScreen.jsx"></script>
+<script type="text/babel" src="PlanetsScreen.jsx"></script>
+<script type="text/babel" src="ShipyardScreen.jsx"></script>
+
+<script type="text/babel">
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "energy": 312000,
+  "playerLevel": 20,
+  "dmgPerClick": 76
+}/*EDITMODE-END*/;
+
+const PLANETS = [
+  { id:1, name:'АСТЕРОИД Б-4', image:'../../assets/asteroid.png' },
+  { id:2, name:'МЕРКУРИЙ-ИКС', image:'../../assets/planets/mercury.png' },
+];
+
+function App() {
+  const saved = React.useMemo(() => {
+    try { return JSON.parse(localStorage.getItem('cosmo_ds_state')||'{}'); } catch { return {}; }
+  }, []);
+
+  const [screen, setScreen] = React.useState(saved.screen || 'mine');
+  const [energy, setEnergy] = React.useState(TWEAK_DEFAULTS.energy);
+  const [playerLevel, setPlayerLevel] = React.useState(TWEAK_DEFAULTS.playerLevel);
+  const [playerXP, setPlayerXP] = React.useState(6000);
+  const [dmgPerClick, setDmgPerClick] = React.useState(TWEAK_DEFAULTS.dmgPerClick);
+  const [battlePlanet, setBattlePlanet] = React.useState(null);
+
+  // Persist screen
+  React.useEffect(() => {
+    localStorage.setItem('cosmo_ds_state', JSON.stringify({ screen }));
+  }, [screen]);
+
+  // Passive income
+  React.useEffect(() => {
+    const id = setInterval(() => setEnergy(e => e + 5), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Tweaks wiring
+  React.useEffect(() => {
+    const sync = () => {
+      const eEl = document.getElementById('tweak-energy');
+      const lEl = document.getElementById('tweak-level');
+      const dEl = document.getElementById('tweak-dmg');
+      if (!eEl) return;
+      eEl.addEventListener('input', () => {
+        const v = Number(eEl.value);
+        setEnergy(v);
+        document.getElementById('tweak-energy-val').textContent = v.toLocaleString();
+        window.parent.postMessage({type:'__edit_mode_set_keys',edits:{energy:v}},'*');
+      });
+      lEl.addEventListener('input', () => {
+        const v = Number(lEl.value);
+        setPlayerLevel(v);
+        document.getElementById('tweak-level-val').textContent = v;
+        window.parent.postMessage({type:'__edit_mode_set_keys',edits:{playerLevel:v}},'*');
+      });
+      dEl.addEventListener('input', () => {
+        const v = Number(dEl.value);
+        setDmgPerClick(v);
+        document.getElementById('tweak-dmg-val').textContent = v;
+        window.parent.postMessage({type:'__edit_mode_set_keys',edits:{dmgPerClick:v}},'*');
+      });
+    };
+    sync();
+    window.addEventListener('message', e => {
+      if (e.data?.type === '__activate_edit_mode') document.getElementById('tweaks').classList.add('show');
+      if (e.data?.type === '__deactivate_edit_mode') document.getElementById('tweaks').classList.remove('show');
+    });
+    window.parent.postMessage({type:'__edit_mode_available'},'*');
+  }, []);
+
+  const handleStartBattle = (planet) => {
+    setBattlePlanet(planet);
+    setScreen('battle');
+  };
+
+  const currentPlanet = PLANETS[0];
+
+  return (
+    <div style={{width:'100%',height:'100%',display:'flex',flexDirection:'column',overflow:'hidden'}}>
+      {/* Resource HUD — always visible except battle */}
+      {screen !== 'battle' && (
+        <ResourceHUD energy={energy} iron={142} titan={37} iridium={8} />
+      )}
+
+      {/* Screen content */}
+      <div style={{flex:1,overflow:'hidden',position:'relative'}}>
+        {screen === 'mine' && (
+          <GameScreen
+            energy={energy}
+            onMine={() => setEnergy(e => e + 8)}
+            planet={currentPlanet}
+            playerLevel={playerLevel}
+            playerXP={playerXP}
+            passiveRate={5}
+            clickPower={8}
+          />
+        )}
+        {screen === 'upgrades' && <UpgradesScreen energy={energy} />}
+        {screen === 'planets' && <PlanetsScreen energy={energy} onStartBattle={handleStartBattle} />}
+        {screen === 'shipyard' && <ShipyardScreen />}
+        {screen === 'battle' && (
+          <BattleScreen
+            battle={{
+              raceName: battlePlanet?.alien?.name || 'ПЛАМЕННИКИ',
+              planetName: battlePlanet?.name || 'Меркурий-Икс',
+              maxHp: battlePlanet?.alien?.hp || 500,
+              dmgPerClick,
+              shipName: 'Разведчик',
+              shipImage: '../../assets/ships/fireship.png',
+            }}
+            onAttack={() => {}}
+            onForfeit={() => setScreen('planets')}
+          />
+        )}
+      </div>
+
+      {/* Tab bar */}
+      <TabBar active={screen} onTab={setScreen} />
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById('app'));
+root.render(<App />);
+</script>
+</body>
+</html>

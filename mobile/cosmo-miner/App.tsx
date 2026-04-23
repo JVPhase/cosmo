@@ -219,6 +219,7 @@ function GameApp({
     ...getAliens().map((a) => a.attackEnergyCost),
   );
   const screenGreetedRef = useRef<Set<string>>(new Set());
+  const [statsBarHeight, setStatsBarHeight] = useState(0);
   const [researchOpen, setResearchOpen] = useState(false);
   const [achievementsOpen, setAchievementsOpen] = useState(false);
   const [storyLogOpen, setStoryLogOpen] = useState(false);
@@ -755,21 +756,24 @@ function GameApp({
       >
       <StatusBar style="light" />
       {tab !== 'battle' && (
-        <GlobalStatsBar
-          energy={game.energy}
-          metals={game.metals}
-          discoveredMetals={game.discoveredMetals}
-          onOpenMetalInfo={(metalId) => {
-            logEvent('modal_open', { modal: 'metal_info', metalId });
-            setMetalInfoOpenId(metalId);
-          }}
-        />
+        <View onLayout={(e) => setStatsBarHeight(e.nativeEvent.layout.height)}>
+          <GlobalStatsBar
+            energy={game.energy}
+            metals={game.metals}
+            discoveredMetals={game.discoveredMetals}
+            onOpenMetalInfo={(metalId) => {
+              logEvent('modal_open', { modal: 'metal_info', metalId });
+              setMetalInfoOpenId(metalId);
+            }}
+          />
+        </View>
       )}
       <View style={styles.content}>{tabContent}</View>
 
       <ModalSheet
         visible={researchOpen}
         title={t('ui.research.modal_title')}
+        topOffset={statsBarHeight}
         onClose={() => {
           logEvent('modal_close', { modal: 'research' });
           setResearchOpen(false);
@@ -789,6 +793,7 @@ function GameApp({
       <ModalSheet
         visible={storyLogOpen}
         title={t('ui.story_log.modal_title')}
+        topOffset={statsBarHeight}
         onClose={() => {
           logEvent('modal_close', { modal: 'story_log' });
           setStoryLogOpen(false);
@@ -822,6 +827,7 @@ function GameApp({
       <ModalSheet
         visible={achievementsOpen}
         title={t('ui.achievements.modal_title')}
+        topOffset={statsBarHeight}
         onClose={() => {
           logEvent('modal_close', { modal: 'achievements' });
           setAchievementsOpen(false);
