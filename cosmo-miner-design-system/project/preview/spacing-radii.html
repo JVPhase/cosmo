@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { background:#050918; padding:16px; font-family:-apple-system,sans-serif; display:flex; flex-wrap:wrap; gap:10px; align-items:flex-start; }
+  .col { display:flex; flex-direction:column; gap:8px; }
+  /* spacing scale */
+  .sp-row { display:flex; align-items:center; gap:8px; }
+  .sp-bar { height:8px; background:#00d4ff; border-radius:4px; opacity:0.7; }
+  .sp-lbl { font-size:8px; font-weight:800; letter-spacing:1px; color:rgba(0,212,255,0.5); min-width:32px; }
+  .sp-val { font-size:8px; color:rgba(255,255,255,0.25); font-family:monospace; }
+  .section { font-size:7px; font-weight:900; letter-spacing:2px; color:rgba(0,212,255,0.4); text-transform:uppercase; margin-bottom:4px; }
+  /* radii */
+  .r-row { display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end; }
+  .r-box { display:flex; flex-direction:column; align-items:center; gap:4px; }
+  .r-chip { width:40px; height:32px; background:rgba(0,212,255,0.12); border:1px solid rgba(0,212,255,0.25); }
+</style>
+</head>
+<body>
+<div class="col" style="width:140px">
+  <div class="section">Spacing Scale</div>
+  <div class="sp-row"><div class="sp-lbl">SP-1</div><div class="sp-bar" style="width:4px"></div><div class="sp-val">4px</div></div>
+  <div class="sp-row"><div class="sp-lbl">SP-2</div><div class="sp-bar" style="width:8px"></div><div class="sp-val">8px</div></div>
+  <div class="sp-row"><div class="sp-lbl">SP-3</div><div class="sp-bar" style="width:12px"></div><div class="sp-val">12px</div></div>
+  <div class="sp-row"><div class="sp-lbl">SP-4</div><div class="sp-bar" style="width:16px"></div><div class="sp-val">16px</div></div>
+  <div class="sp-row"><div class="sp-lbl">SP-5</div><div class="sp-bar" style="width:20px"></div><div class="sp-val">20px</div></div>
+  <div class="sp-row"><div class="sp-lbl">SP-6</div><div class="sp-bar" style="width:24px"></div><div class="sp-val">24px</div></div>
+</div>
+<div class="col" style="width:220px">
+  <div class="section">Border Radius</div>
+  <div class="r-row">
+    <div class="r-box"><div class="r-chip" style="border-radius:8px"></div><div style="font-size:7px;color:rgba(255,255,255,0.3)">SM 8px</div></div>
+    <div class="r-box"><div class="r-chip" style="border-radius:12px"></div><div style="font-size:7px;color:rgba(255,255,255,0.3)">MD 12px</div></div>
+    <div class="r-box"><div class="r-chip" style="border-radius:14px"></div><div style="font-size:7px;color:rgba(255,255,255,0.3)">LG 14px</div></div>
+    <div class="r-box"><div class="r-chip" style="border-radius:20px"></div><div style="font-size:7px;color:rgba(255,255,255,0.3)">XL 20px</div></div>
+    <div class="r-box"><div class="r-chip" style="border-radius:999px;width:48px;height:24px"></div><div style="font-size:7px;color:rgba(255,255,255,0.3)">PILL</div></div>
+  </div>
+</div>
+<div class="col" style="width:280px">
+  <div class="section">Glow / Shadow System</div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+      <div style="width:48px;height:36px;background:#00d4ff;border-radius:8px;box-shadow:0 0 16px rgba(0,212,255,0.7)"></div>
+      <div style="font-size:7px;color:rgba(255,255,255,0.3)">Cyan glow</div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+      <div style="width:48px;height:36px;background:#ffd700;border-radius:8px;box-shadow:0 0 16px rgba(255,200,0,0.7)"></div>
+      <div style="font-size:7px;color:rgba(255,255,255,0.3)">Gold glow</div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+      <div style="width:48px;height:36px;background:#ff3333;border-radius:8px;box-shadow:0 0 16px rgba(255,60,60,0.6)"></div>
+      <div style="font-size:7px;color:rgba(255,255,255,0.3)">Danger glow</div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+      <div style="width:48px;height:36px;background:#44ff88;border-radius:8px;box-shadow:0 0 16px rgba(68,255,136,0.5)"></div>
+      <div style="font-size:7px;color:rgba(255,255,255,0.3)">Heal glow</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

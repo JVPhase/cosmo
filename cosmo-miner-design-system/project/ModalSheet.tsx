@@ -2,47 +2,41 @@ import React from 'react';
 import {
   Modal,
   Pressable,
+  SafeAreaView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 type ModalSheetProps = {
   visible: boolean;
   title: string;
   onClose: () => void;
   children: React.ReactNode;
-  topOffset?: number;
 };
 
-export function ModalSheet({ visible, title, onClose, children, topOffset = 0 }: ModalSheetProps) {
+export function ModalSheet({ visible, title, onClose, children }: ModalSheetProps) {
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={[styles.backdrop, { marginTop: topOffset }]}>
-        <SafeAreaView edges={['bottom']} style={styles.container}>
-          <View style={styles.header}>
-            <Text style={styles.title}>{title}</Text>
-            <Pressable onPress={onClose} hitSlop={12}>
-              <Text style={styles.close}>✕</Text>
-            </Pressable>
-          </View>
-          <View style={styles.content}>
-            {children}
-          </View>
-        </SafeAreaView>
-      </View>
+    <Modal visible={visible} animationType="slide" transparent={false} onRequestClose={onClose}>
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.title}>{title}</Text>
+          <Pressable onPress={onClose} hitSlop={12}>
+            <Text style={styles.close}>✕</Text>
+          </Pressable>
+        </View>
+        <View style={styles.content}>
+          {children}
+        </View>
+      </SafeAreaView>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: '#050918',
-  },
   container: {
     flex: 1,
+    backgroundColor: '#050918',
   },
   header: {
     flexDirection: 'row',
