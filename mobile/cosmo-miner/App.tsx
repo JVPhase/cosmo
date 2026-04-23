@@ -1,7 +1,9 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import React, {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   Component,
@@ -41,6 +43,7 @@ import { ShipyardScreen } from './src/screens/shipyard';
 import { ShopScreen } from './src/screens/ShopScreen';
 import { UpgradesScreen } from './src/screens/UpgradesScreen';
 import { CharacterCommunicationChannel } from './src/ui/CharacterCommunicationChannel';
+import { GlobalStatsBar } from './src/ui/GlobalStatsBar';
 import { IntroOverlay } from './src/ui/IntroOverlay';
 import { ModalSheet } from './src/ui/ModalSheet';
 import { Popup } from './src/ui/Popup';
@@ -194,6 +197,17 @@ function GameApp({
   // when new grants are applied during a session (P1). For P0, it is fixed
   // at the bootstrap value.
   const appliedGrantSeqRef = useRef(initialAppliedGrantSeq);
+  const stars = useMemo(
+    () =>
+      Array.from({ length: 70 }, (_, i) => ({
+        id: i,
+        top: Math.random() * 100,
+        left: Math.random() * 100,
+        size: Math.random() * 2.5 + 0.6,
+        opacity: Math.random() * 0.6 + 0.25,
+      })),
+    [],
+  );
   const safeInsets = useSafeAreaInsets();
   const tgInsets = React.useContext(TelegramSafeAreaInsetsCtx);
   // Extra top padding for Telegram: header (contentTop) + any system safe area
@@ -724,14 +738,33 @@ function GameApp({
   }
 
   return (
-    <RNSAView
-      edges={['top']}
-      style={[
-        styles.container,
-        tgTopPadding > 0 ? { paddingTop: tgTopPadding } : null,
-      ]}
-    >
+    <LinearGradient colors={['#050918', '#0a1628', '#061020']} style={styles.gradientBg}>
+      {stars.map((s) => (
+        <View
+          key={s.id}
+          style={[styles.star, { top: `${s.top}%`, left: `${s.left}%`, width: s.size, height: s.size, opacity: s.opacity }]}
+        />
+      ))}
+      <RNSAView
+        edges={['top']}
+        style={[
+          styles.container,
+          { backgroundColor: 'transparent' },
+          tgTopPadding > 0 ? { paddingTop: tgTopPadding } : null,
+        ]}
+      >
       <StatusBar style="light" />
+      {tab !== 'battle' && (
+        <GlobalStatsBar
+          energy={game.energy}
+          metals={game.metals}
+          discoveredMetals={game.discoveredMetals}
+          onOpenMetalInfo={(metalId) => {
+            logEvent('modal_open', { modal: 'metal_info', metalId });
+            setMetalInfoOpenId(metalId);
+          }}
+        />
+      )}
       <View style={styles.content}>{tabContent}</View>
 
       <ModalSheet
@@ -1388,6 +1421,7 @@ function GameApp({
         </Pressable>
       </Modal>
     </RNSAView>
+    </LinearGradient>
   );
 }
 
@@ -1812,6 +1846,8 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
+  gradientBg: { flex: 1 },
+  star: { position: 'absolute', backgroundColor: '#ffffff', borderRadius: 10, zIndex: 0 },
   container: { flex: 1, backgroundColor: '#050918', userSelect: 'none' },
   content: { flex: 1 },
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center' },

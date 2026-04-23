@@ -662,7 +662,6 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     minHeight: 0,
-    backgroundColor: '#050918',
     userSelect: 'none',
   },
 
