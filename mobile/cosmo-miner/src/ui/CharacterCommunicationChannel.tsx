@@ -122,8 +122,8 @@ export function CharacterCommunicationChannel({
               >
                 <Text style={styles.choiceIcon}>{c.icon}</Text>
                 <View style={styles.choiceText}>
-                  <Text style={styles.choiceName}>{c.name}</Text>
-                  <Text style={styles.choiceRole}>{c.role}</Text>
+                  <Text style={styles.choiceName}>{t('dialogues.' + c.name)}</Text>
+                  <Text style={styles.choiceRole}>{t('dialogues.' + c.role)}</Text>
                 </View>
                 {pendingId === c.id && (
                   <Text style={styles.choiceCheck}>✓</Text>
@@ -165,7 +165,7 @@ export function CharacterCommunicationChannel({
   return (
     <ModalSheet
       visible={visible}
-      title={t('ui.channel.title_active', { name: chosenCharacter.name.toUpperCase() })}
+      title={t('ui.channel.title_active', { name: t('dialogues.' + chosenCharacter.name).toUpperCase() })}
       onClose={handleClose}
     >
       <ScrollView contentContainerStyle={styles.content}>
@@ -180,8 +180,8 @@ export function CharacterCommunicationChannel({
         <View style={styles.charRow}>
           <Text style={styles.charEmoji}>{chosenCharacter.icon}</Text>
           <View style={styles.charMeta}>
-            <Text style={styles.charName}>{chosenCharacter.name}</Text>
-            <Text style={styles.charRole}>{character?.role ?? ''}</Text>
+            <Text style={styles.charName}>{t('dialogues.' + chosenCharacter.name)}</Text>
+            <Text style={styles.charRole}>{character?.role ? t('dialogues.' + character.role) : ''}</Text>
           </View>
         </View>
 

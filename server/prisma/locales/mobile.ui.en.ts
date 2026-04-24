@@ -233,6 +233,8 @@ export const messages: Record<string, string> = {
   'game_header.per_click': '/click',
   'game_header.per_sec': '/sec',
   'game_header.level_prefix': 'LV.',
+  'game_header.click_label': 'CLICK',
+  'game_header.passive_label': 'PASSIVE',
   // ── LevelUpToast ─────────────────────────────────────────────────────────
   'level_up.label': 'LEVEL UP',
   'level_up.level_line': 'Level {level} · {title}',
@@ -350,4 +352,12 @@ export const messages: Record<string, string> = {
   'analytics.share_title':      'Export Cosmo Analytics',
   // ── PrestigePopup ─────────────────────────────────────────────────────────
   'prestige.pp_unit': 'pp',
+  // ── PrestigeBtn ──────────────────────────────────────────────────────────
+  'prestige_btn.label': 'PRESTIGE',
+  // ── Click power info popup ────────────────────────────────────────────────
+  'click_power_info.title': 'CLICK POWER',
+  'click_power_info.text': 'Each tap yields {clickPower} ⚡ energium.',
+  // ── Passive rate info popup ───────────────────────────────────────────────
+  'passive_rate_info.title': 'PASSIVE RATE',
+  'passive_rate_info.text': 'Your drones extract {passiveRate} ⚡ energium per second.',
 };

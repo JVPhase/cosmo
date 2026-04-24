@@ -16,8 +16,6 @@ export type Character = {
   garbledMessage: string;
   messages: readonly string[];
   sectorCompleteMessages: readonly string[];
-  metalDealIntro: string;
-  metalDealOffer: string;
 };
 
 export const CHARACTER_IMAGES: Record<string, number> = {

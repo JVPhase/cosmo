@@ -1,16 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import {
-  FlatList,
-  Image,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { CannonId } from '../../game/CANNONS';
 import { formatNum } from '../../game/formatNum';
 import { t } from '../../game/i18n';
-import { getMetals, type MetalId } from '../../game/METALS';
+import { type MetalId } from '../../game/METALS';
 import {
   computeModuleUpgradeCost,
   getMaxUltsPerBattle,
@@ -46,7 +39,6 @@ export type FleetTabProps = {
   onCraftModule: (moduleId: ModuleId) => void;
   onUpgradeModule: (moduleId: ModuleId) => void;
   onEquipModule: (shipId: ShipId, moduleId: ModuleId | null) => void;
-  onOpenMetalInfo: (metalId: MetalId) => void;
 };
 
 export function FleetTab({
@@ -67,9 +59,7 @@ export function FleetTab({
   onCraftModule,
   onUpgradeModule,
   onEquipModule,
-  onOpenMetalInfo,
 }: FleetTabProps) {
-  const METALS = getMetals();
   const [expandedShipId, setExpandedShipId] = useState<ShipId | null>(
     fleet.selectedShipId,
   );
@@ -103,29 +93,11 @@ export function FleetTab({
         </View>
       )}
 
-      <View style={styles.inventoryRow}>
-        {METALS.filter((m) => discoveredMetals.includes(m.id)).map((m) => (
-          <Pressable
-            key={m.id}
-            onPress={() => onOpenMetalInfo(m.id)}
-            style={({ pressed }) => [
-              styles.metalBox,
-              pressed ? { opacity: 0.85 } : null,
-            ]}
-          >
-            <Image
-              source={m.image}
-              style={styles.metalImage}
-              resizeMode="contain"
-            />
-            <Text style={styles.metalCount}>{formatNum(metals[m.id] ?? 0)}</Text>
-          </Pressable>
-        ))}
-      </View>
-
       <View style={styles.damageBox}>
         <Text style={styles.damageLabel}>{t('ui.fleet.damage_label')}</Text>
-        <Text style={styles.damageValue}>{t('ui.fleet.damage_value', { damage: formatNum(totalDamage) })}</Text>
+        <Text style={styles.damageValue}>
+          {t('ui.fleet.damage_value', { damage: formatNum(totalDamage) })}
+        </Text>
       </View>
 
       <Text style={styles.sectionTitle}>{t('ui.fleet.section_fleet')}</Text>
@@ -138,7 +110,9 @@ export function FleetTab({
         discoveredMetals.includes('echoShard') ||
         Object.keys(moduleLevels).length > 0) && (
         <>
-          <Text style={styles.sectionTitle}>{t('ui.fleet.section_modules')}</Text>
+          <Text style={styles.sectionTitle}>
+            {t('ui.fleet.section_modules')}
+          </Text>
           {getModules().map((mod) => {
             const level = moduleLevels[mod.id] ?? 0;
             const isCrafted = level > 0;
@@ -182,22 +156,38 @@ export function FleetTab({
                         </Text>
                       )}
                     </View>
-                    <Text style={styles.moduleLore}>{t('config.' + mod.loreKey)}</Text>
+                    <Text style={styles.moduleLore}>
+                      {t('config.' + mod.loreKey)}
+                    </Text>
                     <Text style={styles.moduleUlt}>
-                      ⚡ {t('config.' + mod.ultNameKey)} — {t('config.' + mod.ultDescriptionKey)}
+                      ⚡ {t('config.' + mod.ultNameKey)} —{' '}
+                      {t('config.' + mod.ultDescriptionKey)}
                     </Text>
                     {isCrafted && (
                       <Text style={styles.moduleUltLimit}>
                         {maxUlts === -1
                           ? t('ui.fleet.ult_infinite')
                           : maxUlts === 1
-                            ? t('ui.fleet.ult_count_single', { count: String(maxUlts) })
-                            : t('ui.fleet.ult_count_plural', { count: String(maxUlts) })}
+                            ? t('ui.fleet.ult_count_single', {
+                                count: String(maxUlts),
+                              })
+                            : t('ui.fleet.ult_count_plural', {
+                                count: String(maxUlts),
+                              })}
                       </Text>
                     )}
                     {equippedOnShip && (
                       <Text style={styles.moduleEquippedOn}>
-                        {t('ui.fleet.equipped', { name: (() => { const s = getShips().find((s) => s.id === equippedOnShip.shipId); return s ? t('config.' + s.nameKey) : equippedOnShip.shipId; })() })}
+                        {t('ui.fleet.equipped', {
+                          name: (() => {
+                            const s = getShips().find(
+                              (s) => s.id === equippedOnShip.shipId,
+                            );
+                            return s
+                              ? t('config.' + s.nameKey)
+                              : equippedOnShip.shipId;
+                          })(),
+                        })}
                       </Text>
                     )}
                   </View>
@@ -208,9 +198,7 @@ export function FleetTab({
                       <MetalCost
                         cost={mod.cost}
                         color={
-                          canAffordCraft
-                            ? '#ffe066'
-                            : 'rgba(255,224,102,0.3)'
+                          canAffordCraft ? '#ffe066' : 'rgba(255,224,102,0.3)'
                         }
                       />
                       <Pressable
@@ -284,7 +272,9 @@ export function FleetTab({
                           .filter((s) => !s.broken)
                           .map((s) => {
                             const isEquipped = s.equippedModuleId === mod.id;
-                            const shipDef = getShips().find((sh) => sh.id === s.shipId);
+                            const shipDef = getShips().find(
+                              (sh) => sh.id === s.shipId,
+                            );
                             return (
                               <Pressable
                                 key={s.shipId}
@@ -323,7 +313,9 @@ export function FleetTab({
 
       <View style={styles.hint}>
         <Text style={styles.hintText}>
-          {expeditionsUnlocked ? t('ui.fleet.hint_expeditions') : t('ui.fleet.hint')}
+          {expeditionsUnlocked
+            ? t('ui.fleet.hint_expeditions')
+            : t('ui.fleet.hint')}
         </Text>
       </View>
     </>
