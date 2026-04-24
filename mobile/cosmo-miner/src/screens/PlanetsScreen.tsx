@@ -514,16 +514,16 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   cardActive: {
-    borderColor: 'rgba(120,255,120,0.25)',
-    backgroundColor: 'rgba(120,255,120,0.06)',
+    borderColor: 'rgba(255,200,0,0.35)',
+    backgroundColor: 'rgba(30,20,0,0.95)',
   },
   cardBattling: {
     borderColor: 'rgba(255,80,80,0.35)',
     backgroundColor: 'rgba(255,40,40,0.06)',
   },
   cardUnlocked: {
-    backgroundColor: 'rgba(255,255,255,0.02)',
-    borderColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: 'rgba(0,20,40,0.92)',
+    borderColor: 'rgba(0,212,255,0.20)',
   },
   cardLocked: {
     backgroundColor: 'rgba(255,255,255,0.01)',

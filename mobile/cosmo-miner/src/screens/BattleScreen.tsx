@@ -690,9 +690,9 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingHorizontal: 18,
     paddingBottom: 12,
-    backgroundColor: 'rgba(20,0,40,0.6)',
+    backgroundColor: 'rgba(0,10,30,0.8)',
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,80,80,0.15)',
+    borderBottomColor: 'rgba(0,212,255,0.1)',
     zIndex: 2
   },
   headerTop: {

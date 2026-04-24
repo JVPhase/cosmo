@@ -1,307 +1,27 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { logEvent } from './analytics';
 import type { CharacterId } from './CHARACTERS';
-import { getCharacterById, getRandomMessage, type DialoguesPayload } from './dialogues';
-import { getClerkMessages, type ClerkTrigger } from './CLERK_MESSAGES';
-import { t } from './i18n';
-import {
-  getAchievements,
-  getAchievementClaimCredits,
-  type AchievementDefinition,
-  type AchievementId
-} from './ACHIEVEMENTS';
+import { getCharacterById, type DialoguesPayload } from './dialogues';
+import { getAchievements } from './ACHIEVEMENTS';
 import { getAliens, type BattleState } from './ALIENS';
-import { getCannons, computeCannonCost, type CannonId } from './CANNONS';
-import {
-  getExpeditions,
-  getExpeditionById,
-  type ExpeditionId
-} from './EXPEDITIONS';
-import {
-  addMetals,
-  createDefaultMetalsState,
-  getMetals,
-  hasEnoughMetals,
-  rollMetalDrops,
-  subtractMetals,
-  type MetalId
-} from './METALS';
-import {
-  getPlanets,
-  getPlanetById,
-  type PlanetId,
-  type PlanetDefinition
-} from './PLANETS';
-import { getPlanetIdsForSector } from './SECTORS';
+import { hasEnoughMetals } from './METALS';
+import { getPlanets, getPlanetById, type PlanetDefinition } from './PLANETS';
+import { getShips } from './SHIPS';
 import { computePlayerLevel } from './PLAYER';
-import {
-  computeModuleUpgradeCost,
-  getMaxModuleLevel,
-  getModuleById,
-  type ModuleId
-} from './MODULES';
-import {
-  getResearchNodes,
-  type ResearchId,
-  type ResearchState
-} from './RESEARCH';
-import {
-  getShips,
-  createDefaultCannons,
-  createDefaultFleetState,
-  getShipById,
-  type ShipId
-} from './SHIPS';
+import { getUpgrades, type UpgradeId } from './UPGRADES';
+import type { GameState, GameStateInit } from './types';
+import { getPrestigeBlockedReason } from './prestige';
 import { computeStats } from './computeStats';
-import {
-  computeUpgradeCost,
-  getUpgradeById,
-  getUpgrades,
-  type UpgradeId
-} from './UPGRADES';
-import type {
-  ActiveBoost,
-  GameState,
-  GameStateInit,
-  TabsUnlockedState,
-  UpgradesState
-} from './types';
-import {
-  DEFAULT_PRESTIGE_STATE,
-  PRESTIGE_LEVEL_THRESHOLD,
-  applyPrestigeReset,
-  computePrestigeState,
-  getPrestigeBlockedReason,
-} from './prestige';
-import {
-  getShopItemById,
-  getConversionRate,
-  getConverterCreditCost,
-  rollLootBox,
-  type ShopItemId
-} from './SHOP';
+import { computeBaseShipDamage, TIMELY_CLAIM_WINDOW_MS } from './gameHelpers';
+import { useGameState } from './useGameState';
+import { useGameToasts } from './useGameToasts';
+import { useGameActions } from './useGameActions';
+import { logEvent } from './analytics';
+import { t } from './i18n';
 
-type UnlockToast = {
-  id: string;
-  title: string;
-  text: string;
-  image?: number;
-  images?: number[];
-  headerEmoji?: string;
-};
-
-function computeInitialShownSectorUnlocks(
-  initial?: GameStateInit
-): Set<number> {
-  const shown = new Set<number>();
-  const unlocked = initial?.unlockedPlanetIds ?? [];
-  for (let sectorId = 2; sectorId <= 100; sectorId++) {
-    if (
-      getPlanetIdsForSector(sectorId - 1).every((id) => unlocked.includes(id))
-    ) {
-      shown.add(sectorId);
-    }
-  }
-  return shown;
-}
-
-function computeInitialShownUnlocks(initial?: GameStateInit): Set<string> {
-  const shown = new Set<string>();
-  const iron = initial?.metals?.iron ?? 0;
-  const titan = initial?.metals?.titan ?? 0;
-  const iridium = initial?.metals?.iridium ?? 0;
-  if (iron > 0) shown.add('metal_iron');
-  if (titan > 0) {
-    shown.add('metal_titan');
-    shown.add('ship_cruiser');
-    shown.add('cannon_titan');
-  }
-  if (iridium > 0) {
-    shown.add('metal_iridium');
-    shown.add('ship_dreadnought');
-    shown.add('cannon_iridium');
-  }
-  if (iron > 0 && titan > 0 && iridium > 0) {
-    shown.add('ship_flagship');
-    shown.add('cannon_alloy');
-  }
-  const voidCrystal = initial?.metals?.voidCrystal ?? 0;
-  const echoShard = initial?.metals?.echoShard ?? 0;
-  if (voidCrystal > 0 || echoShard > 0) {
-    shown.add('sector3_metals');
-  }
-  const initialLevel = computePlayerLevel(initial?.playerXP ?? 0);
-  for (const ship of getShips()) {
-    if (ship.unlockLevel > 1 && initialLevel >= ship.unlockLevel) {
-      shown.add(`ship_${ship.id}`);
-    }
-  }
-  for (const node of getResearchNodes()) {
-    if (initialLevel >= node.requiredLevel) {
-      shown.add(`research_unlock_${node.id}`);
-    }
-  }
-  return shown;
-}
-
-function createDefaultUpgradesState(): UpgradesState {
-  const result = {} as UpgradesState;
-  for (const upg of getUpgrades()) result[upg.id as UpgradeId] = 0;
-  return result;
-}
-
-function computeBaseShipDamage(fleet: GameState['fleet']): number {
-  if (!fleet.selectedShipId) return 0;
-  const shipDef = getShips().find((s) => s.id === fleet.selectedShipId);
-  const ownedShip = fleet.ownedShips.find(
-    (s) => s.shipId === fleet.selectedShipId
-  );
-  if (!shipDef || !ownedShip || ownedShip.broken) return 0;
-  const cannonDamage = getCannons().reduce((sum, c) => {
-    const level = ownedShip.cannons[c.id] ?? 0;
-    const scale = level > 0 ? Math.pow(1.6, level) : 0;
-    return sum + c.damagePerLevel * scale;
-  }, 0);
-  return Math.floor((1 + cannonDamage) * shipDef.damageMultiplier);
-}
-
-export const TIMELY_CLAIM_WINDOW_MS = 10 * 60 * 1000; // 10 min timely claim window
-
-function mergeDiscovered(
-  current: MetalId[],
-  metals: Record<string, number>
-): MetalId[] {
-  const newOnes = (Object.keys(metals) as MetalId[]).filter(
-    (k) => metals[k] > 0 && !current.includes(k)
-  );
-  return newOnes.length > 0 ? [...current, ...newOnes] : current;
-}
+export { TIMELY_CLAIM_WINDOW_MS };
 
 export function useGame(initial: GameStateInit | undefined, dialogues: DialoguesPayload) {
-  const BASE_PLANET_ID = getPlanets()[0].id;
-  const defaultState = useMemo<GameState>(
-    () => ({
-      energy: 0,
-      totalEarned: 0,
-      clicks: 0,
-      upgrades: createDefaultUpgradesState(),
-      unlockedPlanetIds: [BASE_PLANET_ID],
-      selectedPlanetId: BASE_PLANET_ID,
-      achievements: { unlockedIds: [], claimedIds: [] },
-      metals: createDefaultMetalsState(),
-      discoveredMetals: [],
-      fleet: createDefaultFleetState(),
-      battle: null,
-      playerXP: 0,
-      research: {},
-      expeditions: [],
-      tabsUnlocked: { shipyard: false, upgrades: false, planets: false },
-      moduleLevels: {},
-      chosenCharacterId: null,
-      battlesWon: 0,
-      battleWinStreak: 0,
-      credits: 0,
-      activeBoosts: [],
-      characterMessageHistory: [],
-      greetingShown: false,
-      prestige: DEFAULT_PRESTIGE_STATE,
-    }),
-    []
-  );
-
-  const hydrateState = useCallback((nextInitial?: GameStateInit): GameState => {
-    const upgrades = {
-      ...createDefaultUpgradesState(),
-      ...(nextInitial?.upgrades ?? {})
-    } as UpgradesState;
-    const unlockedSet = new Set<PlanetId>(
-      nextInitial?.unlockedPlanetIds ?? [BASE_PLANET_ID]
-    );
-    unlockedSet.add(BASE_PLANET_ID);
-    const metals = {
-      ...createDefaultMetalsState(),
-      ...(nextInitial?.metals ?? {})
-    };
-    // Restore discovered metals from save, or derive from current amounts + ship costs for backwards compat
-    const discoveredMetals: MetalId[] =
-      nextInitial?.discoveredMetals ??
-      (() => {
-        const set = new Set<MetalId>(
-          (Object.keys(metals) as MetalId[]).filter((k) => metals[k] > 0)
-        );
-        for (const owned of nextInitial?.fleet?.ownedShips ?? []) {
-          const ship = getShips().find((s) => s.id === owned.shipId);
-          if (ship)
-            Object.keys(ship.baseCost).forEach((k) => set.add(k as MetalId));
-        }
-        return Array.from(set);
-      })();
-    const fleet = {
-      ownedShips: (nextInitial?.fleet?.ownedShips ?? []).map((s) => ({
-        shipId: s.shipId,
-        broken: s.broken ?? false,
-        cannons: { ...createDefaultCannons(), ...(s.cannons ?? {}) },
-        equippedModuleId: s.equippedModuleId ?? null
-      })),
-      selectedShipId: (() => {
-        const saved = nextInitial?.fleet?.selectedShipId ?? null;
-        const ships = nextInitial?.fleet?.ownedShips ?? [];
-        if (saved === null && ships.length === 1) return ships[0].shipId;
-        return saved;
-      })()
-    };
-
-    return {
-      ...defaultState,
-      energy: nextInitial?.energy ?? 0,
-      totalEarned: nextInitial?.totalEarned ?? 0,
-      clicks: nextInitial?.clicks ?? 0,
-      upgrades,
-      unlockedPlanetIds: Array.from(unlockedSet),
-      selectedPlanetId: nextInitial?.selectedPlanetId ?? BASE_PLANET_ID,
-      achievements: {
-        unlockedIds: nextInitial?.achievements?.unlockedIds ?? [],
-        claimedIds: nextInitial?.achievements?.claimedIds ?? []
-      },
-      metals,
-      discoveredMetals,
-      fleet,
-      battle: nextInitial?.battle ?? null,
-      playerXP: nextInitial?.playerXP ?? 0,
-      research: nextInitial?.research ?? {},
-      expeditions: nextInitial?.expeditions ?? [],
-      tabsUnlocked: {
-        shipyard:
-          nextInitial?.tabsUnlocked?.shipyard ??
-          ((nextInitial?.fleet?.ownedShips?.length ?? 0) > 0 ||
-            hasEnoughMetals(
-              { ...createDefaultMetalsState(), ...(nextInitial?.metals ?? {}) },
-              getShips()[0].baseCost
-            )),
-        upgrades:
-          nextInitial?.tabsUnlocked?.upgrades ??
-          ((nextInitial?.totalEarned ?? 0) >= getUpgrades()[0].baseCost ||
-            Object.values(nextInitial?.upgrades ?? {}).some(
-              (v) => (v as number) > 0
-            )),
-        planets:
-          nextInitial?.tabsUnlocked?.planets ??
-          ((nextInitial?.unlockedPlanetIds?.length ?? 0) > 1 ||
-            (nextInitial?.energy ?? 0) >=
-              Math.min(...getAliens().map((a) => a.attackEnergyCost)))
-      },
-      moduleLevels: nextInitial?.moduleLevels ?? {},
-      chosenCharacterId: nextInitial?.chosenCharacterId ?? null,
-      battlesWon: nextInitial?.battlesWon ?? 0,
-      battleWinStreak: nextInitial?.battleWinStreak ?? 0,
-      credits: nextInitial?.credits ?? 0,
-      activeBoosts: nextInitial?.activeBoosts ?? [],
-      characterMessageHistory: nextInitial?.characterMessageHistory ?? [],
-      greetingShown: nextInitial?.greetingShown ?? false,
-      // Soft-migrate old saves: if prestige field is missing, default to count=0
-      prestige: nextInitial?.prestige ?? DEFAULT_PRESTIGE_STATE,
-    };
-  }, [BASE_PLANET_ID, defaultState]);
+  const { defaultState, hydrateState } = useGameState(initial);
 
   const [state, setState] = useState<GameState>(() => hydrateState(initial));
 
@@ -330,7 +50,7 @@ export function useGame(initial: GameStateInit | undefined, dialogues: Dialogues
     [state.playerXP]
   );
 
-  // Clock tick — 50ms when battle active, 1s when expeditions active
+  // Clock tick — 1s when battle or expeditions active
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const hasTimed = !!state.battle || state.expeditions.length > 0;
@@ -343,7 +63,6 @@ export function useGame(initial: GameStateInit | undefined, dialogues: Dialogues
     ? Math.max(0, state.battle.expiresAt - now)
     : 0;
 
-  // Map shipId -> ms remaining for expeditions
   const expeditionRemainingMap = useMemo<Record<string, number>>(() => {
     const m: Record<string, number> = {};
     for (const exp of state.expeditions) {
@@ -352,108 +71,7 @@ export function useGame(initial: GameStateInit | undefined, dialogues: Dialogues
     return m;
   }, [state.expeditions, now]);
 
-  // Toast state
-  const [clerkMessage, setClerkMessage] = useState<string | null>(null);
-  const [characterMessage, setCharacterMessage] = useState<string | null>(null);
-  const [characterDialogueQueue, setCharacterDialogueQueue] = useState<string[]>([]);
   const characterMessageHistory = state.characterMessageHistory;
-  const [achievementToast, setAchievementToast] = useState<
-    ReturnType<typeof getAchievements>[number] | null
-  >(null);
-  const [battleVictory, setBattleVictory] = useState<PlanetId | null>(null);
-  const [planetUnlockToast, setPlanetUnlockToast] =
-    useState<PlanetDefinition | null>(null);
-  const [defeatInfo, setDefeatInfo] = useState<{ shipName: string } | null>(
-    null
-  );
-  const [levelUpToast, setLevelUpToast] = useState<number | null>(null);
-  const [firstIronToast, setFirstIronToast] = useState(false);
-  const firstIronShownRef = useRef((initial?.metals?.iron ?? 0) > 0);
-  const [achievementsUnlockToast, setAchievementsUnlockToast] = useState(false);
-  const achievementsUnlockShownRef = useRef((initial?.totalEarned ?? 0) >= 5);
-  const [upgradesUnlockToast, setUpgradesUnlockToast] = useState(false);
-  const upgradesUnlockShownRef = useRef((initial?.totalEarned ?? 0) >= 50);
-  const [unlockQueue, setUnlockQueue] = useState<UnlockToast[]>([]);
-  const shownUnlocksRef = useRef<Set<string>>(
-    computeInitialShownUnlocks(initial)
-  );
-  const [firstShipToast, setFirstShipToast] = useState(false);
-  const firstShipShownRef = useRef(
-    (initial?.fleet?.ownedShips?.length ?? 0) > 0
-  );
-  const [shipyardUnlockToast, setShipyardUnlockToast] = useState(false);
-  const shipyardUnlockShownRef = useRef(
-    (initial?.fleet?.ownedShips?.length ?? 0) > 0 ||
-      hasEnoughMetals(
-        { ...createDefaultMetalsState(), ...(initial?.metals ?? {}) },
-        getShips()[0].baseCost
-      )
-  );
-  const shownSectorUnlocksRef = useRef(
-    computeInitialShownSectorUnlocks(initial)
-  );
-  const shownSectorCharacterMessagesRef = useRef<Set<number>>(
-    (() => {
-      const shown = new Set<number>();
-      const unlocked = initial?.unlockedPlanetIds ?? [];
-      for (let sectorId = 3; sectorId <= 100; sectorId++) {
-        if (
-          getPlanetIdsForSector(sectorId).every((id) => unlocked.includes(id))
-        ) {
-          shown.add(sectorId);
-        }
-      }
-      return shown;
-    })()
-  );
-
-  const [planetsUnlockToast, setPlanetsUnlockToast] = useState(false);
-  const planetsUnlockShownRef = useRef(
-    initial?.tabsUnlocked?.planets ??
-      ((initial?.unlockedPlanetIds?.length ?? 0) > 1 ||
-        (initial?.energy ?? 0) >=
-          Math.min(...getAliens().map((a) => a.attackEnergyCost)))
-  );
-
-  // Character select flow — triggered after planet 9 unlocked
-  const [characterFlowStep, setCharacterFlowStep] = useState<
-    | 'select'
-    | null
-  >(null);
-  const characterFlowShownRef = useRef(
-    (initial?.chosenCharacterId ?? null) !== null ||
-      (initial?.unlockedPlanetIds ?? []).includes(10 as PlanetId)
-  );
-  const greetingShownRef = useRef(false);
-  useEffect(() => {
-    greetingShownRef.current = state.greetingShown;
-  }, [state.greetingShown]);
-
-  // Reactor boost — x5 clicks for the first 10 seconds of each session
-  const [reactorBoostActive, setReactorBoostActive] = useState(false);
-  useEffect(() => {
-    const t = setTimeout(() => setReactorBoostActive(false), 10_000);
-    return () => clearTimeout(t);
-  }, []);
-
-  const closeClerk = useCallback(() => setClerkMessage(null), []);
-  const closeCharacterMessage = useCallback(() => {
-    if (characterDialogueQueue.length > 0) {
-      setCharacterMessage(characterDialogueQueue[0]!);
-      setCharacterDialogueQueue((prev) => prev.slice(1));
-    } else {
-      setCharacterMessage(null);
-    }
-  }, [characterDialogueQueue]);
-
-  // Reset history only when персонаж реально меняется
-  const prevChosenRef = useRef<CharacterId | null>(state.chosenCharacterId);
-  useEffect(() => {
-    if (prevChosenRef.current !== state.chosenCharacterId) {
-      prevChosenRef.current = state.chosenCharacterId;
-      setState((prev) => ({ ...prev, characterMessageHistory: [] }));
-    }
-  }, [state.chosenCharacterId]);
 
   const appendHistory = useCallback((messages: readonly string[]) => {
     setState((prev) => {
@@ -467,57 +85,49 @@ export function useGame(initial: GameStateInit | undefined, dialogues: Dialogues
       return next === prevHistory ? prev : { ...prev, characterMessageHistory: next };
     });
   }, []);
-  const closeAchievementToast = useCallback(
-    () => setAchievementToast(null),
-    []
-  );
-  const clearBattleVictory = useCallback(() => setBattleVictory(null), []);
-  const closePlanetUnlockToast = useCallback(
-    () => setPlanetUnlockToast(null),
-    []
-  );
-  const clearDefeatInfo = useCallback(() => setDefeatInfo(null), []);
-  const closeLevelUpToast = useCallback(() => setLevelUpToast(null), []);
-  const closeFirstIronToast = useCallback(() => setFirstIronToast(false), []);
-  const closeFirstShipToast = useCallback(() => setFirstShipToast(false), []);
-  const closeShipyardUnlockToast = useCallback(
-    () => setShipyardUnlockToast(false),
-    []
-  );
-  const closePlanetsUnlockToast = useCallback(
-    () => setPlanetsUnlockToast(false),
-    []
-  );
-  const closeAchievementsUnlockToast = useCallback(
-    () => setAchievementsUnlockToast(false),
-    []
-  );
-  const closeUpgradesUnlockToast = useCallback(
-    () => setUpgradesUnlockToast(false),
-    []
-  );
-  const dismissUnlockToast = useCallback(
-    () => setUnlockQueue((prev) => prev.slice(1)),
-    []
-  );
 
-  useEffect(() => {
-    if (!achievementToast) return;
-    const t = setTimeout(closeAchievementToast, 4500);
-    return () => clearTimeout(t);
-  }, [achievementToast, closeAchievementToast]);
-
-  useEffect(() => {
-    if (!levelUpToast) return;
-    const t = setTimeout(closeLevelUpToast, 5000);
-    return () => clearTimeout(t);
-  }, [levelUpToast, closeLevelUpToast]);
-
-  const showClerk = useCallback((trigger: ClerkTrigger) => {
-    const msgs = getClerkMessages().filter((m) => m.trigger === trigger);
-    if (!msgs.length) return;
-    setClerkMessage(msgs[Math.floor(Math.random() * msgs.length)].text);
+  const onGreetingShown = useCallback(() => {
+    setState((prev) => ({ ...prev, greetingShown: true }));
   }, []);
+
+  const upgCount = useMemo(() => {
+    return getUpgrades().filter(
+      (u) => (state.upgrades[u.id as UpgradeId] ?? 0) > 0
+    ).length;
+  }, [state.upgrades]);
+
+  const toasts = useGameToasts({
+    state,
+    playerLevel,
+    dialogues,
+    appendHistory,
+    onGreetingShown,
+    initial,
+  });
+
+  const actions = useGameActions({
+    state,
+    setState,
+    derived,
+    reactorBoostActive: toasts.reactorBoostActive,
+    showClerk: toasts.showClerk,
+    dialogues,
+    appendHistory,
+    setCharacterFlowStep: toasts.setCharacterFlowStep,
+    setCharacterMessage: toasts.setCharacterMessage,
+    setCharacterDialogueQueue: toasts.setCharacterDialogueQueue,
+    defaultState,
+    resetPrestigeToastRefs: toasts.resetPrestigeToastRefs,
+  });
+
+  // Reset history only when character actually changes
+  const prevChosenRef = useRef<CharacterId | null>(state.chosenCharacterId);
+  useEffect(() => {
+    if (prevChosenRef.current !== state.chosenCharacterId) {
+      prevChosenRef.current = state.chosenCharacterId;
+      setState((prev) => ({ ...prev, characterMessageHistory: [] }));
+    }
+  }, [state.chosenCharacterId]);
 
   // Passive income tick + expired boost cleanup
   useEffect(() => {
@@ -533,74 +143,12 @@ export function useGame(initial: GameStateInit | undefined, dialogues: Dialogues
         return {
           ...base,
           energy: base.energy + derived.passiveRate,
-          totalEarned: base.totalEarned + derived.passiveRate
+          totalEarned: base.totalEarned + derived.passiveRate,
         };
       });
     }, 1000);
     return () => clearInterval(interval);
   }, [derived.passiveRate]);
-
-  // Clerk milestone messages
-  const prevTotalRef = useRef(0);
-  useEffect(() => {
-    const milestones = [100, 1000, 10000, 100000] as const;
-    for (const m of milestones) {
-      if (prevTotalRef.current < m && state.totalEarned >= m) {
-        showClerk(`click_${m}` as ClerkTrigger);
-      }
-    }
-    prevTotalRef.current = state.totalEarned;
-  }, [state.totalEarned, showClerk]);
-
-  // Idle clerk messages
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (clerkMessage) return;
-      const pool = getClerkMessages().filter(
-        (m) => m.trigger === 'idle' || m.trigger === 'random'
-      );
-      if (!pool.length) return;
-      setClerkMessage(pool[Math.floor(Math.random() * pool.length)].text);
-    }, 22000);
-    return () => clearInterval(interval);
-  }, [clerkMessage]);
-
-  // Character messages — shown every 45s only after planet 10 is defeated (full signal restored)
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (clerkMessage || characterMessage) return;
-      const charId = state.chosenCharacterId;
-      if (!charId) return;
-      if (!state.unlockedPlanetIds.includes(10 as PlanetId)) return;
-      const msg = getRandomMessage(dialogues, charId);
-      if (!msg) return;
-      setCharacterMessage(msg);
-      setCharacterDialogueQueue([]);
-    }, 45000);
-    return () => clearInterval(interval);
-  }, [
-    clerkMessage,
-    characterMessage,
-    state.chosenCharacterId,
-    state.unlockedPlanetIds,
-    dialogues
-  ]);
-
-  // First iron discovery toast
-  useEffect(() => {
-    if (!firstIronShownRef.current && state.metals.iron > 0) {
-      firstIronShownRef.current = true;
-      setFirstIronToast(true);
-    }
-  }, [state.metals.iron]);
-
-  // First ship built toast
-  useEffect(() => {
-    if (!firstShipShownRef.current && state.fleet.ownedShips.length > 0) {
-      firstShipShownRef.current = true;
-      setFirstShipToast(true);
-    }
-  }, [state.fleet.ownedShips.length]);
 
   // Persist tabsUnlocked flags (one-way: false → true only)
   useEffect(() => {
@@ -610,7 +158,7 @@ export function useGame(initial: GameStateInit | undefined, dialogues: Dialogues
     ) {
       setState((prev) => ({
         ...prev,
-        tabsUnlocked: { ...prev.tabsUnlocked, shipyard: true }
+        tabsUnlocked: { ...prev.tabsUnlocked, shipyard: true },
       }));
     }
   }, [state.metals, state.tabsUnlocked.shipyard]);
@@ -622,7 +170,7 @@ export function useGame(initial: GameStateInit | undefined, dialogues: Dialogues
     ) {
       setState((prev) => ({
         ...prev,
-        tabsUnlocked: { ...prev.tabsUnlocked, upgrades: true }
+        tabsUnlocked: { ...prev.tabsUnlocked, upgrades: true },
       }));
     }
   }, [state.totalEarned, state.tabsUnlocked.upgrades]);
@@ -636,148 +184,15 @@ export function useGame(initial: GameStateInit | undefined, dialogues: Dialogues
     ) {
       setState((prev) => ({
         ...prev,
-        tabsUnlocked: { ...prev.tabsUnlocked, planets: true }
+        tabsUnlocked: { ...prev.tabsUnlocked, planets: true },
       }));
     }
   }, [
     state.energy,
     state.unlockedPlanetIds,
     state.tabsUnlocked.shipyard,
-    state.tabsUnlocked.planets
+    state.tabsUnlocked.planets,
   ]);
-
-  // Shipyard unlock toast (when player can afford first ship)
-  useEffect(() => {
-    if (
-      !shipyardUnlockShownRef.current &&
-      hasEnoughMetals(state.metals, getShips()[0].baseCost)
-    ) {
-      shipyardUnlockShownRef.current = true;
-      setShipyardUnlockToast(true);
-    }
-  }, [state.metals]);
-
-  // Achievements unlock toast (at 5 energy earned)
-  useEffect(() => {
-    if (!achievementsUnlockShownRef.current && state.totalEarned >= 5) {
-      achievementsUnlockShownRef.current = true;
-      setAchievementsUnlockToast(true);
-    }
-  }, [state.totalEarned]);
-
-  // Planets unlock toast (only when the tab is actually unlocked)
-  useEffect(() => {
-    if (!planetsUnlockShownRef.current && state.tabsUnlocked.planets) {
-      planetsUnlockShownRef.current = true;
-      setPlanetsUnlockToast(true);
-    }
-  }, [state.tabsUnlocked.planets]);
-
-  // Upgrades unlock toast (at 50 energy earned)
-  useEffect(() => {
-    if (
-      !upgradesUnlockShownRef.current &&
-      state.totalEarned >= getUpgrades()[0].baseCost
-    ) {
-      upgradesUnlockShownRef.current = true;
-      setUpgradesUnlockToast(true);
-    }
-  }, [state.totalEarned]);
-
-  // Metal / ship / cannon unlock queue
-  useEffect(() => {
-    const metals = getMetals();
-    const { iron, titan, iridium } = state.metals;
-    const enqueue = (id: string, toast: Omit<UnlockToast, 'id'>) => {
-      if (shownUnlocksRef.current.has(id)) return;
-      shownUnlocksRef.current.add(id);
-      setUnlockQueue((prev) => [...prev, { id, ...toast }]);
-    };
-
-    if (titan > 0) {
-      enqueue('metal_titan', {
-        title: t('alerts.unlock_titan.title'),
-        text: t('alerts.unlock_titan.text'),
-        image: metals.find((m) => m.id === 'titan')!.image
-      });
-      if (
-        playerLevel >= getShips().find((s) => s.id === 'cruiser')!.unlockLevel
-      )
-        enqueue('ship_cruiser', {
-          title: t('alerts.unlock_cruiser.title'),
-          text: t('alerts.unlock_cruiser.text'),
-          image: getShips().find((s) => s.id === 'cruiser')!.image
-        });
-      enqueue('cannon_titan', {
-        title: t('alerts.unlock_titan_cannon.title'),
-        text: t('alerts.unlock_titan_cannon.text'),
-        image: getCannons().find((c) => c.id === 'titan')!.image
-      });
-    }
-
-    if (iridium > 0) {
-      enqueue('metal_iridium', {
-        title: t('alerts.unlock_iridium.title'),
-        text: t('alerts.unlock_iridium.text'),
-        image: metals.find((m) => m.id === 'iridium')!.image
-      });
-      if (
-        playerLevel >=
-        getShips().find((s) => s.id === 'dreadnought')!.unlockLevel
-      )
-        enqueue('ship_dreadnought', {
-          title: t('alerts.unlock_dreadnought.title'),
-          text: t('alerts.unlock_dreadnought.text'),
-          image: getShips().find((s) => s.id === 'dreadnought')!.image
-        });
-      enqueue('cannon_iridium', {
-        title: t('alerts.unlock_iridium_cannon.title'),
-        text: t('alerts.unlock_iridium_cannon.text'),
-        image: getCannons().find((c) => c.id === 'iridium')!.image
-      });
-    }
-
-    if (iron > 0 && titan > 0 && iridium > 0) {
-      if (
-        playerLevel >= getShips().find((s) => s.id === 'flagship')!.unlockLevel
-      )
-        enqueue('ship_flagship', {
-          title: t('alerts.unlock_flagship.title'),
-          text: t('alerts.unlock_flagship.text'),
-          image: getShips().find((s) => s.id === 'flagship')!.image
-        });
-      enqueue('cannon_alloy', {
-        title: t('alerts.unlock_alloy_cannon.title'),
-        text: t('alerts.unlock_alloy_cannon.text'),
-        image: getCannons().find((c) => c.id === 'alloy')!.image
-      });
-    }
-    const { voidCrystal, echoShard } = state.metals;
-
-    if (voidCrystal > 0 || echoShard > 0) {
-      enqueue('sector3_metals', {
-        title: t('alerts.unlock_sector3_materials.title'),
-        text: t('alerts.unlock_sector3_materials.text'),
-        images: [
-          metals.find((m) => m.id === 'voidCrystal')!.image,
-          metals.find((m) => m.id === 'echoShard')!.image
-        ]
-      });
-    }
-  }, [
-    state.metals.iron,
-    state.metals.titan,
-    state.metals.iridium,
-    state.metals.voidCrystal,
-    state.metals.echoShard,
-    playerLevel
-  ]);
-
-  const upgCount = useMemo(() => {
-    return getUpgrades().filter(
-      (u) => (state.upgrades[u.id as UpgradeId] ?? 0) > 0
-    ).length;
-  }, [state.upgrades]);
 
   // Achievements
   useEffect(() => {
@@ -787,54 +202,54 @@ export function useGame(initial: GameStateInit | undefined, dialogues: Dialogues
       const researchCount = Object.values(prev.research).filter(Boolean).length;
       for (const def of getAchievements()) {
         if (alreadyUnlocked.has(def.id)) continue;
-        const t = def.target;
+        const target = def.target;
         const ok =
-          t.type === 'totalAtLeast'
-            ? prev.totalEarned >= t.value
-            : t.type === 'passiveAtLeast'
-              ? derived.basePassiveRate >= t.value
-              : t.type === 'planetsAtLeast'
-                ? prev.unlockedPlanetIds.length >= t.value
-                : t.type === 'clicksAtLeast'
-                  ? prev.clicks >= t.value
-                  : t.type === 'upgCountAtLeast'
-                    ? upgCount >= t.value
-                    : t.type === 'battlesWonAtLeast'
-                      ? prev.battlesWon >= t.value
-                      : t.type === 'battleWinStreakAtLeast'
-                        ? prev.battleWinStreak >= t.value
-                        : t.type === 'researchCountAtLeast'
-                          ? researchCount >= t.value
-                          : t.type === 'playerLevelAtLeast'
-                            ? playerLevel >= t.value
-                            : t.type === 'metalAtLeast' && 'metalId' in t
-                              ? (prev.metals[t.metalId as MetalId] ?? 0) >=
-                                t.value
-                              : t.type === 'allMetalsAtLeast'
+          target.type === 'totalAtLeast'
+            ? prev.totalEarned >= target.value
+            : target.type === 'passiveAtLeast'
+              ? derived.basePassiveRate >= target.value
+              : target.type === 'planetsAtLeast'
+                ? prev.unlockedPlanetIds.length >= target.value
+                : target.type === 'clicksAtLeast'
+                  ? prev.clicks >= target.value
+                  : target.type === 'upgCountAtLeast'
+                    ? upgCount >= target.value
+                    : target.type === 'battlesWonAtLeast'
+                      ? prev.battlesWon >= target.value
+                      : target.type === 'battleWinStreakAtLeast'
+                        ? prev.battleWinStreak >= target.value
+                        : target.type === 'researchCountAtLeast'
+                          ? researchCount >= target.value
+                          : target.type === 'playerLevelAtLeast'
+                            ? playerLevel >= target.value
+                            : target.type === 'metalAtLeast' && 'metalId' in target
+                              ? (prev.metals[target.metalId as import('./METALS').MetalId] ?? 0) >=
+                                target.value
+                              : target.type === 'allMetalsAtLeast'
                                 ? (
                                     [
                                       'titan',
                                       'iridium',
                                       'voidCrystal',
-                                      'echoShard'
+                                      'echoShard',
                                     ] as const
                                   ).every(
-                                    (m) => (prev.metals[m] ?? 0) >= t.value
+                                    (m) => (prev.metals[m] ?? 0) >= target.value
                                   )
                                 : false; // battleCondition unlocked inline in attackBattle
         if (ok) newlyUnlocked.push(def);
       }
       if (newlyUnlocked.length === 0) return prev;
-      setAchievementToast(newlyUnlocked[newlyUnlocked.length - 1]);
+      toasts.setAchievementToast(newlyUnlocked[newlyUnlocked.length - 1]);
       return {
         ...prev,
         achievements: {
           ...prev.achievements,
           unlockedIds: [
             ...prev.achievements.unlockedIds,
-            ...newlyUnlocked.map((x) => x.id)
-          ]
-        }
+            ...newlyUnlocked.map((x) => x.id),
+          ],
+        },
       };
     });
   }, [
@@ -847,142 +262,10 @@ export function useGame(initial: GameStateInit | undefined, dialogues: Dialogues
     state.battlesWon,
     state.battleWinStreak,
     state.research,
-    state.metals
+    state.metals,
   ]);
 
-  // Level-up detection
-  const prevLevelRef = useRef(playerLevel);
-  useEffect(() => {
-    if (playerLevel > prevLevelRef.current) {
-      logEvent('player_level_up', { level: playerLevel, xp: state.playerXP });
-      setLevelUpToast(playerLevel);
-      prevLevelRef.current = playerLevel;
-    }
-  }, [playerLevel, state.playerXP]);
-
-  // Ship and research unlock by player level
-  useEffect(() => {
-    for (const ship of getShips()) {
-      if (ship.unlockLevel <= 1) continue;
-      if (playerLevel < ship.unlockLevel) continue;
-      const toastId = `ship_${ship.id}`;
-      if (shownUnlocksRef.current.has(toastId)) continue;
-      shownUnlocksRef.current.add(toastId);
-      setUnlockQueue((prev) => [
-        ...prev,
-        {
-          id: toastId,
-          title: t(`alerts.unlock_${ship.id}.title`),
-          text: t(`alerts.unlock_${ship.id}.text`, {}),
-          image: ship.image
-        }
-      ]);
-    }
-    for (const node of getResearchNodes()) {
-      if (playerLevel < node.requiredLevel) continue;
-      const toastId = `research_unlock_${node.id}`;
-      if (shownUnlocksRef.current.has(toastId)) continue;
-      shownUnlocksRef.current.add(toastId);
-      const tab = t('ui.research.' + (node.branch === 'mining' ? 'tab_mining' : 'tab_battle'));
-      setUnlockQueue((prev) => [
-        ...prev,
-        {
-          id: toastId,
-          title: t('alerts.unlock_research.title'),
-          text: t('alerts.unlock_research.text', { icon: node.icon, name: t('config.' + node.nameKey), lore: t('config.' + node.loreKey), tab })
-        }
-      ]);
-    }
-  }, [playerLevel]);
-
-  // Sector unlock notifications
-  useEffect(() => {
-    const sector2 = [1, 2, 3, 4, 5].every((id) =>
-      state.unlockedPlanetIds.includes(id as PlanetId)
-    );
-    const sector3 = [6, 7, 8, 9, 10].every((id) =>
-      state.unlockedPlanetIds.includes(id as PlanetId)
-    );
-    if (sector2 && !shownSectorUnlocksRef.current.has(2)) {
-      shownSectorUnlocksRef.current.add(2);
-      setUnlockQueue((prev) => [
-        ...prev,
-        {
-          id: 'sector_2_unlocked',
-          title: t('alerts.unlock_sector2.title'),
-          text: t('alerts.unlock_sector2.text')
-        }
-      ]);
-    }
-    if (sector3 && !shownSectorUnlocksRef.current.has(3)) {
-      shownSectorUnlocksRef.current.add(3);
-      setUnlockQueue((prev) => [
-        ...prev,
-        {
-          id: 'sector_3_unlocked',
-          title: t('alerts.unlock_sector3.title'),
-          text: t('alerts.unlock_sector3.text')
-        }
-      ]);
-    }
-  }, [state.unlockedPlanetIds]);
-
-  // Character sector complete messages — shown when a sector is fully conquered (from sector 3+)
-  useEffect(() => {
-    if (!state.chosenCharacterId) return;
-    if (!state.unlockedPlanetIds.includes(10 as PlanetId)) return;
-    for (let sectorId = 3; sectorId <= 100; sectorId++) {
-      const planets = getPlanetIdsForSector(sectorId);
-      const complete = planets.every((id) =>
-        state.unlockedPlanetIds.includes(id as PlanetId)
-      );
-      if (complete && !shownSectorCharacterMessagesRef.current.has(sectorId)) {
-        shownSectorCharacterMessagesRef.current.add(sectorId);
-        const character = getCharacterById(dialogues, state.chosenCharacterId);
-        if (!character) return;
-        const storyMsg = dialogues.sectorDialogues[state.chosenCharacterId]?.[sectorId];
-        const msgs = character.sectorCompleteMessages;
-        const raw = storyMsg ?? msgs[Math.floor(Math.random() * msgs.length)]!;
-        // Normalise to array for multi-step support
-        const lines = Array.isArray(raw) ? raw : [raw];
-        setCharacterMessage(lines[0]!);
-        setCharacterDialogueQueue(lines.slice(1));
-        appendHistory(lines);
-        break;
-      }
-    }
-  }, [state.unlockedPlanetIds, state.chosenCharacterId, dialogues, appendHistory]);
-
-  // Greeting message after Sector 2 is fully conquered (once)
-  useEffect(() => {
-    if (greetingShownRef.current) return;
-    if (!state.chosenCharacterId) return;
-    const sector2Complete = getPlanetIdsForSector(2).every((id) =>
-      state.unlockedPlanetIds.includes(id as PlanetId)
-    );
-    if (!sector2Complete) return;
-    const character = getCharacterById(dialogues, state.chosenCharacterId);
-    const greeting = character?.greeting?.trim();
-    if (!greeting) return;
-    greetingShownRef.current = true;
-    setState((prev) => ({ ...prev, greetingShown: true }));
-    if (characterMessage) {
-      setCharacterDialogueQueue((prev) => [...prev, greeting]);
-      appendHistory([greeting]);
-    } else {
-      setCharacterMessage(greeting);
-      setCharacterDialogueQueue([]);
-      appendHistory([greeting]);
-    }
-  }, [
-    state.unlockedPlanetIds,
-    state.chosenCharacterId,
-    dialogues,
-    characterMessage,
-    appendHistory
-  ]);
-
-  // Battle timer — schedule defeat exactly at expiresAt instead of polling.
+  // Battle timer — schedule defeat exactly at expiresAt instead of polling
   useEffect(() => {
     if (!state.battle) return;
     const delay = Math.max(0, state.battle.expiresAt - Date.now());
@@ -999,8 +282,8 @@ export function useGame(initial: GameStateInit | undefined, dialogues: Dialogues
             ...prev.fleet,
             ownedShips: prev.fleet.ownedShips.map((s) =>
               s.shipId === shipId ? { ...s, broken: true } : s
-            )
-          }
+            ),
+          },
         };
       });
     }, delay);
@@ -1017,757 +300,35 @@ export function useGame(initial: GameStateInit | undefined, dialogues: Dialogues
         logEvent('battle_result', {
           result: 'victory',
           planetId: prev.planetId,
-          shipId: prev.shipId
+          shipId: prev.shipId,
         });
-        setBattleVictory(prev.planetId);
-        showClerk('planet');
+        toasts.setBattleVictory(prev.planetId);
+        toasts.showClerk('planet');
         const planet = getPlanets().find((p) => p.id === prev.planetId);
-        if (planet) setPlanetUnlockToast(planet);
-        if (prev.planetId === 9 && !characterFlowShownRef.current) {
-          characterFlowShownRef.current = true;
-          setCharacterFlowStep('select');
+        if (planet) toasts.setPlanetUnlockToast(planet);
+        if (prev.planetId === 9 && !toasts.characterFlowShownRef.current) {
+          toasts.characterFlowShownRef.current = true;
+          toasts.setCharacterFlowStep('select');
         }
       } else {
         logEvent('battle_result', {
           result: 'defeat',
           planetId: prev.planetId,
-          shipId: prev.shipId
+          shipId: prev.shipId,
         });
         const ship = getShips().find((s) => s.id === prev.shipId);
-        if (ship) setDefeatInfo({ shipName: t('config.' + ship.nameKey) });
+        if (ship) toasts.setDefeatInfo({ shipName: t('config.' + ship.nameKey) });
       }
     }
     prevBattleRef.current = state.battle;
-  }, [state.battle, state.unlockedPlanetIds, showClerk]);
-
-  // ── ACTIONS ──
-
-  const mineClick = useCallback(() => {
-    logEvent('mine_click', {
-      clickPower: derived.clickPower,
-      boosted: reactorBoostActive
-    });
-    const add = derived.clickPower * (reactorBoostActive ? 5 : 1);
-    setState((prev) => {
-      const newTotalEarned = prev.totalEarned + add;
-      const metalDrop =
-        newTotalEarned >= 100
-          ? rollMetalDrops(
-              prev.selectedPlanetId,
-              derived.metalDropBonus,
-              derived.planetBonus
-            )
-          : createDefaultMetalsState();
-      const newMetals = addMetals(prev.metals, metalDrop);
-      const newDiscovered = mergeDiscovered(prev.discoveredMetals, newMetals);
-      return {
-        ...prev,
-        energy: prev.energy + add,
-        totalEarned: newTotalEarned,
-        clicks: prev.clicks + 1,
-        metals: newMetals,
-        discoveredMetals: newDiscovered,
-        playerXP: prev.playerXP + 1
-      };
-    });
-  }, [
-    derived.clickPower,
-    derived.metalDropBonus,
-    derived.planetBonus,
-    reactorBoostActive
-  ]);
-
-  const claimAchievement = useCallback((id: AchievementDefinition['id']) => {
-    logEvent('claim_achievement', { id });
-    setState((prev) => {
-      if (!prev.achievements.unlockedIds.includes(id)) return prev;
-      if (prev.achievements.claimedIds.includes(id)) return prev;
-      const def = getAchievements().find((a) => a.id === id);
-      if (!def) return prev;
-      return {
-        ...prev,
-        credits: prev.credits + getAchievementClaimCredits(),
-        achievements: {
-          ...prev.achievements,
-          claimedIds: [...prev.achievements.claimedIds, id]
-        }
-      };
-    });
-  }, []);
-
-  /** Add credits directly (called after IAP purchase or rewarded ad). */
-  const addCredits = useCallback((amount: number) => {
-    if (amount <= 0) return;
-    setState((prev) => ({ ...prev, credits: prev.credits + amount }));
-  }, []);
-
-  /** Grant metals directly (called after a Telegram Stars metal_pack purchase). */
-  const grantMetals = useCallback((patch: Partial<Record<MetalId, number>>) => {
-    const full = { ...createDefaultMetalsState(), ...patch };
-    setState((prev) => ({
-      ...prev,
-      metals: addMetals(prev.metals, full),
-      discoveredMetals: Array.from(
-        new Set([
-          ...prev.discoveredMetals,
-          ...(Object.keys(patch) as MetalId[])
-        ])
-      )
-    }));
-  }, []);
-
-  /** Activate a booster directly (called after a Telegram Stars booster purchase). */
-  const activateBoost = useCallback(
-    (boost: Omit<ActiveBoost, 'instanceId'>) => {
-      setState((prev) => ({
-        ...prev,
-        activeBoosts: [
-          ...prev.activeBoosts,
-          { ...boost, instanceId: `stars_${Date.now()}` }
-        ]
-      }));
-    },
-    []
-  );
-
-  /**
-   * Unlock planets directly (called after a Telegram Stars unlockNextSector purchase).
-   * planetIds: the server-authoritative list of planet IDs to grant.
-   */
-  const unlockPlanets = useCallback((planetIds: number[]) => {
-    if (planetIds.length === 0) return;
-    setState((prev) => ({
-      ...prev,
-      unlockedPlanetIds: Array.from(
-        new Set([...prev.unlockedPlanetIds, ...(planetIds as PlanetId[])])
-      ),
-      tabsUnlocked: { ...prev.tabsUnlocked, planets: true }
-    }));
-  }, []);
-
-  /**
-   * Reset all research and refund the energy (called after a Telegram Stars
-   * resetResearch purchase). energyRefund is computed server-side.
-   */
-  const resetResearch = useCallback((energyRefund: number) => {
-    setState((prev) => ({
-      ...prev,
-      research: {} as Record<ResearchId, boolean>,
-      energy: prev.energy + energyRefund,
-      totalEarned: Math.max(prev.totalEarned, prev.energy + energyRefund)
-    }));
-  }, []);
-
-  /**
-   * Purchase a shop item with credits.
-   * For the converter, pass `convertFrom` and `convertTo` + `convertAmount`.
-   * For loot boxes, pass `onLootResult` to receive the rolled rewards.
-   */
-  const buyShopItem = useCallback(
-    (
-      id: ShopItemId,
-      opts?: {
-        convertFrom?: string;
-        convertTo?: string;
-        convertAmount?: number;
-        onLootResult?: (
-          drops: Partial<Record<import('./METALS').MetalId, number>>
-        ) => void;
-      }
-    ) => {
-      logEvent('buy_shop_item', { id });
-
-      const item = getShopItemById(id);
-      // Pre-roll loot outside setState so the callback can be called after
-      const preRolledDrops = item.lootPool ? rollLootBox(item.lootPool) : null;
-
-      setState((prev) => {
-        if (id === 'converter') {
-          const { convertFrom, convertTo, convertAmount = 1 } = opts ?? {};
-          if (!convertFrom || !convertTo) return prev;
-          const fromId = convertFrom as import('./METALS').MetalId;
-          const toId = convertTo as import('./METALS').MetalId;
-          const rate = getConversionRate(fromId, toId);
-          if (rate === 0) return prev;
-          const totalFrom = convertAmount * rate;
-          const creditCost =
-            getConverterCreditCost(fromId, toId) * convertAmount;
-          if (prev.credits < creditCost) return prev;
-          if ((prev.metals[fromId] ?? 0) < totalFrom) return prev;
-          return {
-            ...prev,
-            credits: prev.credits - creditCost,
-            metals: {
-              ...prev.metals,
-              [fromId]: prev.metals[fromId] - totalFrom,
-              [toId]: prev.metals[toId] + convertAmount
-            }
-          };
-        }
-
-        if (prev.credits < item.creditCost) return prev;
-
-        // Booster
-        if (item.boostEffect) {
-          const boost: ActiveBoost = {
-            instanceId: `${id}_${Date.now()}`,
-            shopItemId: id,
-            effect: item.boostEffect,
-            expiresAt: Date.now() + item.boostEffect.durationMs
-          };
-          return {
-            ...prev,
-            credits: prev.credits - item.creditCost,
-            activeBoosts: [...prev.activeBoosts, boost]
-          };
-        }
-
-        // Metal pack
-        if (item.metalReward) {
-          const newMetals = { ...prev.metals };
-          for (const { metalId, amount } of item.metalReward) {
-            newMetals[metalId] = (newMetals[metalId] ?? 0) + amount;
-          }
-          const discovered = new Set(prev.discoveredMetals);
-          for (const { metalId } of item.metalReward) discovered.add(metalId);
-          return {
-            ...prev,
-            credits: prev.credits - item.creditCost,
-            metals: newMetals,
-            discoveredMetals: Array.from(discovered)
-          };
-        }
-
-        // Loot box
-        if (preRolledDrops) {
-          const newMetals = { ...prev.metals };
-          const discovered = new Set(prev.discoveredMetals);
-          for (const [metalId, amount] of Object.entries(preRolledDrops) as [
-            import('./METALS').MetalId,
-            number
-          ][]) {
-            newMetals[metalId] = (newMetals[metalId] ?? 0) + amount;
-            if (amount > 0) discovered.add(metalId);
-          }
-          return {
-            ...prev,
-            credits: prev.credits - item.creditCost,
-            metals: newMetals,
-            discoveredMetals: Array.from(discovered)
-          };
-        }
-
-        return prev;
-      });
-
-      if (preRolledDrops) opts?.onLootResult?.(preRolledDrops);
-    },
-    []
-  );
-
-  const buyUpgrade = useCallback(
-    (id: UpgradeId, count: number = 1) => {
-      logEvent('buy_upgrade', { id, count });
-      setState((prev) => {
-        const upg = getUpgradeById(id);
-        let level = prev.upgrades[id] ?? 0;
-        let energy = prev.energy;
-        let bought = 0;
-        const limit = count === Infinity ? 9999 : count;
-        for (let i = 0; i < limit; i++) {
-          const cost = computeUpgradeCost(upg, level);
-          if (energy < cost) break;
-          energy -= cost;
-          level += 1;
-          bought += 1;
-        }
-        if (bought === 0) return prev;
-        if (bought === 1)
-          showClerk(upg.passiveBonus > 0 ? 'upgrade_drone' : 'upgrade');
-        return {
-          ...prev,
-          energy,
-          upgrades: { ...prev.upgrades, [id]: level }
-        };
-      });
-    },
-    [showClerk]
-  );
-
-  const buyResearch = useCallback((id: ResearchId) => {
-    logEvent('buy_research', { id });
-    setState((prev) => {
-      const node = getResearchNodes().find((r) => r.id === id);
-      if (!node) return prev;
-      if (prev.research[id]) return prev; // already researched
-      const level = computePlayerLevel(prev.playerXP);
-      if (level < node.requiredLevel) return prev;
-      for (const req of node.requires) {
-        if (!prev.research[req]) return prev;
-      }
-      if (prev.energy < node.energyCost) return prev;
-      return {
-        ...prev,
-        energy: prev.energy - node.energyCost,
-        research: { ...prev.research, [id]: true }
-      };
-    });
-  }, []);
-
-  const craftCannon = useCallback((shipId: ShipId, cannonId: CannonId) => {
-    logEvent('craft_cannon', { shipId, cannonId });
-    setState((prev) => {
-      if (prev.battle) return prev;
-      const cannon = getCannons().find((c) => c.id === cannonId);
-      if (!cannon) return prev;
-      const ownedShip = prev.fleet.ownedShips.find((s) => s.shipId === shipId);
-      if (!ownedShip) return prev;
-      const level = ownedShip.cannons[cannonId] ?? 0;
-      const cost = computeCannonCost(cannon, level);
-      if (!hasEnoughMetals(prev.metals, cost)) return prev;
-      return {
-        ...prev,
-        metals: subtractMetals(prev.metals, cost),
-        fleet: {
-          ...prev.fleet,
-          ownedShips: prev.fleet.ownedShips.map((s) =>
-            s.shipId === shipId
-              ? { ...s, cannons: { ...s.cannons, [cannonId]: level + 1 } }
-              : s
-          )
-        }
-      };
-    });
-  }, []);
-
-  const buildShip = useCallback((shipId: ShipId) => {
-    logEvent('build_ship', { shipId });
-    setState((prev) => {
-      if (prev.battle) return prev;
-      const ship = getShips().find((s) => s.id === shipId);
-      if (!ship) return prev;
-      if (prev.fleet.ownedShips.some((s) => s.shipId === shipId)) return prev;
-      if (!hasEnoughMetals(prev.metals, ship.baseCost)) return prev;
-      const newOwnedShips = [
-        ...prev.fleet.ownedShips,
-        {
-          shipId,
-          broken: false,
-          cannons: createDefaultCannons(),
-          equippedModuleId: null
-        }
-      ];
-      return {
-        ...prev,
-        metals: subtractMetals(prev.metals, ship.baseCost),
-        fleet: {
-          ...prev.fleet,
-          ownedShips: newOwnedShips,
-          selectedShipId:
-            newOwnedShips.length === 1 ? shipId : prev.fleet.selectedShipId
-        }
-      };
-    });
-  }, []);
-
-  const repairShip = useCallback((shipId: ShipId) => {
-    logEvent('repair_ship', { shipId });
-    setState((prev) => {
-      if (prev.battle) return prev;
-      const ship = getShips().find((s) => s.id === shipId);
-      if (!ship) return prev;
-      const owned = prev.fleet.ownedShips.find((s) => s.shipId === shipId);
-      if (!owned || !owned.broken) return prev;
-      if (!hasEnoughMetals(prev.metals, ship.repairCost)) return prev;
-      return {
-        ...prev,
-        metals: subtractMetals(prev.metals, ship.repairCost),
-        fleet: {
-          ...prev.fleet,
-          ownedShips: prev.fleet.ownedShips.map((s) =>
-            s.shipId === shipId ? { ...s, broken: false } : s
-          )
-        }
-      };
-    });
-  }, []);
-
-  const selectShip = useCallback((shipId: ShipId) => {
-    logEvent('select_ship', { shipId });
-    setState((prev) => {
-      if (prev.battle) return prev;
-      if (prev.expeditions.some((e) => e.shipId === shipId)) return prev;
-      const owned = prev.fleet.ownedShips.find((s) => s.shipId === shipId);
-      if (!owned || owned.broken) return prev;
-      return { ...prev, fleet: { ...prev.fleet, selectedShipId: shipId } };
-    });
-  }, []);
-
-  const startBattle = useCallback(
-    (planetId: PlanetId) => {
-      logEvent('start_battle', { planetId });
-      setState((prev) => {
-        if (prev.battle) return prev;
-        if (prev.unlockedPlanetIds.includes(planetId)) return prev;
-        const alien = getAliens().find((a) => a.planetId === planetId);
-        if (!alien) return prev;
-        const { selectedShipId } = prev.fleet;
-        if (!selectedShipId) return prev;
-        if (prev.expeditions.some((e) => e.shipId === selectedShipId))
-          return prev;
-        const ownedShip = prev.fleet.ownedShips.find(
-          (s) => s.shipId === selectedShipId
-        );
-        if (!ownedShip || ownedShip.broken) return prev;
-        if (prev.energy < alien.attackEnergyCost) return prev;
-        return {
-          ...prev,
-          energy: prev.energy - alien.attackEnergyCost,
-          battle: {
-            planetId,
-            shipId: selectedShipId,
-            currentHP: alien.maxHP,
-            maxHP: alien.maxHP,
-            expiresAt: Date.now() + derived.battleTimerMs,
-            timerMs: derived.battleTimerMs,
-            ultsInBattle: 0
-          }
-        };
-      });
-    },
-    [derived.battleTimerMs]
-  );
-
-  const attackBattle = useCallback(
-    (multiplier: number = 1) => {
-      logEvent('attack_battle', { multiplier });
-      setState((prev) => {
-        if (!prev.battle) return prev;
-        const damage = Math.floor(
-          computeBaseShipDamage(prev.fleet) *
-            derived.damageResearchMultiplier *
-            multiplier
-        );
-        if (damage <= 0) return prev;
-        const newHP = Math.max(0, prev.battle.currentHP - damage);
-        if (newHP === 0) {
-          const alien = getAliens().find(
-            (a) => a.planetId === prev.battle!.planetId
-          );
-          const msRemaining = prev.battle.expiresAt - Date.now();
-          const timerPct =
-            prev.battle.timerMs > 0 ? msRemaining / prev.battle.timerMs : 0;
-          const ultsInBattle = prev.battle.ultsInBattle;
-          const alreadyUnlocked = new Set(prev.achievements.unlockedIds);
-          const conditionUnlocks: AchievementId[] = [];
-          // ach id 44: win with >90% timer remaining
-          if (timerPct >= 0.9 && !alreadyUnlocked.has(44))
-            conditionUnlocks.push(44);
-          // ach id 45: win in last 3 seconds
-          if (
-            msRemaining >= 0 &&
-            msRemaining <= 3000 &&
-            !alreadyUnlocked.has(45)
-          )
-            conditionUnlocks.push(45);
-          // ach id 46: use ult 5 times in one battle
-          if (ultsInBattle >= 5 && !alreadyUnlocked.has(46))
-            conditionUnlocks.push(46);
-          return {
-            ...prev,
-            battle: null,
-            unlockedPlanetIds: [
-              ...prev.unlockedPlanetIds,
-              prev.battle.planetId
-            ],
-            selectedPlanetId: prev.battle.planetId,
-            playerXP: prev.playerXP + (alien?.xpReward ?? 0),
-            battlesWon: prev.battlesWon + 1,
-            battleWinStreak: prev.battleWinStreak + 1,
-            achievements:
-              conditionUnlocks.length > 0
-                ? {
-                    ...prev.achievements,
-                    unlockedIds: [
-                      ...prev.achievements.unlockedIds,
-                      ...conditionUnlocks
-                    ]
-                  }
-                : prev.achievements
-          };
-        }
-        return { ...prev, battle: { ...prev.battle, currentHP: newHP } };
-      });
-    },
-    [derived.damageResearchMultiplier]
-  );
-
-  const notifyUltActivated = useCallback(() => {
-    setState((prev) => {
-      if (!prev.battle) return prev;
-      return {
-        ...prev,
-        battle: { ...prev.battle, ultsInBattle: prev.battle.ultsInBattle + 1 }
-      };
-    });
-  }, []);
-
-  const selectPlanet = useCallback((planetId: PlanetId) => {
-    logEvent('select_planet', { planetId });
-    setState((prev) => {
-      if (!prev.unlockedPlanetIds.includes(planetId)) return prev;
-      return { ...prev, selectedPlanetId: planetId };
-    });
-  }, []);
-
-  const startExpedition = useCallback(
-    (expeditionId: ExpeditionId, shipId: ShipId) => {
-      logEvent('start_expedition', { expeditionId, shipId });
-      setState((prev) => {
-        if (prev.battle) return prev;
-        if (prev.expeditions.some((e) => e.shipId === shipId)) return prev;
-        const ownedShip = prev.fleet.ownedShips.find(
-          (s) => s.shipId === shipId
-        );
-        if (!ownedShip || ownedShip.broken) return prev;
-        const def = getExpeditions().find((e) => e.id === expeditionId);
-        if (!def) return prev;
-        // Deselect ship if it was the active battle ship
-        const newSelectedShipId =
-          prev.fleet.selectedShipId === shipId
-            ? null
-            : prev.fleet.selectedShipId;
-        return {
-          ...prev,
-          fleet: { ...prev.fleet, selectedShipId: newSelectedShipId },
-          expeditions: [
-            ...prev.expeditions,
-            { expeditionId, shipId, completesAt: Date.now() + def.durationMs }
-          ]
-        };
-      });
-    },
-    []
-  );
-
-  const reflectBattle = useCallback((penaltyMs: number = 1000) => {
-    logEvent('reflect_battle', { penaltyMs });
-    setState((prev) => {
-      if (!prev.battle) return prev;
-      const newExpires = prev.battle.expiresAt - penaltyMs;
-      if (Date.now() >= newExpires) {
-        const { shipId } = prev.battle;
-        return {
-          ...prev,
-          battle: null,
-          fleet: {
-            ...prev.fleet,
-            ownedShips: prev.fleet.ownedShips.map((s) =>
-              s.shipId === shipId ? { ...s, broken: true } : s
-            )
-          }
-        };
-      }
-      return { ...prev, battle: { ...prev.battle, expiresAt: newExpires } };
-    });
-  }, []);
-
-  const healBattle = useCallback(
-    (amount: number, mode: 'fractionOfMax' | 'flatHp' = 'fractionOfMax') => {
-      logEvent('heal_battle', { amount, mode });
-      setState((prev) => {
-        if (!prev.battle) return prev;
-        const heal =
-          mode === 'flatHp'
-            ? Math.max(0, Math.floor(amount))
-            : Math.floor(prev.battle.maxHP * amount);
-        const newHP = Math.min(prev.battle.currentHP + heal, prev.battle.maxHP);
-        return { ...prev, battle: { ...prev.battle, currentHP: newHP } };
-      });
-    },
-    []
-  );
-
-  const forfeitBattle = useCallback(() => {
-    logEvent('forfeit_battle', {});
-    setState((prev) => {
-      if (!prev.battle) return prev;
-      const { shipId } = prev.battle;
-      return {
-        ...prev,
-        battle: null,
-        fleet: {
-          ...prev.fleet,
-          ownedShips: prev.fleet.ownedShips.map((s) =>
-            s.shipId === shipId ? { ...s, broken: true } : s
-          )
-        }
-      };
-    });
-  }, []);
-
-  const craftModule = useCallback((moduleId: ModuleId) => {
-    logEvent('craft_module', { moduleId });
-    setState((prev) => {
-      if (prev.moduleLevels[moduleId]) return prev;
-      const mod = getModuleById(moduleId);
-      if (!hasEnoughMetals(prev.metals, mod.cost)) return prev;
-      return {
-        ...prev,
-        metals: subtractMetals(prev.metals, mod.cost),
-        moduleLevels: { ...prev.moduleLevels, [moduleId]: 1 }
-      };
-    });
-  }, []);
-
-  const upgradeModule = useCallback((moduleId: ModuleId) => {
-    logEvent('upgrade_module', { moduleId });
-    setState((prev) => {
-      const currentLevel = prev.moduleLevels[moduleId] ?? 0;
-      if (currentLevel <= 0 || currentLevel >= getMaxModuleLevel()) return prev;
-      const cost = computeModuleUpgradeCost(currentLevel);
-      if (!hasEnoughMetals(prev.metals, cost)) return prev;
-      return {
-        ...prev,
-        metals: subtractMetals(prev.metals, cost),
-        moduleLevels: { ...prev.moduleLevels, [moduleId]: currentLevel + 1 }
-      };
-    });
-  }, []);
-
-  const equipModule = useCallback(
-    (shipId: ShipId, moduleId: ModuleId | null) => {
-      logEvent('equip_module', { shipId, moduleId });
-      setState((prev) => {
-        if (moduleId !== null && !prev.moduleLevels[moduleId]) return prev;
-        return {
-          ...prev,
-          fleet: {
-            ...prev.fleet,
-            ownedShips: prev.fleet.ownedShips.map((s) =>
-              s.shipId === shipId ? { ...s, equippedModuleId: moduleId } : s
-            )
-          }
-        };
-      });
-    },
-    []
-  );
-
-  const chooseCharacter = useCallback((id: CharacterId) => {
-    logEvent('choose_character', { characterId: id });
-    setState((prev) => ({ ...prev, chosenCharacterId: id }));
-    const character = getCharacterById(dialogues, id);
-    const garbled = character?.garbledMessage?.trim();
-    if (garbled) {
-      setCharacterMessage(garbled);
-      setCharacterDialogueQueue([]);
-      appendHistory([garbled]);
-    }
-    setCharacterFlowStep(null);
-  }, [dialogues, appendHistory]);
-
-  const advanceCharacterFlow = useCallback(() => {
-    setCharacterFlowStep(null);
-  }, []);
-
-  const closeCharacterFlow = useCallback(() => {
-    setCharacterFlowStep(null);
-  }, []);
-
-  const addBattleTime = useCallback((ms: number) => {
-    setState((prev) => {
-      if (!prev.battle) return prev;
-      return {
-        ...prev,
-        battle: { ...prev.battle, expiresAt: prev.battle.expiresAt + ms }
-      };
-    });
-  }, []);
-
-  const claimExpedition = useCallback((shipId: ShipId) => {
-    logEvent('claim_expedition', { shipId });
-    setState((prev) => {
-      const exp = prev.expeditions.find((e) => e.shipId === shipId);
-      if (!exp || Date.now() < exp.completesAt) return prev;
-      const def = getExpeditionById(exp.expeditionId);
-      const sector2Unlocked = getPlanetIdsForSector(1).every((id) =>
-        prev.unlockedPlanetIds.includes(id)
-      );
-      const metalMultiplier = sector2Unlocked ? 5 : 1;
-      const timely = Date.now() - exp.completesAt <= TIMELY_CLAIM_WINDOW_MS;
-      const timelyMultiplier = timely ? 1.25 : 1;
-      const shipDef = getShipById(shipId);
-      const shipExpMultiplier = shipDef.expeditionMultiplier;
-      const baseRewards = {
-        ...createDefaultMetalsState(),
-        ...def.metalRewards
-      };
-      const scale = (n: number) =>
-        Math.floor(n * metalMultiplier * timelyMultiplier * shipExpMultiplier);
-      const scaledRewards: typeof baseRewards = {
-        iron: scale(baseRewards.iron),
-        titan: scale(baseRewards.titan),
-        iridium: scale(baseRewards.iridium),
-        voidCrystal: scale(baseRewards.voidCrystal),
-        echoShard: scale(baseRewards.echoShard)
-      };
-      const newMetals = addMetals(prev.metals, scaledRewards);
-      return {
-        ...prev,
-        metals: newMetals,
-        discoveredMetals: mergeDiscovered(prev.discoveredMetals, newMetals),
-        playerXP: prev.playerXP + def.xpReward,
-        expeditions: prev.expeditions.filter((e) => e.shipId !== shipId)
-      };
-    });
-  }, []);
-
-  // ── PRESTIGE ──
+  }, [state.battle, state.unlockedPlanetIds]);
 
   const prestigeBlockedReason = getPrestigeBlockedReason(
     playerLevel,
     !!state.battle,
-    state.expeditions.length > 0,
+    state.expeditions.length > 0
   );
   const canPrestige = prestigeBlockedReason === null;
-
-  const performPrestige = useCallback(() => {
-    const level = computePlayerLevel(state.playerXP);
-    const reason = getPrestigeBlockedReason(level, !!state.battle, state.expeditions.length > 0);
-    if (reason !== null) return;
-
-    setState((prev) => {
-      const lvl = computePlayerLevel(prev.playerXP);
-      const blocked = getPrestigeBlockedReason(lvl, !!prev.battle, prev.expeditions.length > 0);
-      if (blocked !== null) return prev;
-      return applyPrestigeReset(prev, defaultState);
-    });
-
-    // Reset all in-session narrative trackers so the new run starts fresh
-    // without requiring an app restart. Refs are not reactive — mutating them
-    // here is safe and won't cause a re-render.
-    characterFlowShownRef.current          = false;
-    shownSectorUnlocksRef.current          = new Set();
-    shownSectorCharacterMessagesRef.current = new Set();
-    firstIronShownRef.current              = false;
-    firstShipShownRef.current              = false;
-    shipyardUnlockShownRef.current         = false;
-    // achievementsUnlockShownRef intentionally NOT reset — player already saw
-    // this intro toast before their first prestige; don't show it again.
-    upgradesUnlockShownRef.current         = false;
-    planetsUnlockShownRef.current          = false;
-    shownUnlocksRef.current                = new Set();
-
-    logEvent('prestige_complete', {
-      playerLevel: level,
-      prestigeCountBefore: state.prestige.count,
-      prestigeCountAfter: state.prestige.count + 1,
-      energyBonusAfter: computePrestigeState(state.prestige.count + 1).energyBonus,
-      metalBonusAfter: computePrestigeState(state.prestige.count + 1).metalDropBonus,
-      attackBonusAfter: computePrestigeState(state.prestige.count + 1).attackBonus,
-    });
-  }, [state.playerXP, state.battle, state.expeditions, state.prestige, defaultState]);
 
   return {
     ...state,
@@ -1778,123 +339,64 @@ export function useGame(initial: GameStateInit | undefined, dialogues: Dialogues
     expeditionRemainingMap,
     now,
     planet: getPlanetById(state.selectedPlanetId) as PlanetDefinition,
-    clerkMessage,
-    characterMessage,
-    characterDialogueQueue,
+    // toasts
+    clerkMessage: toasts.clerkMessage,
+    characterMessage: toasts.characterMessage,
+    characterDialogueQueue: toasts.characterDialogueQueue,
     characterMessageHistory,
-    closeCharacterMessage,
+    closeCharacterMessage: toasts.closeCharacterMessage,
     chosenCharacter: state.chosenCharacterId
       ? getCharacterById(dialogues, state.chosenCharacterId)
       : null,
-    achievementToast,
-    battleVictory,
-    planetUnlockToast,
-    closePlanetUnlockToast,
-    defeatInfo,
-    levelUpToast,
-    firstIronToast,
-    firstShipToast,
-    closeFirstShipToast,
-    shipyardUnlockToast,
-    closeShipyardUnlockToast,
-    planetsUnlockToast,
-    closePlanetsUnlockToast,
+    achievementToast: toasts.achievementToast,
+    battleVictory: toasts.battleVictory,
+    planetUnlockToast: toasts.planetUnlockToast,
+    closePlanetUnlockToast: toasts.closePlanetUnlockToast,
+    defeatInfo: toasts.defeatInfo,
+    levelUpToast: toasts.levelUpToast,
+    firstIronToast: toasts.firstIronToast,
+    firstShipToast: toasts.firstShipToast,
+    closeFirstShipToast: toasts.closeFirstShipToast,
+    shipyardUnlockToast: toasts.shipyardUnlockToast,
+    closeShipyardUnlockToast: toasts.closeShipyardUnlockToast,
+    planetsUnlockToast: toasts.planetsUnlockToast,
+    closePlanetsUnlockToast: toasts.closePlanetsUnlockToast,
     achievementsUnlocked: state.totalEarned >= 5,
-    achievementsUnlockToast,
-    closeAchievementsUnlockToast,
-    upgradesUnlockToast,
-    closeUpgradesUnlockToast,
-    currentUnlockToast: unlockQueue[0] ?? null,
-    dismissUnlockToast,
-    showClerk,
-    closeClerk,
-    closeAchievementToast,
-    clearBattleVictory,
-    clearDefeatInfo,
-    closeLevelUpToast,
-    closeFirstIronToast,
-    reactorBoostActive,
+    achievementsUnlockToast: toasts.achievementsUnlockToast,
+    closeAchievementsUnlockToast: toasts.closeAchievementsUnlockToast,
+    upgradesUnlockToast: toasts.upgradesUnlockToast,
+    closeUpgradesUnlockToast: toasts.closeUpgradesUnlockToast,
+    currentUnlockToast: toasts.unlockQueue[0] ?? null,
+    dismissUnlockToast: toasts.dismissUnlockToast,
+    showClerk: toasts.showClerk,
+    closeClerk: toasts.closeClerk,
+    closeAchievementToast: toasts.closeAchievementToast,
+    clearBattleVictory: toasts.clearBattleVictory,
+    clearDefeatInfo: toasts.clearDefeatInfo,
+    closeLevelUpToast: toasts.closeLevelUpToast,
+    closeFirstIronToast: toasts.closeFirstIronToast,
+    reactorBoostActive: toasts.reactorBoostActive,
     hasUnclaimedAchievements: state.achievements.unlockedIds.some(
       (id) => !state.achievements.claimedIds.includes(id)
     ),
-    mineClick,
-    claimAchievement,
-    buyUpgrade,
-    buyResearch,
-    craftCannon,
-    buildShip,
-    repairShip,
-    selectShip,
-    discoveredMetals: state.discoveredMetals,
-    startBattle,
-    attackBattle,
-    reflectBattle,
-    healBattle,
-    forfeitBattle,
-    selectPlanet,
-    startExpedition,
-    claimExpedition,
-    craftModule,
-    upgradeModule,
-    equipModule,
-    addBattleTime,
-    notifyUltActivated,
-    characterFlowStep,
+    characterFlowStep: toasts.characterFlowStep,
     openCharacterSelectFlow: useCallback(
-      () => setCharacterFlowStep('select'),
-      []
+      () => toasts.setCharacterFlowStep('select'),
+      [toasts.setCharacterFlowStep]
     ),
-    chooseCharacter,
-    advanceCharacterFlow,
-    closeCharacterFlow,
+    // actions
+    ...actions,
+    discoveredMetals: state.discoveredMetals,
     credits: state.credits,
     activeBoosts: state.activeBoosts,
-    addCredits,
-    buyShopItem,
-    grantMetals,
-    activateBoost,
-    unlockPlanets,
-    resetResearch,
     prestige: state.prestige,
     canPrestige,
     prestigeBlockedReason,
-    performPrestige,
-    debugSetValues: useCallback(
-      (patch: {
-        energy?: number;
-        iron?: number;
-        titan?: number;
-        iridium?: number;
-        playerXP?: number;
-        tabsUnlocked?: Partial<TabsUnlockedState>;
-      }) => {
-        setState((prev) => ({
-          ...prev,
-          ...(patch.energy !== undefined
-            ? {
-                energy: patch.energy,
-                totalEarned: Math.max(prev.totalEarned, patch.energy)
-              }
-            : {}),
-          ...(patch.playerXP !== undefined ? { playerXP: patch.playerXP } : {}),
-          metals: {
-            ...prev.metals,
-            ...(patch.iron !== undefined ? { iron: patch.iron } : {}),
-            ...(patch.titan !== undefined ? { titan: patch.titan } : {}),
-            ...(patch.iridium !== undefined ? { iridium: patch.iridium } : {})
-          },
-          ...(patch.tabsUnlocked !== undefined
-            ? { tabsUnlocked: { ...prev.tabsUnlocked, ...patch.tabsUnlocked } }
-            : {})
-        }));
-      },
-      []
-    ),
     replaceStateFromSync: useCallback(
       (nextState: GameStateInit) => {
         setState(hydrateState(nextState));
       },
       [hydrateState]
-    )
+    ),
   };
 }

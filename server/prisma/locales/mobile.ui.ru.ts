@@ -233,6 +233,8 @@ export const messages: Record<string, string> = {
   'game_header.per_click': '/клик',
   'game_header.per_sec': '/сек',
   'game_header.level_prefix': 'УР.',
+  'game_header.click_label': 'КЛИК',
+  'game_header.passive_label': 'ПАССИВ',
   // ── LevelUpToast ─────────────────────────────────────────────────────────
   'level_up.label': 'НОВЫЙ УРОВЕНЬ',
   'level_up.level_line': 'Уровень {level} · {title}',
@@ -350,4 +352,12 @@ export const messages: Record<string, string> = {
   'analytics.share_title':      'Экспорт аналитики Cosmo',
   // ── PrestigePopup ─────────────────────────────────────────────────────────
   'prestige.pp_unit': 'п.п.',
+  // ── PrestigeBtn ──────────────────────────────────────────────────────────
+  'prestige_btn.label': 'ПРЕСТИЖ',
+  // ── Click power info popup ────────────────────────────────────────────────
+  'click_power_info.title': 'МОЩНОСТЬ ДОБЫЧИ',
+  'click_power_info.text': 'Каждое нажатие приносит {clickPower} ⚡ энергиума.',
+  // ── Passive rate info popup ───────────────────────────────────────────────
+  'passive_rate_info.title': 'ПАССИВНЫЙ ДОХОД',
+  'passive_rate_info.text': 'Ваши дроны добывают {passiveRate} ⚡ энергиума каждую секунду.',
 };

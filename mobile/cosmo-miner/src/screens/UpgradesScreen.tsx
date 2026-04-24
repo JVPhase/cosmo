@@ -14,8 +14,8 @@ export type UpgradesScreenProps = {
 type Tab = 'click' | 'passive';
 const MULT_OPTIONS: Array<{ label: string; value: number }> = [
   { label: '1x', value: 1 },
-  { label: '2x', value: 2 },
   { label: '5x', value: 5 },
+  { label: '10x', value: 10 },
   { label: 'max', value: Infinity },
 ];
 
@@ -158,28 +158,24 @@ const styles = StyleSheet.create({
   },
   tabs: {
     flexDirection: 'row',
-    marginHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 4,
-    borderRadius: 10,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(0,212,255,0.15)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,212,255,0.1)',
+    backgroundColor: 'rgba(0,10,30,0.8)',
   },
   tab: {
     flex: 1,
     paddingVertical: 10,
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.03)',
   },
   tabActive: {
-    backgroundColor: 'rgba(0,212,255,0.12)',
+    borderBottomWidth: 2,
+    borderBottomColor: '#00d4ff',
   },
   tabText: {
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: 10,
+    fontWeight: '800',
     letterSpacing: 1,
-    color: 'rgba(255,255,255,0.35)',
+    color: 'rgba(255,255,255,0.55)',
   },
   tabTextActive: {
     color: '#00d4ff',

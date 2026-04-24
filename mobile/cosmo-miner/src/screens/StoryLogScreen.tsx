@@ -41,9 +41,9 @@ export function StoryLogScreen({ characters, unlockedPlanetIds, chosenCharacterI
           let bodyText = entry.text;
           if (entry.id === 'entry_11' && chosenChar) {
             bodyText = getCharacterContactEntry(
-              chosenChar.name,
-              chosenChar.role,
-              chosenChar.greeting,
+              t('dialogues.' + chosenChar.name),
+              t('dialogues.' + chosenChar.role),
+              t('dialogues.' + chosenChar.greeting),
             );
           }
           return (
