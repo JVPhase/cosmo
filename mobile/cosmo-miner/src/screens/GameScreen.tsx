@@ -1,6 +1,7 @@
-import { LinearGradient } from 'expo-linear-gradient';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Platform, StyleSheet, View, type GestureResponderEvent } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Animated, Platform, Pressable, StyleSheet, Text, View, type GestureResponderEvent } from 'react-native';
+import { formatNum } from '../game/formatNum';
+import { t } from '../game/i18n';
 import { getMetals, type MetalId } from '../game/METALS';
 import type { PlanetDefinition } from '../game/PLANETS';
 import type { MetalsState } from '../game/types';
@@ -54,12 +55,12 @@ export type GameScreenProps = {
 };
 
 export function GameScreen({
-  energy,
-  totalEarned,
+  energy: _energy,
+  totalEarned: _totalEarned,
   clickPower,
   passiveRate,
   metals,
-  discoveredMetals,
+  discoveredMetals: _discoveredMetals,
   onMine,
   planet,
   clerkMessage,
@@ -77,7 +78,7 @@ export function GameScreen({
   hasUnclaimedAchievements,
   onOpenClickPowerInfo,
   onOpenPassiveRateInfo,
-  onOpenMetalInfo,
+  onOpenMetalInfo: _onOpenMetalInfo,
   onOpenStoryLog,
   hasNewStoryEntry,
   onOpenPrestige,
@@ -99,16 +100,6 @@ export function GameScreen({
   const metalFloatIdRef = useRef(0);
   const [metalFloats, setMetalFloats] = useState<MetalFloat[]>([]);
   const glowScale = useRef(new Animated.Value(1)).current;
-
-  const stars = useMemo(() => {
-    return Array.from({ length: 70 }, (_, i) => ({
-      id: i,
-      top: Math.random() * 100,
-      left: Math.random() * 100,
-      size: Math.random() * 2.5 + 0.6,
-      opacity: Math.random() * 0.6 + 0.25,
-    }));
-  }, []);
 
   useEffect(() => {
     const pulse = Animated.loop(
@@ -197,14 +188,7 @@ export function GameScreen({
   }, [metals]);
 
   return (
-    <LinearGradient colors={['#050918', '#0a1628', '#061020']} style={styles.screen}>
-      {stars.map((s) => (
-        <View
-          key={s.id}
-          style={[styles.star, { top: `${s.top}%`, left: `${s.left}%`, width: s.size, height: s.size, opacity: s.opacity }]}
-        />
-      ))}
-
+    <View style={styles.screen}>
       <AchievementToast
         toast={achievementToast}
         onClose={onCloseAchievementToast}
@@ -212,20 +196,12 @@ export function GameScreen({
       />
 
       <GameHeader
-        energy={energy}
-        totalEarned={totalEarned}
-        clickPower={clickPower}
-        passiveRate={passiveRate}
-        metals={metals}
-        discoveredMetals={discoveredMetals}
-        planet={planet}
         playerLevel={playerLevel}
         playerXP={playerXP}
-        onOpenClickPowerInfo={onOpenClickPowerInfo}
-        onOpenPassiveRateInfo={onOpenPassiveRateInfo}
-        onOpenMetalInfo={onOpenMetalInfo}
         onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}
       />
+
+      <Text style={styles.planetTitle}>{planet.name}</Text>
 
       <FloatingActionButtons
         headerHeight={headerHeight}
@@ -236,9 +212,6 @@ export function GameScreen({
         onOpenAchievements={onOpenAchievements}
         onOpenStoryLog={onOpenStoryLog}
         hasNewStoryEntry={hasNewStoryEntry}
-        onOpenPrestige={onOpenPrestige}
-        isPrestigeAvailable={isPrestigeAvailable}
-        prestigeCount={prestigeCount}
       />
 
       <CharacterChannelButton
@@ -247,6 +220,9 @@ export function GameScreen({
         chosenCharacter={chosenCharacter}
         hasUnreadChannelMessage={hasUnreadChannelMessage}
         onOpenCharacterChannel={onOpenCharacterChannel}
+        onOpenPrestige={onOpenPrestige}
+        isPrestigeAvailable={isPrestigeAvailable}
+        prestigeCount={prestigeCount}
       />
 
       <LevelUpToast levelUpToast={levelUpToast} onClose={onCloseLevelUpToast} />
@@ -264,8 +240,19 @@ export function GameScreen({
         METALS={METALS}
       />
 
+      <View style={styles.bottomStats}>
+        <Pressable onPress={onOpenClickPowerInfo} style={styles.statChip}>
+          <Text style={styles.statChipLabel}>{t('ui.game_header.click_label') || 'КЛИК'}</Text>
+          <Text style={styles.statChipValue}>+{formatNum(clickPower)} ⚡</Text>
+        </Pressable>
+        <Pressable onPress={onOpenPassiveRateInfo} style={styles.statChip}>
+          <Text style={styles.statChipLabel}>{t('ui.game_header.passive_label') || 'ПАССИВ'}</Text>
+          <Text style={styles.statChipValue}>+{formatNum(passiveRate)}{t('ui.game_header.per_sec') || '/с'} ⚡</Text>
+        </Pressable>
+      </View>
+
       <ClerkBubble message={clerkMessage} onClose={onCloseClerk} />
-    </LinearGradient>
+    </View>
   );
 }
 
@@ -276,10 +263,38 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     userSelect: 'none',
   },
-  star: {
-    position: 'absolute',
-    backgroundColor: '#ffffff',
-    borderRadius: 10,
-    zIndex: 0,
+  planetTitle: {
+    textAlign: 'center',
+    fontSize: 11,
+    fontWeight: '800',
+    color: 'rgba(255,255,255,0.55)',
+    letterSpacing: 3,
+    marginTop: 6,
+    zIndex: 2,
+  },
+  bottomStats: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    gap: 24 as any,
+    paddingHorizontal: 18,
+    paddingBottom: 14,
+    paddingTop: 4,
+    zIndex: 2,
+  },
+  statChip: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: 2 as any,
+  },
+  statChipLabel: {
+    fontSize: 7,
+    fontWeight: '800',
+    color: 'rgba(0,212,255,0.4)',
+    letterSpacing: 2,
+  },
+  statChipValue: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: 'rgba(0,212,255,0.8)',
   },
 });

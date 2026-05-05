@@ -8,6 +8,9 @@ export type CharacterChannelButtonProps = {
   chosenCharacter: { id: string; name: string; icon: string } | null;
   hasUnreadChannelMessage: boolean;
   onOpenCharacterChannel: () => void;
+  onOpenPrestige: () => void;
+  isPrestigeAvailable: boolean;
+  prestigeCount: number;
 };
 
 export function CharacterChannelButton({
@@ -16,24 +19,50 @@ export function CharacterChannelButton({
   chosenCharacter,
   hasUnreadChannelMessage,
   onOpenCharacterChannel,
+  onOpenPrestige,
+  isPrestigeAvailable,
+  prestigeCount,
 }: CharacterChannelButtonProps) {
-  if (headerHeight === 0 || !characterChannelUnlocked) return null;
+  if (headerHeight === 0) return null;
 
   return (
     <View style={[styles.floatingBtnsRight, { top: headerHeight + 10 }]}>
       <Pressable
-        onPress={onOpenCharacterChannel}
+        onPress={onOpenPrestige}
         style={({ pressed }) => [
           styles.floatingBtn,
-          styles.floatingBtnChannel,
-          hasUnreadChannelMessage && styles.floatingBtnChannelUnread,
+          styles.floatingBtnWide,
+          isPrestigeAvailable && styles.floatingBtnPrestige,
           pressed ? { opacity: 0.7 } : null,
         ]}
       >
-        <Text style={styles.floatingBtnIcon}>{chosenCharacter?.icon ?? '📡'}</Text>
-        <Text style={styles.floatingBtnChannelLabel}>{t('ui.channel_btn.label')}</Text>
-        {hasUnreadChannelMessage && <View style={styles.channelUnreadDot} />}
+        <Text style={styles.floatingBtnIcon}>⭐</Text>
+        <Text style={[styles.floatingBtnLabel, isPrestigeAvailable && styles.floatingBtnLabelGold]}>
+          {t('ui.prestige_btn.label') || 'ПРЕСТИЖ'}
+        </Text>
+        {prestigeCount > 0 && (
+          <View style={styles.prestigeCountBadge}>
+            <Text style={styles.prestigeCountText}>{prestigeCount}</Text>
+          </View>
+        )}
       </Pressable>
+
+      {characterChannelUnlocked && (
+        <Pressable
+          onPress={onOpenCharacterChannel}
+          style={({ pressed }) => [
+            styles.floatingBtn,
+            styles.floatingBtnWide,
+            styles.floatingBtnChannel,
+            hasUnreadChannelMessage && styles.floatingBtnChannelUnread,
+            pressed ? { opacity: 0.7 } : null,
+          ]}
+        >
+          <Text style={styles.floatingBtnIcon}>{chosenCharacter?.icon ?? '💬'}</Text>
+          <Text style={styles.floatingBtnChannelLabel}>{t('ui.channel_btn.label')}</Text>
+          {hasUnreadChannelMessage && <View style={styles.channelUnreadDot} />}
+        </Pressable>
+      )}
     </View>
   );
 }
@@ -47,7 +76,6 @@ const styles = StyleSheet.create({
     zIndex: 5,
   },
   floatingBtn: {
-    width: 36,
     height: 36,
     borderRadius: 10,
     backgroundColor: 'rgba(0,212,255,0.07)',
@@ -57,15 +85,41 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     position: 'relative',
   },
-  floatingBtnIcon: { fontSize: 16 },
-  floatingBtnChannel: {
-    width: 'auto' as any,
-    paddingHorizontal: 10,
+  floatingBtnWide: {
     flexDirection: 'row',
+    paddingHorizontal: 10,
     gap: 5 as any,
+    width: 'auto' as any,
   },
+  floatingBtnIcon: { fontSize: 14 },
+  floatingBtnLabel: {
+    fontSize: 9,
+    fontWeight: '900',
+    color: 'rgba(0,212,255,0.75)',
+    letterSpacing: 1,
+  },
+  floatingBtnLabelGold: {
+    color: 'rgba(255,200,0,0.9)',
+  },
+  floatingBtnPrestige: {
+    borderColor: 'rgba(255,200,0,0.5)',
+    backgroundColor: 'rgba(255,200,0,0.10)',
+  },
+  prestigeCountBadge: {
+    backgroundColor: 'rgba(255,200,0,0.85)',
+    borderRadius: 5,
+    paddingHorizontal: 3,
+    paddingVertical: 1,
+    marginLeft: 2,
+  },
+  prestigeCountText: {
+    fontSize: 7,
+    fontWeight: '900',
+    color: '#050918',
+  },
+  floatingBtnChannel: {},
   floatingBtnChannelLabel: {
-    fontSize: 8,
+    fontSize: 9,
     fontWeight: '900',
     color: 'rgba(0,212,255,0.75)',
     letterSpacing: 1,

@@ -168,6 +168,7 @@ function BundleEditor({ app: appParam, namespace }: { app: string; namespace: st
   const [err, setErr] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
   const [showAddLocale, setShowAddLocale] = useState(false)
+  const [showAddKey, setShowAddKey] = useState(false)
 
   const load = useCallback(async () => {
     setErr(null)
@@ -285,6 +286,13 @@ function BundleEditor({ app: appParam, namespace }: { app: string; namespace: st
           onDone={() => { setShowAddLocale(false); load() }}
         />
       )}
+      {showAddKey && (
+        <AddKeyForm
+          fixedApp={appParam}
+          fixedNamespace={namespace}
+          onDone={() => { setShowAddKey(false); load() }}
+        />
+      )}
 
       <Card className="border-crm-ink/10 bg-white/80">
         <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
@@ -298,6 +306,10 @@ function BundleEditor({ app: appParam, namespace }: { app: string; namespace: st
             <Button size="sm" variant="outline" onClick={() => setShowAddLocale((v) => !v)}>
               <Languages className="mr-2 h-4 w-4" />
               Add locale
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => { setShowAddKey((v) => !v); setShowAddLocale(false) }}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add key
             </Button>
             <div className="relative">
               <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-crm-ink/40" />
@@ -531,8 +543,16 @@ function AddLocaleForm({
 
 // ── Add key form ───────────────────────────────────────────────────────────────
 
-function AddKeyForm({ onDone }: { onDone: () => void }) {
-  const [form, setForm] = useState({ app: 'mobile', namespace: 'ui', key: '', baseLocale: 'ru', baseValue: '' })
+function AddKeyForm({
+  onDone,
+  fixedApp,
+  fixedNamespace,
+}: {
+  onDone: () => void
+  fixedApp?: string
+  fixedNamespace?: string
+}) {
+  const [form, setForm] = useState({ app: fixedApp ?? 'mobile', namespace: fixedNamespace ?? 'ui', key: '', baseLocale: 'ru', baseValue: '' })
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
@@ -563,18 +583,22 @@ function AddKeyForm({ onDone }: { onDone: () => void }) {
       </CardHeader>
       <CardContent>
         <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
-          <label className="flex flex-col gap-1">
-            <span className="text-xs font-medium text-crm-ink/70">App</span>
-            <select className="h-9 rounded-md border border-crm-ink/15 bg-white px-3 text-sm" value={form.app} onChange={set('app')}>
-              {APPS.map((a) => <option key={a}>{a}</option>)}
-            </select>
-          </label>
-          <label className="flex flex-col gap-1">
-            <span className="text-xs font-medium text-crm-ink/70">Namespace</span>
-            <select className="h-9 rounded-md border border-crm-ink/15 bg-white px-3 text-sm" value={form.namespace} onChange={set('namespace')}>
-              {NAMESPACES.map((n) => <option key={n}>{n}</option>)}
-            </select>
-          </label>
+          {!fixedApp && (
+            <label className="flex flex-col gap-1">
+              <span className="text-xs font-medium text-crm-ink/70">App</span>
+              <select className="h-9 rounded-md border border-crm-ink/15 bg-white px-3 text-sm" value={form.app} onChange={set('app')}>
+                {APPS.map((a) => <option key={a}>{a}</option>)}
+              </select>
+            </label>
+          )}
+          {!fixedNamespace && (
+            <label className="flex flex-col gap-1">
+              <span className="text-xs font-medium text-crm-ink/70">Namespace</span>
+              <select className="h-9 rounded-md border border-crm-ink/15 bg-white px-3 text-sm" value={form.namespace} onChange={set('namespace')}>
+                {NAMESPACES.map((n) => <option key={n}>{n}</option>)}
+              </select>
+            </label>
+          )}
           <label className="flex flex-col gap-1">
             <span className="text-xs font-medium text-crm-ink/70">Key</span>
             <input className="h-9 rounded-md border border-crm-ink/15 bg-white px-3 font-mono text-sm" placeholder="tabs.game" value={form.key} onChange={set('key')} required />

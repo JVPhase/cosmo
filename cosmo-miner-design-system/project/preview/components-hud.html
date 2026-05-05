@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { background:#050918; padding:16px; font-family:-apple-system,sans-serif; display:flex; flex-wrap:wrap; gap:14px; align-items:flex-start; }
+  .section { font-size:7px; font-weight:900; letter-spacing:2px; color:rgba(0,212,255,0.4); text-transform:uppercase; margin-bottom:8px; }
+  /* tab bar */
+  .tabbar { display:flex; background:rgba(4,12,30,0.98); border-top:1px solid rgba(0,212,255,0.12); border-radius:0 0 16px 16px; overflow:hidden; width:320px; }
+  .tab { flex:1; display:flex; flex-direction:column; align-items:center; padding:10px 4px 8px; gap:3px; cursor:pointer; position:relative; }
+  .tab-active { background:rgba(0,212,255,0.07); }
+  .tab-icon { font-size:20px; }
+  .tab-label { font-size:8px; font-weight:800; letter-spacing:1.5px; color:rgba(255,255,255,0.35); text-transform:uppercase; }
+  .tab-active .tab-label { color:#00d4ff; }
+  .tab-active::after { content:''; position:absolute; top:0; left:20%; right:20%; height:2px; background:#00d4ff; box-shadow:0 0 6px rgba(0,212,255,0.8); border-radius:0 0 2px 2px; }
+  .tab-badge { position:absolute; top:6px; right:20%; width:7px; height:7px; border-radius:50%; background:#ff3b3b; }
+  /* resource row */
+  .res-bar { display:flex; align-items:center; gap:8px; background:rgba(4,16,45,0.9); border-bottom:1px solid rgba(0,212,255,0.10); padding:8px 12px; width:320px; border-radius:10px 10px 0 0; }
+  .res-item { display:flex; align-items:center; gap:4px; }
+  .res-icon { width:16px; height:16px; object-fit:contain; }
+  .res-val { font-size:10px; font-weight:700; color:rgba(255,220,100,0.75); }
+  .energy-val { font-size:12px; font-weight:900; color:#ffd700; }
+  /* ship card */
+  .shipcard { display:flex; gap:10px; align-items:center; padding:12px; border-radius:12px; background:rgba(0,212,255,0.06); border:1px solid rgba(0,212,255,0.18); width:300px; }
+  .ship-img { width:64px; height:64px; object-fit:contain; }
+  .ship-main { flex:1; }
+  .ship-name { font-size:12px; font-weight:800; color:#fff; letter-spacing:0.5px; }
+  .ship-sub { font-size:9px; color:rgba(255,255,255,0.45); margin-top:2px; }
+  .ship-dmg { font-size:9px; color:rgba(0,212,255,0.75); font-weight:700; margin-top:4px; }
+  .ship-status { font-size:8px; font-weight:900; letter-spacing:1px; padding:3px 8px; border-radius:5px; margin-top:6px; display:inline-block; }
+  .status-active { background:rgba(68,255,136,0.12); color:#44ff88; border:1px solid rgba(68,255,136,0.3); }
+  .status-broken { background:rgba(255,60,60,0.10); color:#ff6666; border:1px solid rgba(255,80,80,0.3); }
+  .status-building { background:rgba(255,200,0,0.10); color:#ffd700; border:1px solid rgba(255,200,0,0.3); }
+</style>
+</head>
+<body>
+<div>
+  <div class="section">Resource HUD + Tab Bar</div>
+  <div class="res-bar">
+    <div class="res-item">
+      <span style="font-size:14px">⚡</span>
+      <span class="energy-val">48 320</span>
+    </div>
+    <div style="width:1px;height:16px;background:rgba(255,255,255,0.08)"></div>
+    <div class="res-item">
+      <img class="res-icon" src="../assets/resources/iron.png">
+      <span class="res-val">142</span>
+    </div>
+    <div class="res-item">
+      <img class="res-icon" src="../assets/resources/titan.png">
+      <span class="res-val">37</span>
+    </div>
+    <div class="res-item">
+      <img class="res-icon" src="../assets/resources/iridium.png">
+      <span class="res-val">8</span>
+    </div>
+  </div>
+  <div class="tabbar">
+    <div class="tab tab-active">
+      <div class="tab-icon">⛏️</div>
+      <div class="tab-label">Добыча</div>
+    </div>
+    <div class="tab" style="position:relative">
+      <div class="tab-icon">⬆️</div>
+      <div class="tab-label">Апгр.</div>
+      <div class="tab-badge"></div>
+    </div>
+    <div class="tab">
+      <div class="tab-icon">🪐</div>
+      <div class="tab-label">План.</div>
+    </div>
+    <div class="tab">
+      <div class="tab-icon">🛸</div>
+      <div class="tab-label">Верфь</div>
+    </div>
+    <div class="tab">
+      <div class="tab-icon">⚔️</div>
+      <div class="tab-label">Бой</div>
+    </div>
+  </div>
+</div>
+<div>
+  <div class="section">Ship Cards</div>
+  <div style="display:flex;flex-direction:column;gap:8px">
+    <div class="shipcard">
+      <img class="ship-img" src="../assets/ships/scoutship.png">
+      <div class="ship-main">
+        <div class="ship-name">Разведчик «Нулевой»</div>
+        <div class="ship-sub">Серийный номер 0000</div>
+        <div class="ship-dmg">×1 урон · Пушки: 2</div>
+        <span class="ship-status status-active">АКТИВЕН</span>
+      </div>
+    </div>
+    <div class="shipcard" style="border-color:rgba(255,80,80,0.25);background:rgba(255,40,40,0.05)">
+      <img class="ship-img" src="../assets/ships/cruisership.png">
+      <div class="ship-main">
+        <div class="ship-name">Крейсер «Гамма»</div>
+        <div class="ship-sub">Министерство одобрило</div>
+        <div class="ship-dmg">×2.5 урон</div>
+        <span class="ship-status status-broken">СЛОМАН</span>
+      </div>
+    </div>
+    <div class="shipcard" style="border-color:rgba(255,200,0,0.25);background:rgba(255,200,0,0.04)">
+      <img class="ship-img" src="../assets/ships/dreadnoughtship.png">
+      <div class="ship-main">
+        <div class="ship-name">Дредноут «Отдел Б»</div>
+        <div class="ship-sub">Официально не существует</div>
+        <div class="ship-dmg">×5 урон</div>
+        <span class="ship-status status-building">В ПОСТРОЙКЕ</span>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

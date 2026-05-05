@@ -221,6 +221,9 @@ export function t(fullKey: string, params?: Record<string, string | number>): st
 
   let result = raw && raw.trim() ? raw : fullKey;
 
+  // Unescape literal \n sequences stored in the DB
+  result = result.replace(/\\n/g, '\n');
+
   // Template substitution: replace {placeholder} with params
   if (params) {
     for (const [name, value] of Object.entries(params)) {

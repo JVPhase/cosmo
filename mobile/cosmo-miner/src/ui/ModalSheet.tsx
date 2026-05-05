@@ -13,30 +13,36 @@ type ModalSheetProps = {
   title: string;
   onClose: () => void;
   children: React.ReactNode;
+  topOffset?: number;
 };
 
-export function ModalSheet({ visible, title, onClose, children }: ModalSheetProps) {
+export function ModalSheet({ visible, title, onClose, children, topOffset = 0 }: ModalSheetProps) {
   return (
-    <Modal visible={visible} animationType="slide" transparent={false} onRequestClose={onClose}>
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.title}>{title}</Text>
-          <Pressable onPress={onClose} hitSlop={12}>
-            <Text style={styles.close}>✕</Text>
-          </Pressable>
-        </View>
-        <View style={styles.content}>
-          {children}
-        </View>
-      </SafeAreaView>
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <View style={[styles.backdrop, { marginTop: topOffset }]}>
+        <SafeAreaView edges={['bottom']} style={styles.container}>
+          <View style={styles.header}>
+            <Text style={styles.title}>{title}</Text>
+            <Pressable onPress={onClose} hitSlop={12}>
+              <Text style={styles.close}>✕</Text>
+            </Pressable>
+          </View>
+          <View style={styles.content}>
+            {children}
+          </View>
+        </SafeAreaView>
+      </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  backdrop: {
     flex: 1,
     backgroundColor: '#050918',
+  },
+  container: {
+    flex: 1,
   },
   header: {
     flexDirection: 'row',

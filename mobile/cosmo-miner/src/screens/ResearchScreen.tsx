@@ -244,85 +244,57 @@ export function ResearchScreen({
       (r) => getNodeState(r, playerLevel, energy, research) === 'available'
     );
 
-  const listHeader = (
-    <>
-      {/* Player level card */}
-      <View style={styles.levelCard}>
-        <View style={styles.levelRow}>
-          <Text style={styles.levelNum}>{t('ui.research.level_prefix', { level: String(playerLevel) })}</Text>
-          <Text style={styles.levelTitle}>{getPlayerTitle(playerLevel)}</Text>
-        </View>
-        <View style={styles.xpBarBg}>
-          <View
-            style={[styles.xpBarFill, { width: `${xpPercent * 100}%` }]}
-          />
-        </View>
-        <Text style={styles.xpLabel}>
-          {xpNext !== null
-            ? t('ui.research.xp_progress', { xpInLevel: formatNum(xpInLevel), xpNeeded: formatNum(xpNeeded!), next: String(playerLevel + 1) })
-            : t('ui.research.xp_max', { xp: formatNum(playerXP) })}
+  const branchTabs = (
+    <View style={styles.branchTabs}>
+      <Pressable
+        onPress={() => setBranch('mining')}
+        style={[styles.branchTab, branch === 'mining' ? styles.branchTabActive : null]}
+      >
+        <Text style={[styles.branchTabText, branch === 'mining' ? styles.branchTabTextActive : null]}>
+          {t('ui.research.branch_mining')}
         </Text>
-      </View>
-
-      {/* Branch tabs */}
-      <View style={styles.branchTabs}>
+        {branchHasAvailable('mining') && <View style={styles.branchTabBadge} />}
+      </Pressable>
+      {battleUnlocked && (
         <Pressable
-          onPress={() => setBranch('mining')}
-          style={[
-            styles.branchTab,
-            branch === 'mining' ? styles.branchTabActive : null
-          ]}
+          onPress={() => setBranch('battle')}
+          style={[styles.branchTab, branch === 'battle' ? styles.branchTabActive : null]}
         >
-          <Text
-            style={[
-              styles.branchTabText,
-              branch === 'mining' ? styles.branchTabTextActive : null
-            ]}
-          >
-            {t('ui.research.branch_mining')}
+          <Text style={[styles.branchTabText, branch === 'battle' ? styles.branchTabTextActive : null]}>
+            {t('ui.research.branch_battle')}
           </Text>
-          {branchHasAvailable('mining') && <View style={styles.branchTabBadge} />}
+          {branchHasAvailable('battle') && <View style={styles.branchTabBadge} />}
         </Pressable>
-        {battleUnlocked && (
-          <Pressable
-            onPress={() => setBranch('battle')}
-            style={[
-              styles.branchTab,
-              branch === 'battle' ? styles.branchTabActive : null
-            ]}
-          >
-            <Text
-              style={[
-                styles.branchTabText,
-                branch === 'battle' ? styles.branchTabTextActive : null
-              ]}
-            >
-              {t('ui.research.branch_battle')}
-            </Text>
-            {branchHasAvailable('battle') && <View style={styles.branchTabBadge} />}
-          </Pressable>
-        )}
-        {expeditionUnlocked && (
-          <Pressable
-            onPress={() => setBranch('expedition')}
-            style={[
-              styles.branchTab,
-              branch === 'expedition' ? styles.branchTabActive : null
-            ]}
-          >
-            <Text
-              style={[
-                styles.branchTabText,
-                branch === 'expedition' ? styles.branchTabTextActive : null
-              ]}
-            >
-              {t('ui.research.branch_expedition')}
-            </Text>
-            {branchHasAvailable('expedition') && <View style={styles.branchTabBadge} />}
-          </Pressable>
-        )}
+      )}
+      {expeditionUnlocked && (
+        <Pressable
+          onPress={() => setBranch('expedition')}
+          style={[styles.branchTab, branch === 'expedition' ? styles.branchTabActive : null]}
+        >
+          <Text style={[styles.branchTabText, branch === 'expedition' ? styles.branchTabTextActive : null]}>
+            {t('ui.research.branch_expedition')}
+          </Text>
+          {branchHasAvailable('expedition') && <View style={styles.branchTabBadge} />}
+        </Pressable>
+      )}
+    </View>
+  );
+
+  const listHeader = (
+    <View style={styles.levelCard}>
+      <View style={styles.levelRow}>
+        <Text style={styles.levelNum}>{t('ui.research.level_prefix', { level: String(playerLevel) })}</Text>
+        <Text style={styles.levelTitle}>{getPlayerTitle(playerLevel)}</Text>
       </View>
-    </>
+      <View style={styles.xpBarBg}>
+        <View style={[styles.xpBarFill, { width: `${xpPercent * 100}%` }]} />
+      </View>
+      <Text style={styles.xpLabel}>
+        {xpNext !== null
+          ? t('ui.research.xp_progress', { xpInLevel: formatNum(xpInLevel), xpNeeded: formatNum(xpNeeded!), next: String(playerLevel + 1) })
+          : t('ui.research.xp_max', { xp: formatNum(playerXP) })}
+      </Text>
+    </View>
   );
 
   const listFooter = (
@@ -333,6 +305,7 @@ export function ResearchScreen({
 
   return (
     <View style={styles.screen}>
+      {branchTabs}
       <FlatList
         data={nodes}
         keyExtractor={(node) => node.id}
@@ -415,30 +388,28 @@ const styles = StyleSheet.create({
   // Branch tabs
   branchTabs: {
     flexDirection: 'row',
-    gap: 8,
-    marginBottom: 14
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,212,255,0.1)',
+    backgroundColor: 'rgba(0,10,30,0.8)',
   },
   branchTab: {
     flex: 1,
     paddingVertical: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-    backgroundColor: 'rgba(255,255,255,0.02)',
-    alignItems: 'center'
+    alignItems: 'center',
+    position: 'relative',
   },
   branchTabActive: {
-    borderColor: 'rgba(0,212,255,0.4)',
-    backgroundColor: 'rgba(0,212,255,0.07)'
+    borderBottomWidth: 2,
+    borderBottomColor: '#00d4ff',
   },
   branchTabText: {
     fontSize: 10,
-    color: 'rgba(255,255,255,0.3)',
-    fontWeight: '900',
-    letterSpacing: 1
+    color: 'rgba(255,255,255,0.55)',
+    fontWeight: '800',
+    letterSpacing: 1,
   },
   branchTabTextActive: {
-    color: '#00d4ff'
+    color: '#00d4ff',
   },
   branchTabBadge: {
     position: 'absolute',

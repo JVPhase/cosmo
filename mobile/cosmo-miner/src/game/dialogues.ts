@@ -12,8 +12,6 @@ export type DialogueCharacter = {
   garbledMessage: string;
   messages: readonly string[];
   sectorCompleteMessages: readonly string[];
-  metalDealIntro: string;
-  metalDealOffer: string;
 };
 
 export type DialoguesPayload = {
