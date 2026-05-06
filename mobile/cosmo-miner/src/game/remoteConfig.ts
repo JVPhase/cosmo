@@ -4,7 +4,8 @@ import { invalidateAliensCache } from './ALIENS';
 
 const REMOTE_CONFIG_KEY = 'cosmo_remote_config_v1';
 
-const REMOTE_CONFIG_URL = process.env.EXPO_PUBLIC_CONFIG_URL ?? 'http://localhost:3000/config';
+const REMOTE_CONFIG_URL =
+  process.env.EXPO_PUBLIC_CONFIG_URL ?? 'http://localhost:3000/config';
 
 // ── Config types (mirrors DB seed shape) ────────────────────────────────────
 
@@ -90,7 +91,6 @@ export type ShopItemConfig = {
   loreKey: string;
   boostEffect?: { stat: string; multiplier: number; durationMs: number };
   metalReward?: { metalId: string; amount: number }[];
-  lootPool?: { metalId: string; min: number; max: number; chance: number }[];
 };
 
 export type ShopConfig = {
@@ -277,7 +277,8 @@ export async function fetchAndCacheRemoteConfig(): Promise<void> {
   clearTimeout(timeout);
   if (!res.ok) throw new Error(`Config fetch failed: ${res.status}`);
   const data: unknown = await res.json();
-  if (typeof data !== 'object' || data === null) throw new Error('Config response is not an object');
+  if (typeof data !== 'object' || data === null)
+    throw new Error('Config response is not an object');
   await AsyncStorage.setItem(REMOTE_CONFIG_KEY, JSON.stringify(data));
   _cachedConfig = data as RemoteGameConfig;
   invalidatePlanetsCache();

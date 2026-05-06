@@ -14,7 +14,13 @@
  * native errors in ways that confuse Fast Refresh.)
  */
 
+import Constants, { ExecutionEnvironment } from "expo-constants";
+import { Platform } from "react-native";
 import { IAP_PRODUCT_IDS, CREDIT_PACKS } from "../game/CREDIT_PACKS";
+
+const IAP_NATIVE_AVAILABLE =
+  Platform.OS !== "web" &&
+  Constants.executionEnvironment !== ExecutionEnvironment.StoreClient;
 
 export type IAPProduct = {
   productId: string;
@@ -35,6 +41,11 @@ let purchaseReject: ((reason: string) => void) | null = null;
 function loadIAPModule(): IAPModule | null {
   if (iapImportFailed) return null;
   if (iapModule) return iapModule;
+  if (!IAP_NATIVE_AVAILABLE) {
+    iapImportFailed = true;
+    console.warn("[IAP] Skipped: Expo Go / web has no native IAP module. Use a dev build.");
+    return null;
+  }
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     iapModule = require("expo-in-app-purchases") as IAPModule;

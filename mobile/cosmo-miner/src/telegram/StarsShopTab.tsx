@@ -11,7 +11,6 @@
  *   currency_pack       — credits_grant → state.credits += amount
  *   metal_pack          — metal_grant   → state.metals[metalId] += quantity
  *   booster             — booster_grant → state.activeBoosts += new boost
- *   loot_box            — loot_box_reward_grant → state.metals += rolledMetals
  *
  * Hidden from catalog until grant apply path exists:
  *   premium_unlock      — deliveryMode: 'unsupported'
@@ -62,7 +61,6 @@ export interface StarsPurchasedItem {
   type: string;
   metadata: Record<string, unknown>;
   purchaseId?: string;
-  /** Only set after server result is fetched (loot_box / premium_unlock) */
   purchaseResult?: StarsPurchaseResult;
 }
 
@@ -115,7 +113,9 @@ function grantPendingMessage(item: StarShopItem): string {
 
   switch (item.type) {
     case 'currency_pack':
-      return t('ui.shop.pending_credits', { amount: String(meta.creditAmount as number) });
+      return t('ui.shop.pending_credits', {
+        amount: String(meta.creditAmount as number),
+      });
 
     case 'metal_pack': {
       const icon = METAL_ICONS[meta.metalId as string] ?? '🔩';
@@ -129,11 +129,8 @@ function grantPendingMessage(item: StarShopItem): string {
     case 'booster':
       return t('ui.shop.pending_booster', { name: t('config.' + item.name) });
 
-    case 'loot_box':
-      return t('ui.shop.pending_lootbox', { name: t('config.' + item.name) });
-
     default:
-      return t('ui.shop.pending_lootbox', { name: t('config.' + item.name) });
+      return t('ui.shop.pending_booster', { name: t('config.' + item.name) });
   }
 }
 
@@ -142,7 +139,9 @@ function grantAppliedMessage(item: StarShopItem): string {
 
   switch (item.type) {
     case 'currency_pack':
-      return t('ui.shop.stars_applied_credits', { amount: String(meta.creditAmount as number) });
+      return t('ui.shop.stars_applied_credits', {
+        amount: String(meta.creditAmount as number),
+      });
 
     case 'metal_pack': {
       const icon = METAL_ICONS[meta.metalId as string] ?? '🔩';
@@ -154,13 +153,14 @@ function grantAppliedMessage(item: StarShopItem): string {
     }
 
     case 'booster':
-      return t('ui.shop.stars_applied_booster', { name: t('config.' + item.name) });
-
-    case 'loot_box':
-      return t('ui.shop.stars_applied_lootbox', { name: t('config.' + item.name) });
+      return t('ui.shop.stars_applied_booster', {
+        name: t('config.' + item.name),
+      });
 
     default:
-      return t('ui.shop.stars_applied_lootbox', { name: t('config.' + item.name) });
+      return t('ui.shop.stars_applied_booster', {
+        name: t('config.' + item.name),
+      });
   }
 }
 
@@ -176,7 +176,9 @@ export function StarsShopTab({ onPurchaseApplied }: StarsShopTabProps) {
   function loadCatalog() {
     setLoading(true);
     setError(null);
-    apiFetch<{ items: Array<StarShopItem & { priceStars: number | null }> }>('/telegram/shop')
+    apiFetch<{ items: Array<StarShopItem & { priceStars: number | null }> }>(
+      '/telegram/shop',
+    )
       .then((res) =>
         setItems(
           // Server already filters by deliveryMode: 'grant_sync'.
@@ -184,12 +186,15 @@ export function StarsShopTab({ onPurchaseApplied }: StarsShopTabProps) {
           res.items.filter(
             (i) =>
               i.priceStars !== null &&
-              (i.metadata as Record<string, unknown>)?.deliveryMode === GRANT_SYNC_DELIVERY_MODE,
+              (i.metadata as Record<string, unknown>)?.deliveryMode ===
+                GRANT_SYNC_DELIVERY_MODE,
           ) as StarShopItem[],
         ),
       )
       .catch((err: unknown) =>
-        setError(err instanceof Error ? err.message : t('ui.shop.stars_catalog_error')),
+        setError(
+          err instanceof Error ? err.message : t('ui.shop.stars_catalog_error'),
+        ),
       )
       .finally(() => setLoading(false));
   }
@@ -211,10 +216,13 @@ export function StarsShopTab({ onPurchaseApplied }: StarsShopTabProps) {
     setBuying(item.id);
     let purchaseId: string | undefined;
     try {
-      const invoice = await apiFetch<{ invoiceUrl: string; purchaseId: string }>(
-        '/telegram/shop/invoice',
-        { method: 'POST', body: JSON.stringify({ shopItemId: item.id }) },
-      );
+      const invoice = await apiFetch<{
+        invoiceUrl: string;
+        purchaseId: string;
+      }>('/telegram/shop/invoice', {
+        method: 'POST',
+        body: JSON.stringify({ shopItemId: item.id }),
+      });
       purchaseId = invoice.purchaseId;
 
       tg.openInvoice(invoice.invoiceUrl, async (status) => {
@@ -235,13 +243,22 @@ export function StarsShopTab({ onPurchaseApplied }: StarsShopTabProps) {
               purchaseId,
             });
             if (appliedImmediately) {
-              Alert.alert(t('ui.shop.stars_purchase_complete_title'), grantAppliedMessage(item));
+              Alert.alert(
+                t('ui.shop.stars_purchase_complete_title'),
+                grantAppliedMessage(item),
+              );
               return;
             }
 
-            Alert.alert(t('ui.shop.stars_purchase_pending_title'), grantPendingMessage(item));
+            Alert.alert(
+              t('ui.shop.stars_purchase_pending_title'),
+              grantPendingMessage(item),
+            );
           } else if (status !== 'cancelled') {
-            Alert.alert(t('ui.shop.stars_payment_error_title'), t('ui.shop.stars_payment_error_text', { status }));
+            Alert.alert(
+              t('ui.shop.stars_payment_error_title'),
+              t('ui.shop.stars_payment_error_text', { status }),
+            );
           }
         } catch (err: unknown) {
           console.error('[StarsShopTab] openInvoice callback error', err);
@@ -250,7 +267,12 @@ export function StarsShopTab({ onPurchaseApplied }: StarsShopTabProps) {
         }
       });
     } catch (err: unknown) {
-      Alert.alert(t('ui.shop.stars_invoice_error_title'), err instanceof Error ? err.message : t('ui.shop.stars_invoice_error_text'));
+      Alert.alert(
+        t('ui.shop.stars_invoice_error_title'),
+        err instanceof Error
+          ? err.message
+          : t('ui.shop.stars_invoice_error_text'),
+      );
       setBuying(null);
     }
   }
@@ -290,8 +312,12 @@ export function StarsShopTab({ onPurchaseApplied }: StarsShopTabProps) {
       ListHeaderComponent={
         telegramTestMode ? (
           <View style={styles.testModeBanner}>
-            <Text style={styles.testModeTitle}>{t('ui.shop.stars_test_mode_title')}</Text>
-            <Text style={styles.testModeText}>{t('ui.shop.stars_test_mode_text')}</Text>
+            <Text style={styles.testModeTitle}>
+              {t('ui.shop.stars_test_mode_title')}
+            </Text>
+            <Text style={styles.testModeText}>
+              {t('ui.shop.stars_test_mode_text')}
+            </Text>
           </View>
         ) : null
       }
@@ -301,7 +327,9 @@ export function StarsShopTab({ onPurchaseApplied }: StarsShopTabProps) {
           <View style={styles.card}>
             <View style={styles.cardBody}>
               <Text style={styles.cardName}>{t('config.' + item.name)}</Text>
-              <Text style={styles.cardDesc}>{t('config.' + item.description)}</Text>
+              <Text style={styles.cardDesc}>
+                {t('config.' + item.description)}
+              </Text>
             </View>
             <Pressable
               style={[styles.buyBtn, !!buying && styles.buyBtnDisabled]}
@@ -322,7 +350,12 @@ export function StarsShopTab({ onPurchaseApplied }: StarsShopTabProps) {
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
+  center: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+  },
   errorText: {
     color: 'rgba(255,100,100,0.8)',
     fontSize: 13,

@@ -41,7 +41,13 @@ function makeGrant(
   seq: number,
   kind: string,
   payload: Record<string, unknown>,
-): { id: string; seq: number; kind: string; payload: Record<string, unknown>; createdAt: string } {
+): {
+  id: string;
+  seq: number;
+  kind: string;
+  payload: Record<string, unknown>;
+  createdAt: string;
+} {
   return {
     id: `test_grant_${seq}`,
     seq,
@@ -116,13 +122,21 @@ describe('applyGrants: metal_grant', () => {
 
   it('does not re-add to discoveredMetals if already present', () => {
     const { state } = applyGrants(
-      { ...BASE_STATE, metals: { titan: 5 }, discoveredMetals: ['titan'] } as never,
+      {
+        ...BASE_STATE,
+        metals: { titan: 5 },
+        discoveredMetals: ['titan'],
+      } as never,
       [makeGrant(1, 'metal_grant', { metalId: 'titan', quantity: 5 }) as never],
       0,
     );
     const s = state as TestState;
     const titanCount = s.discoveredMetals!.filter((m) => m === 'titan').length;
-    assert.equal(titanCount, 1, 'titan must appear exactly once in discoveredMetals');
+    assert.equal(
+      titanCount,
+      1,
+      'titan must appear exactly once in discoveredMetals',
+    );
   });
 });
 
@@ -159,38 +173,18 @@ describe('applyGrants: booster_grant', () => {
       durationMs: 3_600_000,
     });
 
-    const after1 = applyGrants({ ...BASE_STATE } as never, [grant as never], 0).state;
+    const after1 = applyGrants(
+      { ...BASE_STATE } as never,
+      [grant as never],
+      0,
+    ).state;
     // Replay the same grant — must be idempotent
     const after2 = applyGrants(after1 as never, [grant as never], 3).state;
-    assert.equal((after2 as TestState).activeBoosts!.length, 1, 'Duplicate boost must be deduplicated');
-  });
-});
-
-// ── loot_box_reward_grant ─────────────────────────────────────────────────────
-
-describe('applyGrants: loot_box_reward_grant', () => {
-  it('adds all rolledMetals to metals and discoveredMetals', () => {
-    const rolledMetals = { iron: 25, titan: 8 };
-    const { state } = applyGrants(
-      { ...BASE_STATE } as never,
-      [makeGrant(1, 'loot_box_reward_grant', { rolledMetals }) as never],
-      0,
+    assert.equal(
+      (after2 as TestState).activeBoosts!.length,
+      1,
+      'Duplicate boost must be deduplicated',
     );
-    const s = state as TestState;
-    assert.equal(s.metals!['iron'], 25);
-    assert.equal(s.metals!['titan'], 8);
-    assert.ok(s.discoveredMetals!.includes('iron'));
-    assert.ok(s.discoveredMetals!.includes('titan'));
-  });
-
-  it('ignores rolledMetals entries with qty <= 0', () => {
-    const { state } = applyGrants(
-      { ...BASE_STATE } as never,
-      [makeGrant(1, 'loot_box_reward_grant', { rolledMetals: { iron: 0, titan: -1 } }) as never],
-      0,
-    );
-    const s = state as TestState;
-    assert.equal((s.metals!['iron'] ?? 0), 0);
   });
 });
 
@@ -203,7 +197,11 @@ describe('applyGrants: seq ordering', () => {
       [makeGrant(5, 'credits_grant', { amount: 100 }) as never],
       5, // already applied up to seq 5 → this grant must be skipped
     );
-    assert.equal((state as TestState).credits, 0, 'Grant with seq <= appliedSeq must be skipped');
+    assert.equal(
+      (state as TestState).credits,
+      0,
+      'Grant with seq <= appliedSeq must be skipped',
+    );
     assert.equal(appliedGrantSeq, 5);
   });
 
@@ -220,6 +218,10 @@ describe('applyGrants: seq ordering', () => {
       [makeGrant(1, 'unknown_future_grant_kind', { foo: 'bar' }) as never],
       0,
     );
-    assert.equal((state as TestState).credits, 10, 'Unknown grant kind must leave state unchanged');
+    assert.equal(
+      (state as TestState).credits,
+      10,
+      'Unknown grant kind must leave state unchanged',
+    );
   });
 });

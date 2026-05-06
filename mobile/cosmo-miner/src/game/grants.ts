@@ -8,7 +8,6 @@
  *   credits_grant         — { amount: number }
  *   metal_grant           — { metalId: string, quantity: number }
  *   booster_grant         — { shopItemId, effectType, multiplier?, bonus?, durationMs }
- *   loot_box_reward_grant — { rolledMetals: Record<string, number> }
  *
  * Bootstrap flow (called from App.tsx):
  *   1. load local + cloud save, pick newer
@@ -60,14 +59,22 @@ export function applyGrants(
       lastSeq = grant.seq;
     } catch (err) {
       // Log and skip — do not halt on a malformed grant
-      console.warn('[grants] failed to apply grant', grant.seq, grant.kind, err);
+      console.warn(
+        '[grants] failed to apply grant',
+        grant.seq,
+        grant.kind,
+        err,
+      );
     }
   }
 
   return { state: next, appliedGrantSeq: lastSeq };
 }
 
-function applySingleGrant(state: GameStateInit, grant: GrantDto): GameStateInit {
+function applySingleGrant(
+  state: GameStateInit,
+  grant: GrantDto,
+): GameStateInit {
   const payload = grant.payload;
 
   switch (grant.kind) {
@@ -80,13 +87,17 @@ function applySingleGrant(state: GameStateInit, grant: GrantDto): GameStateInit 
     case 'metal_grant': {
       const metalId = payload.metalId as string;
       const quantity = payload.quantity as number;
-      if (!metalId || typeof quantity !== 'number' || quantity <= 0) return state;
+      if (!metalId || typeof quantity !== 'number' || quantity <= 0)
+        return state;
 
       const metals = { ...(state.metals ?? {}) };
       metals[metalId as keyof typeof metals] =
-        ((metals[metalId as keyof typeof metals] as number | undefined) ?? 0) + quantity;
+        ((metals[metalId as keyof typeof metals] as number | undefined) ?? 0) +
+        quantity;
 
-      const discoveredMetals = state.discoveredMetals ? [...state.discoveredMetals] : [];
+      const discoveredMetals = state.discoveredMetals
+        ? [...state.discoveredMetals]
+        : [];
       if (!discoveredMetals.includes(metalId as any)) {
         discoveredMetals.push(metalId as any);
       }
@@ -110,8 +121,12 @@ function applySingleGrant(state: GameStateInit, grant: GrantDto): GameStateInit 
         shopItemId: shopItemId as any,
         effect: {
           type: effectType as any,
-          ...(payload.multiplier !== undefined ? { multiplier: payload.multiplier as number } : {}),
-          ...(payload.bonus !== undefined ? { bonus: payload.bonus as number } : {}),
+          ...(payload.multiplier !== undefined
+            ? { multiplier: payload.multiplier as number }
+            : {}),
+          ...(payload.bonus !== undefined
+            ? { bonus: payload.bonus as number }
+            : {}),
         } as any,
         expiresAt,
       };
@@ -123,26 +138,6 @@ function applySingleGrant(state: GameStateInit, grant: GrantDto): GameStateInit 
       }
 
       return { ...state, activeBoosts };
-    }
-
-    case 'loot_box_reward_grant': {
-      const rolledMetals = payload.rolledMetals as Record<string, number> | undefined;
-      if (!rolledMetals) return state;
-
-      const metals = { ...(state.metals ?? {}) };
-      const discoveredMetals = state.discoveredMetals ? [...state.discoveredMetals] : [];
-
-      for (const [metalId, qty] of Object.entries(rolledMetals)) {
-        if (typeof qty === 'number' && qty > 0) {
-          metals[metalId as keyof typeof metals] =
-            ((metals[metalId as keyof typeof metals] as number | undefined) ?? 0) + qty;
-          if (!discoveredMetals.includes(metalId as any)) {
-            discoveredMetals.push(metalId as any);
-          }
-        }
-      }
-
-      return { ...state, metals, discoveredMetals };
     }
 
     default:

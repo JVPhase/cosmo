@@ -7,7 +7,6 @@
  *   1. currency_pack purchase creates a credits_grant with { amount: number }.
  *   2. booster purchase creates a booster_grant with deterministic payload.
  *   3. metal_pack purchase creates a metal_grant with { metalId, quantity }.
- *   4. loot_box purchase creates a loot_box_reward_grant with { rolledMetals }.
  *   5. Idempotency: calling fulfillPurchase twice for the same purchaseId returns
  *      alreadyFulfilled=true and creates no second grant.
  *   6. GameplaySave / UserSave is NOT mutated by the server during fulfillment.
@@ -50,11 +49,6 @@ const TEST_ITEMS = {
       deliveryMode: 'grant_sync',
     },
   },
-  lootBasic: {
-    id: 'test_contract_loot_basic',
-    type: 'loot_box',
-    metadata: { tier: 'basic', deliveryMode: 'grant_sync' },
-  },
 } as const;
 
 // ── Suite ─────────────────────────────────────────────────────────────────────
@@ -96,8 +90,14 @@ describe('Contract: purchase fulfillment', () => {
     const purchase = await createTestPurchase(userId, TEST_ITEMS.credits100.id);
     const result = await fulfillPurchase(purchase.id);
 
-    assert.ok(result.ok, `fulfillPurchase failed: ${(result as { reason: string }).reason}`);
-    assert.equal((result as { alreadyFulfilled: boolean }).alreadyFulfilled, false);
+    assert.ok(
+      result.ok,
+      `fulfillPurchase failed: ${(result as { reason: string }).reason}`,
+    );
+    assert.equal(
+      (result as { alreadyFulfilled: boolean }).alreadyFulfilled,
+      false,
+    );
 
     const grant = await db.grant.findFirst({
       where: { userId, purchaseId: purchase.id },
@@ -106,14 +106,21 @@ describe('Contract: purchase fulfillment', () => {
     assert.equal(grant!.kind, 'credits_grant');
 
     const payload = grant!.payload as Record<string, unknown>;
-    assert.equal(typeof payload.amount, 'number', 'credits_grant payload.amount must be number');
+    assert.equal(
+      typeof payload.amount,
+      'number',
+      'credits_grant payload.amount must be number',
+    );
     assert.equal(payload.amount, 100);
   });
 
   // ── 2. booster → booster_grant ───────────────────────────────────────────
 
   it('booster: creates booster_grant with deterministic payload', async () => {
-    const purchase = await createTestPurchase(userId, TEST_ITEMS.boosterMining.id);
+    const purchase = await createTestPurchase(
+      userId,
+      TEST_ITEMS.boosterMining.id,
+    );
     const result = await fulfillPurchase(purchase.id);
 
     assert.ok(result.ok);
@@ -165,37 +172,6 @@ describe('Contract: purchase fulfillment', () => {
     assert.equal(payload.quantity, 50);
   });
 
-  // ── 4. loot_box → loot_box_reward_grant ──────────────────────────────────
-
-  it('loot_box: creates loot_box_reward_grant with { rolledMetals: object }', async () => {
-    const purchase = await createTestPurchase(userId, TEST_ITEMS.lootBasic.id);
-    const result = await fulfillPurchase(purchase.id);
-
-    assert.ok(result.ok);
-
-    const grant = await db.grant.findFirst({
-      where: { userId, purchaseId: purchase.id },
-    });
-    assert.ok(grant, 'Grant was not created');
-    assert.equal(grant!.kind, 'loot_box_reward_grant');
-
-    const payload = grant!.payload as Record<string, unknown>;
-    assert.ok(
-      typeof payload.rolledMetals === 'object' && payload.rolledMetals !== null,
-      'loot_box_reward_grant must have rolledMetals object',
-    );
-    // Each entry must be a positive number
-    const rolledMetals = payload.rolledMetals as Record<string, unknown>;
-    for (const [metalId, qty] of Object.entries(rolledMetals)) {
-      assert.equal(typeof qty, 'number', `rolledMetals["${metalId}"] must be a number`);
-      assert.ok((qty as number) > 0, `rolledMetals["${metalId}"] must be positive`);
-    }
-    assert.ok(
-      Object.keys(rolledMetals).length > 0,
-      'loot_box_reward_grant must roll at least one metal',
-    );
-  });
-
   // ── 5. Idempotency ────────────────────────────────────────────────────────
 
   it('idempotency: second fulfillPurchase returns alreadyFulfilled=true, no duplicate grant', async () => {
@@ -214,17 +190,28 @@ describe('Contract: purchase fulfillment', () => {
     );
 
     // Only one grant should exist for this purchase
-    const grants = await db.grant.findMany({ where: { purchaseId: purchase.id } });
-    assert.equal(grants.length, 1, 'Idempotent fulfillment must not create a second grant');
+    const grants = await db.grant.findMany({
+      where: { purchaseId: purchase.id },
+    });
+    assert.equal(
+      grants.length,
+      1,
+      'Idempotent fulfillment must not create a second grant',
+    );
   });
 
   it('idempotency: purchase status is "completed" after fulfillment, not "pending"', async () => {
     const purchase = await createTestPurchase(userId, TEST_ITEMS.metalIron.id);
     await fulfillPurchase(purchase.id);
 
-    const updated = await db.purchase.findUnique({ where: { id: purchase.id } });
+    const updated = await db.purchase.findUnique({
+      where: { id: purchase.id },
+    });
     assert.equal(updated!.status, 'completed');
-    assert.ok(updated!.fulfilledAt !== null, 'fulfilledAt should be set after fulfillment');
+    assert.ok(
+      updated!.fulfilledAt !== null,
+      'fulfilledAt should be set after fulfillment',
+    );
   });
 
   it('uses shop item snapshot from purchase metadata when the catalog item changes later', async () => {

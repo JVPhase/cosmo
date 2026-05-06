@@ -32,13 +32,14 @@ import {
   type ModuleId,
 } from './MODULES';
 import { getResearchNodes, type ResearchId } from './RESEARCH';
-import { getShips, createDefaultCannons, getShipById, type ShipId } from './SHIPS';
-import { computeStats } from './computeStats';
 import {
-  computeUpgradeCost,
-  getUpgradeById,
-  type UpgradeId,
-} from './UPGRADES';
+  getShips,
+  createDefaultCannons,
+  getShipById,
+  type ShipId,
+} from './SHIPS';
+import { computeStats } from './computeStats';
+import { computeUpgradeCost, getUpgradeById, type UpgradeId } from './UPGRADES';
 import type { ActiveBoost, GameState, TabsUnlockedState } from './types';
 import {
   applyPrestigeReset,
@@ -49,7 +50,6 @@ import {
   getShopItemById,
   getConversionRate,
   getConverterCreditCost,
-  rollLootBox,
   type ShopItemId,
 } from './SHOP';
 import {
@@ -103,7 +103,7 @@ export function useGameActions({
           ? rollMetalDrops(
               prev.selectedPlanetId,
               derived.metalDropBonus,
-              derived.planetBonus
+              derived.planetBonus,
             )
           : createDefaultMetalsState();
       const newMetals = addMetals(prev.metals, metalDrop);
@@ -150,22 +150,19 @@ export function useGameActions({
   }, []);
 
   /** Grant metals directly (called after a Telegram Stars metal_pack purchase). */
-  const grantMetals = useCallback(
-    (patch: Partial<Record<MetalId, number>>) => {
-      const full = { ...createDefaultMetalsState(), ...patch };
-      setState((prev) => ({
-        ...prev,
-        metals: addMetals(prev.metals, full),
-        discoveredMetals: Array.from(
-          new Set([
-            ...prev.discoveredMetals,
-            ...(Object.keys(patch) as MetalId[]),
-          ])
-        ),
-      }));
-    },
-    []
-  );
+  const grantMetals = useCallback((patch: Partial<Record<MetalId, number>>) => {
+    const full = { ...createDefaultMetalsState(), ...patch };
+    setState((prev) => ({
+      ...prev,
+      metals: addMetals(prev.metals, full),
+      discoveredMetals: Array.from(
+        new Set([
+          ...prev.discoveredMetals,
+          ...(Object.keys(patch) as MetalId[]),
+        ]),
+      ),
+    }));
+  }, []);
 
   /** Activate a booster directly (called after a Telegram Stars booster purchase). */
   const activateBoost = useCallback(
@@ -178,7 +175,7 @@ export function useGameActions({
         ],
       }));
     },
-    []
+    [],
   );
 
   /**
@@ -190,7 +187,7 @@ export function useGameActions({
     setState((prev) => ({
       ...prev,
       unlockedPlanetIds: Array.from(
-        new Set([...prev.unlockedPlanetIds, ...(planetIds as PlanetId[])])
+        new Set([...prev.unlockedPlanetIds, ...(planetIds as PlanetId[])]),
       ),
       tabsUnlocked: { ...prev.tabsUnlocked, planets: true },
     }));
@@ -212,7 +209,6 @@ export function useGameActions({
   /**
    * Purchase a shop item with credits.
    * For the converter, pass `convertFrom` and `convertTo` + `convertAmount`.
-   * For loot boxes, pass `onLootResult` to receive the rolled rewards.
    */
   const buyShopItem = useCallback(
     (
@@ -221,16 +217,11 @@ export function useGameActions({
         convertFrom?: string;
         convertTo?: string;
         convertAmount?: number;
-        onLootResult?: (
-          drops: Partial<Record<import('./METALS').MetalId, number>>
-        ) => void;
-      }
+      },
     ) => {
       logEvent('buy_shop_item', { id });
 
       const item = getShopItemById(id);
-      // Pre-roll loot outside setState so the callback can be called after
-      const preRolledDrops = item.lootPool ? rollLootBox(item.lootPool) : null;
 
       setState((prev) => {
         if (id === 'converter') {
@@ -289,31 +280,10 @@ export function useGameActions({
           };
         }
 
-        // Loot box
-        if (preRolledDrops) {
-          const newMetals = { ...prev.metals };
-          const discovered = new Set(prev.discoveredMetals);
-          for (const [metalId, amount] of Object.entries(preRolledDrops) as [
-            import('./METALS').MetalId,
-            number,
-          ][]) {
-            newMetals[metalId] = (newMetals[metalId] ?? 0) + amount;
-            if (amount > 0) discovered.add(metalId);
-          }
-          return {
-            ...prev,
-            credits: prev.credits - item.creditCost,
-            metals: newMetals,
-            discoveredMetals: Array.from(discovered),
-          };
-        }
-
         return prev;
       });
-
-      if (preRolledDrops) opts?.onLootResult?.(preRolledDrops);
     },
-    []
+    [],
   );
 
   const buyUpgrade = useCallback(
@@ -342,7 +312,7 @@ export function useGameActions({
         };
       });
     },
-    [showClerk]
+    [showClerk],
   );
 
   const buyResearch = useCallback((id: ResearchId) => {
@@ -384,7 +354,7 @@ export function useGameActions({
           ownedShips: prev.fleet.ownedShips.map((s) =>
             s.shipId === shipId
               ? { ...s, cannons: { ...s.cannons, [cannonId]: level + 1 } }
-              : s
+              : s,
           ),
         },
       };
@@ -436,7 +406,7 @@ export function useGameActions({
         fleet: {
           ...prev.fleet,
           ownedShips: prev.fleet.ownedShips.map((s) =>
-            s.shipId === shipId ? { ...s, broken: false } : s
+            s.shipId === shipId ? { ...s, broken: false } : s,
           ),
         },
       };
@@ -467,7 +437,7 @@ export function useGameActions({
         if (prev.expeditions.some((e) => e.shipId === selectedShipId))
           return prev;
         const ownedShip = prev.fleet.ownedShips.find(
-          (s) => s.shipId === selectedShipId
+          (s) => s.shipId === selectedShipId,
         );
         if (!ownedShip || ownedShip.broken) return prev;
         if (prev.energy < alien.attackEnergyCost) return prev;
@@ -486,7 +456,7 @@ export function useGameActions({
         };
       });
     },
-    [derived.battleTimerMs]
+    [derived.battleTimerMs],
   );
 
   const attackBattle = useCallback(
@@ -497,13 +467,13 @@ export function useGameActions({
         const damage = Math.floor(
           computeBaseShipDamage(prev.fleet) *
             derived.damageResearchMultiplier *
-            multiplier
+            multiplier,
         );
         if (damage <= 0) return prev;
         const newHP = Math.max(0, prev.battle.currentHP - damage);
         if (newHP === 0) {
           const alien = getAliens().find(
-            (a) => a.planetId === prev.battle!.planetId
+            (a) => a.planetId === prev.battle!.planetId,
           );
           const msRemaining = prev.battle.expiresAt - Date.now();
           const timerPct =
@@ -550,7 +520,7 @@ export function useGameActions({
         return { ...prev, battle: { ...prev.battle, currentHP: newHP } };
       });
     },
-    [derived.damageResearchMultiplier]
+    [derived.damageResearchMultiplier],
   );
 
   const notifyUltActivated = useCallback(() => {
@@ -578,7 +548,7 @@ export function useGameActions({
         if (prev.battle) return prev;
         if (prev.expeditions.some((e) => e.shipId === shipId)) return prev;
         const ownedShip = prev.fleet.ownedShips.find(
-          (s) => s.shipId === shipId
+          (s) => s.shipId === shipId,
         );
         if (!ownedShip || ownedShip.broken) return prev;
         const def = getExpeditions().find((e) => e.id === expeditionId);
@@ -602,7 +572,7 @@ export function useGameActions({
         };
       });
     },
-    []
+    [],
   );
 
   const reflectBattle = useCallback((penaltyMs: number = 1000) => {
@@ -618,7 +588,7 @@ export function useGameActions({
           fleet: {
             ...prev.fleet,
             ownedShips: prev.fleet.ownedShips.map((s) =>
-              s.shipId === shipId ? { ...s, broken: true } : s
+              s.shipId === shipId ? { ...s, broken: true } : s,
             ),
           },
         };
@@ -636,14 +606,11 @@ export function useGameActions({
           mode === 'flatHp'
             ? Math.max(0, Math.floor(amount))
             : Math.floor(prev.battle.maxHP * amount);
-        const newHP = Math.min(
-          prev.battle.currentHP + heal,
-          prev.battle.maxHP
-        );
+        const newHP = Math.min(prev.battle.currentHP + heal, prev.battle.maxHP);
         return { ...prev, battle: { ...prev.battle, currentHP: newHP } };
       });
     },
-    []
+    [],
   );
 
   const forfeitBattle = useCallback(() => {
@@ -657,7 +624,7 @@ export function useGameActions({
         fleet: {
           ...prev.fleet,
           ownedShips: prev.fleet.ownedShips.map((s) =>
-            s.shipId === shipId ? { ...s, broken: true } : s
+            s.shipId === shipId ? { ...s, broken: true } : s,
           ),
         },
       };
@@ -703,13 +670,13 @@ export function useGameActions({
           fleet: {
             ...prev.fleet,
             ownedShips: prev.fleet.ownedShips.map((s) =>
-              s.shipId === shipId ? { ...s, equippedModuleId: moduleId } : s
+              s.shipId === shipId ? { ...s, equippedModuleId: moduleId } : s,
             ),
           },
         };
       });
     },
-    []
+    [],
   );
 
   const chooseCharacter = useCallback(
@@ -727,7 +694,13 @@ export function useGameActions({
       }
       setCharacterFlowStep(null);
     },
-    [dialogues, appendHistory, setCharacterMessage, setCharacterDialogueQueue, setCharacterFlowStep]
+    [
+      dialogues,
+      appendHistory,
+      setCharacterMessage,
+      setCharacterDialogueQueue,
+      setCharacterFlowStep,
+    ],
   );
 
   const advanceCharacterFlow = useCallback(() => {
@@ -755,7 +728,7 @@ export function useGameActions({
       if (!exp || Date.now() < exp.completesAt) return prev;
       const def = getExpeditionById(exp.expeditionId);
       const sector2Unlocked = getPlanetIdsForSector(1).every((id) =>
-        prev.unlockedPlanetIds.includes(id)
+        prev.unlockedPlanetIds.includes(id),
       );
       const metalMultiplier = sector2Unlocked ? 5 : 1;
       const timely = Date.now() - exp.completesAt <= TIMELY_CLAIM_WINDOW_MS;
@@ -791,13 +764,17 @@ export function useGameActions({
     const reason = getPrestigeBlockedReason(
       level,
       !!state.battle,
-      state.expeditions.length > 0
+      state.expeditions.length > 0,
     );
     if (reason !== null) return;
 
     setState((prev) => {
       const lvl = computePlayerLevel(prev.playerXP);
-      const blocked = getPrestigeBlockedReason(lvl, !!prev.battle, prev.expeditions.length > 0);
+      const blocked = getPrestigeBlockedReason(
+        lvl,
+        !!prev.battle,
+        prev.expeditions.length > 0,
+      );
       if (blocked !== null) return prev;
       return applyPrestigeReset(prev, defaultState);
     });
@@ -808,9 +785,12 @@ export function useGameActions({
       playerLevel: level,
       prestigeCountBefore: state.prestige.count,
       prestigeCountAfter: state.prestige.count + 1,
-      energyBonusAfter: computePrestigeState(state.prestige.count + 1).energyBonus,
-      metalBonusAfter: computePrestigeState(state.prestige.count + 1).metalDropBonus,
-      attackBonusAfter: computePrestigeState(state.prestige.count + 1).attackBonus,
+      energyBonusAfter: computePrestigeState(state.prestige.count + 1)
+        .energyBonus,
+      metalBonusAfter: computePrestigeState(state.prestige.count + 1)
+        .metalDropBonus,
+      attackBonusAfter: computePrestigeState(state.prestige.count + 1)
+        .attackBonus,
     });
   }, [
     state.playerXP,
@@ -850,7 +830,7 @@ export function useGameActions({
           : {}),
       }));
     },
-    []
+    [],
   );
 
   return {
@@ -888,4 +868,3 @@ export function useGameActions({
     debugSetValues,
   };
 }
-

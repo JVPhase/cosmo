@@ -316,6 +316,7 @@ export default function App() {
               tab={tab}
               onSetTab={setTab}
               onReset={handleReset}
+              onChangeLocale={handleLocalePick}
             />
           </GameAppErrorBoundary>
           <IntroOverlay

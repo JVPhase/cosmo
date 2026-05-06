@@ -12,6 +12,7 @@ import { FloatingActionButtons } from '../ui/FloatingActionButtons';
 import { GameHeader } from '../ui/GameHeader';
 import { LevelUpToast } from '../ui/LevelUpToast';
 import { MiningArea, type MetalFloat, type TapState } from '../ui/MiningArea';
+import type { SupportedLocale } from '../ui/LocalePickerOverlay';
 
 export type GameScreenProps = {
   energy: number;
@@ -52,6 +53,7 @@ export type GameScreenProps = {
   chosenCharacter: { id: string; name: string; icon: string } | null;
   onOpenCharacterChannel: () => void;
   characterChannelUnlocked: boolean;
+  onChangeLocale: (locale: SupportedLocale) => Promise<void> | void;
 };
 
 export function GameScreen({
@@ -88,6 +90,7 @@ export function GameScreen({
   chosenCharacter,
   onOpenCharacterChannel,
   characterChannelUnlocked,
+  onChangeLocale,
 }: GameScreenProps) {
   const METALS = getMetals();
   const [tapState, setTapState] = useState<TapState>({ count: 0 });
@@ -169,15 +172,13 @@ export function GameScreen({
     const spacing = 54;
     const newFloats: MetalFloat[] = deltas.map((d, i) => {
       const offsetX = (i - (deltas.length - 1) / 2) * spacing;
-      const translateY = new Animated.Value(-85);
-      const opacity = new Animated.Value(1);
-
-      Animated.parallel([
-        Animated.timing(translateY, { toValue: -175, duration: 1000, useNativeDriver: true }),
-        Animated.timing(opacity, { toValue: 0, duration: 1000, useNativeDriver: true }),
-      ]).start();
-
-      return { id: ++metalFloatIdRef.current, born: now, metalId: d.metalId, amount: d.amount, offsetX, translateY, opacity };
+      return {
+        id: ++metalFloatIdRef.current,
+        born: now,
+        metalId: d.metalId,
+        amount: d.amount,
+        offsetX,
+      };
     });
 
     setMetalFloats((prev) => [...prev, ...newFloats].slice(-6));
@@ -212,6 +213,7 @@ export function GameScreen({
         onOpenAchievements={onOpenAchievements}
         onOpenStoryLog={onOpenStoryLog}
         hasNewStoryEntry={hasNewStoryEntry}
+        onChangeLocale={onChangeLocale}
       />
 
       <CharacterChannelButton

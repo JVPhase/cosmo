@@ -11,7 +11,7 @@ Telegram Mini App is now unified into `mobile/cosmo-miner`. The separate `telegr
 **Telegram adapter layer (all in `mobile/cosmo-miner/src/telegram/`):**
 - `runtime.ts` — `isTelegramRuntime()`, `getTelegramWebApp()`, `bootstrapTelegram()` (Platform-guarded, no-op on native)
 - `auth.ts` — `telegramAuthIfNeeded()`: POST /telegram/auth with initData → storeTokens(), runs before cloud sync in App.tsx init
-- `StarsShopTab.tsx` — Stars shop tab shown only in Telegram runtime; supports `currency_pack`, `metal_pack`, `booster` SKUs (loot_box and premium_unlock excluded — no client application path); has 401→token-refresh retry wrapper; `onPurchaseApplied` callback updates live game state immediately after payment
+- `StarsShopTab.tsx` — Stars shop tab shown only in Telegram runtime; supports `currency_pack`, `metal_pack`, `booster`; has 401→token-refresh retry wrapper; `onPurchaseApplied` callback updates live game state immediately after payment
 
 **Game state mutations added to useGame.ts:**
 - `grantMetals(patch)` — adds metals without credit cost (for Stars metal_pack)

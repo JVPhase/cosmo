@@ -1,32 +1,19 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
-import { Canvas, Circle } from "@shopify/react-native-skia";
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
+import Svg, { Circle as SvgCircle, Text as SvgText } from 'react-native-svg';
 import Animated, {
   Easing,
   useAnimatedStyle,
-  useDerivedValue,
+  useAnimatedProps,
   useSharedValue,
   withDelay,
   withSequence,
   withTiming,
-} from "react-native-reanimated";
-import { formatNum } from "../game/formatNum";
-import type { AnimatedHitEffectsProps } from "./animatedHitEffectsShared";
-import { SPARK_COLORS } from "./animatedHitEffectsShared";
+} from 'react-native-reanimated';
+import { formatNum } from '../game/formatNum';
+import type { AnimatedHitEffectsProps } from './animatedHitEffectsShared';
 
-export type { AnimatedHitEffectsProps } from "./animatedHitEffectsShared";
-
-type Spark = {
-  id: number;
-  born: number;
-  ox: number;
-  oy: number;
-  angleRad: number;
-  dist: number;
-  r: number;
-  color: string;
-  duration: number;
-};
+export type { AnimatedHitEffectsProps } from './animatedHitEffectsShared';
 
 type Ripple = {
   id: number;
@@ -48,66 +35,46 @@ type FloatDmg = {
 };
 
 type HitLayers = {
-  sparks: Spark[];
   ripples: Ripple[];
   floats: FloatDmg[];
 };
 
-const MAX_SPARKS = 42;
-const MAX_RIPPLES = 9;
+const MAX_RIPPLES = 3;
 const MAX_FLOATS = 3;
-const RIPPLE_COLORS = ["#ff4400", "#ff8800", "#ffcc00"];
+const RIPPLE_COLOR = '#ff4400';
 const CANVAS_OVERFLOW = 150;
+const AnimatedSvgCircle = Animated.createAnimatedComponent(SvgCircle);
+const AnimatedSvgText = Animated.createAnimatedComponent(SvgText);
 
-function SkiaSpark({
-  ox,
-  oy,
-  angleRad,
-  dist,
-  r,
-  color,
-  duration,
-}: Pick<Spark, "ox" | "oy" | "angleRad" | "dist" | "r" | "color" | "duration">) {
-  const progress = useSharedValue(0);
-  useEffect(() => {
-    progress.value = 0;
-    progress.value = withTiming(1, { duration, easing: Easing.out(Easing.quad) });
-  }, [progress, duration]);
-
-  const cx = useDerivedValue(() => ox + Math.cos(angleRad) * dist * progress.value);
-  const cy = useDerivedValue(() => oy + Math.sin(angleRad) * dist * progress.value);
-  const opacity = useDerivedValue(() =>
-    progress.value < 0.1 ? progress.value * 10 : 1 - (progress.value - 0.1) / 0.9,
-  );
-
-  return <Circle cx={cx} cy={cy} r={r} color={color} opacity={opacity} />;
-}
-
-function SkiaRipple({
+function SvgRipple({
   ox,
   oy,
   scaleTo,
   delay,
   color,
-}: Pick<Ripple, "ox" | "oy" | "scaleTo" | "delay" | "color">) {
+}: Pick<Ripple, 'ox' | 'oy' | 'scaleTo' | 'delay' | 'color'>) {
   const progress = useSharedValue(0);
   useEffect(() => {
     progress.value = 0;
-    progress.value = withDelay(delay, withTiming(1, { duration: 550, easing: Easing.out(Easing.quad) }));
+    progress.value = withDelay(
+      delay,
+      withTiming(1, { duration: 550, easing: Easing.out(Easing.quad) }),
+    );
   }, [progress, delay]);
 
-  const r = useDerivedValue(() => 26 * scaleTo * progress.value);
-  const opacity = useDerivedValue(() => 0.9 * (1 - progress.value));
+  const animatedProps = useAnimatedProps(() => ({
+    r: 26 * scaleTo * progress.value,
+    opacity: 0.9 * (1 - progress.value),
+  }));
 
   return (
-    <Circle
+    <AnimatedSvgCircle
       cx={ox}
       cy={oy}
-      r={r}
-      color={color}
-      opacity={opacity}
-      style="stroke"
+      stroke={color}
       strokeWidth={2}
+      fill="none"
+      animatedProps={animatedProps}
     />
   );
 }
@@ -125,48 +92,89 @@ function FloatDmgLabel({
   value: number;
   driftX: number;
 }) {
-  const translateY = useSharedValue(0);
-  const translateX = useSharedValue(0);
-  const opacity = useSharedValue(0);
-  const scale = useSharedValue(0.5);
+  const progress = useSharedValue(0);
 
   useEffect(() => {
-    translateY.value = 0;
-    translateX.value = 0;
-    opacity.value = 0;
-    scale.value = 0.5;
+    progress.value = 0;
+    progress.value = withTiming(1, {
+      duration: 820,
+      easing: Easing.out(Easing.quad),
+    });
+  }, [floatId, progress]);
 
-    translateY.value = withSequence(
-      withTiming(-20, { duration: 120, easing: Easing.out(Easing.quad) }),
-      withTiming(-80, { duration: 700, easing: Easing.out(Easing.quad) }),
-    );
-    translateX.value = withDelay(120, withTiming(driftX, { duration: 700 }));
-    opacity.value = withSequence(
-      withTiming(1, { duration: 100 }),
-      withTiming(0, { duration: 700 }),
-    );
-    scale.value = withSequence(
-      withTiming(1.3, { duration: 120 }),
-      withTiming(0.9, { duration: 700 }),
-    );
-  }, [floatId, translateY, translateX, opacity, scale, driftX]);
-
-  const anim = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-    transform: [
-      { translateY: translateY.value },
-      { translateX: translateX.value },
-      { scale: scale.value },
-    ],
-  }));
+  const text = `⚔️ ${formatNum(value)}`;
+  const animatedProps = useAnimatedProps(() => {
+    const p = progress.value;
+    const yOffset =
+      p < 0.15 ? -20 * (p / 0.15) : -20 - 60 * ((p - 0.15) / 0.85);
+    const xOffset = p < 0.15 ? 0 : driftX * ((p - 0.15) / 0.85);
+    const opacity = p < 0.12 ? p / 0.12 : 1 - (p - 0.12) / 0.88;
+    const scale =
+      p < 0.15 ? 0.5 + 0.8 * (p / 0.15) : 1.3 - 0.4 * ((p - 0.15) / 0.85);
+    return {
+      x: ox + xOffset,
+      y: oy + yOffset,
+      opacity: Math.max(0, Math.min(1, opacity)),
+      fontSize: 17 * scale,
+    };
+  });
 
   return (
-    <Animated.View
-      style={[styles.floatNum, { left: ox - 30, top: oy - 16 }, anim]}
-      pointerEvents="none"
-    >
-      <Text style={styles.dmgText} numberOfLines={1}>⚔️ {formatNum(value)}</Text>
-    </Animated.View>
+    <>
+      <AnimatedSvgText
+        fill="none"
+        stroke="rgba(255,100,0,0.9)"
+        strokeWidth={1.8}
+        fontWeight="900"
+        textAnchor="middle"
+        alignmentBaseline="middle"
+        animatedProps={animatedProps}
+      >
+        {text}
+      </AnimatedSvgText>
+      <AnimatedSvgText
+        fill="#ff4400"
+        fontWeight="900"
+        textAnchor="middle"
+        alignmentBaseline="middle"
+        animatedProps={animatedProps}
+      >
+        {text}
+      </AnimatedSvgText>
+    </>
+  );
+}
+
+function AnimatedHitLayers({
+  ripples,
+  floats,
+}: {
+  ripples: Ripple[];
+  floats: FloatDmg[];
+}) {
+  return (
+    <Svg width="100%" height="100%">
+      {ripples.map((r) => (
+        <SvgRipple
+          key={r.id}
+          ox={r.ox + CANVAS_OVERFLOW}
+          oy={r.oy + CANVAS_OVERFLOW}
+          scaleTo={r.scaleTo}
+          delay={r.delay}
+          color={r.color}
+        />
+      ))}
+      {floats.map((f) => (
+        <FloatDmgLabel
+          key={f.id}
+          floatId={f.id}
+          ox={f.ox + CANVAS_OVERFLOW}
+          oy={f.oy + CANVAS_OVERFLOW}
+          value={f.value}
+          driftX={f.driftX}
+        />
+      ))}
+    </Svg>
   );
 }
 
@@ -180,12 +188,11 @@ export function AnimatedHitEffects({
   healEffect: _healEffect,
 }: AnimatedHitEffectsProps) {
   const pulseScale = useSharedValue(1);
-  const sparkIdRef = useRef(0);
   const rippleIdRef = useRef(0);
   const floatIdRef = useRef(0);
 
-  const [layers, setLayers] = useState<HitLayers>({ sparks: [], ripples: [], floats: [] });
-  const { sparks, ripples, floats } = layers;
+  const [layers, setLayers] = useState<HitLayers>({ ripples: [], floats: [] });
+  const { ripples, floats } = layers;
 
   const originMemo = useMemo(
     () => (origin ? { x: origin.x, y: origin.y } : undefined),
@@ -212,32 +219,16 @@ export function AnimatedHitEffects({
     const x0 = originMemo.x;
     const y0 = originMemo.y;
 
-    const sparkCount = 14;
-    const newSparks: Spark[] = [];
-    for (let i = 0; i < sparkCount; i++) {
-      const angle = (360 / sparkCount) * i + (Math.random() * 30 - 15);
-      const angleRad = (angle * Math.PI) / 180;
-      const dist = Math.random() * 90 + 30;
-      const color = SPARK_COLORS[Math.floor(Math.random() * SPARK_COLORS.length)]!;
-      const r = Math.random() * 2 + 1.5;
-      const duration = Math.random() * 200 + 500;
-      newSparks.push({
-        id: ++sparkIdRef.current,
+    const newRipples: Ripple[] = [
+      {
+        id: ++rippleIdRef.current,
         born: now,
         ox: x0,
         oy: y0,
-        angleRad,
-        dist,
-        r,
-        color,
-        duration,
-      });
-    }
-
-    const newRipples: Ripple[] = [
-      { id: ++rippleIdRef.current, born: now, ox: x0, oy: y0, scaleTo: 3.5, delay: 0, color: RIPPLE_COLORS[0]! },
-      { id: ++rippleIdRef.current, born: now, ox: x0, oy: y0, scaleTo: 3.9, delay: 60, color: RIPPLE_COLORS[1]! },
-      { id: ++rippleIdRef.current, born: now, ox: x0, oy: y0, scaleTo: 4.3, delay: 120, color: RIPPLE_COLORS[2]! },
+        scaleTo: 3.7,
+        delay: 0,
+        color: RIPPLE_COLOR,
+      },
     ];
 
     const driftX = (Math.random() - 0.5) * 30;
@@ -251,7 +242,6 @@ export function AnimatedHitEffects({
     };
 
     setLayers((prev) => ({
-      sparks: [...prev.sparks, ...newSparks].slice(-MAX_SPARKS),
       ripples: [...prev.ripples, ...newRipples].slice(-MAX_RIPPLES),
       floats: [...prev.floats, newFloat].slice(-MAX_FLOATS),
     }));
@@ -260,7 +250,6 @@ export function AnimatedHitEffects({
     const t = setTimeout(() => {
       const cutoff = Date.now();
       setLayers((prev) => ({
-        sparks: prev.sparks.filter((p) => cutoff - p.born < ttl),
         ripples: prev.ripples.filter((r) => cutoff - r.born < ttl),
         floats: prev.floats.filter((f) => cutoff - f.born < ttl),
       }));
@@ -272,42 +261,8 @@ export function AnimatedHitEffects({
     <Animated.View style={[style, pulseStyle, styles.root]}>
       {children}
 
-      <Canvas style={styles.overflowCanvas} pointerEvents="none">
-        {ripples.map((r) => (
-          <SkiaRipple
-            key={r.id}
-            ox={r.ox + CANVAS_OVERFLOW}
-            oy={r.oy + CANVAS_OVERFLOW}
-            scaleTo={r.scaleTo}
-            delay={r.delay}
-            color={r.color}
-          />
-        ))}
-        {sparks.map((s) => (
-          <SkiaSpark
-            key={s.id}
-            ox={s.ox + CANVAS_OVERFLOW}
-            oy={s.oy + CANVAS_OVERFLOW}
-            angleRad={s.angleRad}
-            dist={s.dist}
-            r={s.r}
-            color={s.color}
-            duration={s.duration}
-          />
-        ))}
-      </Canvas>
-
       <View pointerEvents="none" style={styles.overflowCanvas}>
-        {floats.map((f) => (
-          <FloatDmgLabel
-            key={f.id}
-            floatId={f.id}
-            ox={f.ox + CANVAS_OVERFLOW}
-            oy={f.oy + CANVAS_OVERFLOW}
-            value={f.value}
-            driftX={f.driftX}
-          />
-        ))}
+        <AnimatedHitLayers ripples={ripples} floats={floats} />
       </View>
     </Animated.View>
   );
@@ -315,26 +270,13 @@ export function AnimatedHitEffects({
 
 const styles = StyleSheet.create({
   root: {
-    overflow: "visible",
+    overflow: 'visible',
   },
   overflowCanvas: {
-    position: "absolute",
+    position: 'absolute',
     top: -CANVAS_OVERFLOW,
     left: -CANVAS_OVERFLOW,
     right: -CANVAS_OVERFLOW,
     bottom: -CANVAS_OVERFLOW,
-  },
-  floatNum: {
-    position: "absolute",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  dmgText: {
-    fontSize: 17,
-    fontWeight: "900",
-    color: "#ff4400",
-    textShadowColor: "rgba(255,100,0,0.9)",
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 12,
   },
 });

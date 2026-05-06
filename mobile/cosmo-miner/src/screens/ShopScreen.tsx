@@ -40,7 +40,6 @@ export type ShopScreenProps = {
       convertFrom?: string;
       convertTo?: string;
       convertAmount?: number;
-      onLootResult?: (drops: Partial<Record<MetalId, number>>) => void;
     },
   ) => void;
   onAddCredits: (amount: number) => void;
@@ -55,7 +54,6 @@ function getShopTabs(): { id: ShopTab; label: string }[] {
   return [
     { id: 'boosters', label: t('ui.shop.tab_boosters') },
     { id: 'metals', label: t('ui.shop.tab_metals') },
-    { id: 'lootboxes', label: t('ui.shop.tab_containers') },
     { id: 'converter', label: t('ui.shop.tab_converter') },
   ];
 }
@@ -463,21 +461,11 @@ export function ShopScreen({
           : 'boosters'
       : 'boosters',
   );
-  const [lootResult, setLootResult] = useState<Partial<
-    Record<MetalId, number>
-  > | null>(null);
 
   const shopItems = SHOP.filter((i) => i.category === tab);
 
   function handleBuy(id: ShopItemId) {
-    const item = SHOP.find((s) => s.id === id)!;
-    if (item.category === 'lootboxes') {
-      onBuyShopItem(id, {
-        onLootResult: (drops) => setLootResult(drops),
-      });
-    } else {
-      onBuyShopItem(id);
-    }
+    onBuyShopItem(id);
   }
 
   return (
@@ -511,26 +499,6 @@ export function ShopScreen({
           </Pressable>
         ))}
       </ScrollView>
-
-      {/* Loot result toast */}
-      {lootResult && (
-        <Pressable style={styles.lootToast} onPress={() => setLootResult(null)}>
-          <Text style={styles.lootToastTitle}>{t('ui.shop.loot_title')}</Text>
-          {(Object.entries(lootResult) as [MetalId, number][])
-            .filter(([, n]) => n > 0)
-            .map(([id, n]) => {
-              const m = METALS.find((x) => x.id === id)!;
-              return (
-                <Text key={id} style={styles.lootToastLine}>
-                  {m.icon} {t('config.' + m.nameKey)}: +{n}
-                </Text>
-              );
-            })}
-          <Text style={styles.lootToastDismiss}>
-            {t('ui.shop.loot_dismiss')}
-          </Text>
-        </Pressable>
-      )}
 
       {/* Active boosts banner (only on boosters tab) */}
       {tab === 'boosters' && <ActiveBoostsBanner boosts={activeBoosts} />}
@@ -593,16 +561,6 @@ export function ShopScreen({
                         .map((r) => {
                           const m = METALS.find((x) => x.id === r.metalId)!;
                           return `+${r.amount}${m.icon}`;
-                        })
-                        .join('  ')}
-                    </Text>
-                  )}
-                  {item.lootPool && (
-                    <Text style={styles.cardEffect}>
-                      {item.lootPool
-                        .map((e) => {
-                          const m = METALS.find((x) => x.id === e.metalId)!;
-                          return `${m.icon}${Math.round(e.chance * 100)}%`;
                         })
                         .join('  ')}
                     </Text>
@@ -722,28 +680,6 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   tabTextActive: { color: '#00d4ff' },
-
-  lootToast: {
-    marginHorizontal: 16,
-    marginBottom: 8,
-    padding: 12,
-    borderRadius: 10,
-    backgroundColor: 'rgba(0,212,255,0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(0,212,255,0.35)',
-  },
-  lootToastTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#00d4ff',
-    marginBottom: 6,
-  },
-  lootToastLine: { fontSize: 13, color: '#fff', marginBottom: 2 },
-  lootToastDismiss: {
-    fontSize: 10,
-    color: 'rgba(255,255,255,0.35)',
-    marginTop: 6,
-  },
 
   activeBanner: {
     marginHorizontal: 16,

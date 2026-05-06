@@ -16,7 +16,8 @@ export const messages: Record<string, string> = {
   'reset.cancel': 'Cancel',
   'reset.confirm': 'Reset',
   'offline.title': 'OFFLINE MINING',
-  'offline.text': 'The reactors kept busy while you were away.\n\nAccumulated: +{earnings} energy.',
+  'offline.text':
+    'The reactors kept busy while you were away.\n\nAccumulated: +{earnings} energy.',
   'research.modal_title': '◈ RESEARCH · IMMDRE ◈',
   'story_log.modal_title': '◈ SHIP LOG ◈',
   'achievements.modal_title': '◈ PERSONNEL FILE ◈',
@@ -45,7 +46,8 @@ export const messages: Record<string, string> = {
   'research.level_prefix': 'LV. {level}',
   'research.xp_progress': '{xpInLevel} / {xpNeeded} XP to level {next}',
   'research.xp_max': '{xp} XP · MAXIMUM LEVEL',
-  'research.hint': '💡 XP is earned from clicks, passive income, battle victories, and expeditions.',
+  'research.hint':
+    '💡 XP is earned from clicks, passive income, battle victories, and expeditions.',
   'research.effect.click_multiplier': '+{pct}% click mining',
   'research.effect.passive_multiplier': '+{pct}% passive income',
   'research.effect.metal_drop_bonus': '+{pct}% metal drop chance',
@@ -69,9 +71,11 @@ export const messages: Record<string, string> = {
   // ── Battle screen ────────────────────────────────────────────────────────
   'battle.timer_label': 'TIME',
   'battle.no_battle_title': 'NO ACTIVE BATTLE',
-  'battle.no_battle_text': 'Select an enemy planet on the PLAN. tab and start an attack.',
+  'battle.no_battle_text':
+    'Select an enemy planet on the PLAN. tab and start an attack.',
   'battle.ship_broken_title': 'SHIP DAMAGED',
-  'battle.ship_broken_text': '"{shipName}" suffered critical damage and withdrew from battle.\n\nHead to the Shipyard for repairs.',
+  'battle.ship_broken_text':
+    '"{shipName}" suffered critical damage and withdrew from battle.\n\nHead to the Shipyard for repairs.',
   'battle.go_shipyard_btn': '🛠️ GO TO SHIPYARD',
   'battle.hp_label': 'ENEMY HP',
   'battle.damage_per_click': '⚔️ {damage}/click',
@@ -136,7 +140,8 @@ export const messages: Record<string, string> = {
   'fleet.build_btn': 'BUILD',
   'fleet.upgrade_btn': 'UPG.',
   'fleet.hint': '💡 Tap a ship to view its armaments.',
-  'fleet.hint_expeditions': '💡 Tap a ship to view its armaments. Send ships on EXPEDITIONS for metals.',
+  'fleet.hint_expeditions':
+    '💡 Tap a ship to view its armaments. Send ships on EXPEDITIONS for metals.',
   // ── Ship card ────────────────────────────────────────────────────────────
   'shipcard.damage_mult': '×{mult} damage',
   'shipcard.damage_total': '⚔️ {damage}/click',
@@ -201,21 +206,23 @@ export const messages: Record<string, string> = {
   'planets.suffix_3': 'Delta',
   'planets.suffix_4': 'Epsilon',
   // ── Achievement unlock toast ──────────────────────────────────────────────
-  'achievement_unlocked': '🏆 ACHIEVEMENT UNLOCKED',
+  achievement_unlocked: '🏆 ACHIEVEMENT UNLOCKED',
   // ── Shop screen ──────────────────────────────────────────────────────────
   'shop.tab_boosters': '⚡ BOOSTERS',
   'shop.tab_metals': '⛏️ METALS',
   'shop.tab_containers': '📦 CONTAIN.',
   'shop.tab_converter': '🔄 CONVERTER',
   'shop.tab_credits': '💳 CREDITS',
-  'shop.pending_credits': '+{amount} 💳 credits will be added on next game launch.',
-  'shop.pending_metal': '{icon} +{quantity} {metal} — will be added on next game launch.',
+  'shop.pending_credits':
+    '+{amount} 💳 credits will be added on next game launch.',
+  'shop.pending_metal':
+    '{icon} +{quantity} {metal} — will be added on next game launch.',
   'shop.pending_booster': '{name} — will be activated on next game launch.',
-  'shop.pending_lootbox': '{name} purchased. Contents will appear on next game launch.',
   // ── Channel / CharacterSelectFlow ─────────────────────────────────────────
   'channel.title_incoming': '◈ INCOMING SIGNAL · CLERK-7 ◈',
   'channel.title_active': '◈ DIRECT CHANNEL · {name} ◈',
-  'channel.select_text': '4 incoming signals detected from unknown sources.\n\nPer IMMDRE regulations, simultaneous processing of more than one communication channel requires a KS-4 category license. Form submitted. No response. Therefore — choose one recipient.\n\nThe remaining signals will be archived. Or lost. Technically — there\'s no difference.',
+  'channel.select_text':
+    "4 incoming signals detected from unknown sources.\n\nPer IMMDRE regulations, simultaneous processing of more than one communication channel requires a KS-4 category license. Form submitted. No response. Therefore — choose one recipient.\n\nThe remaining signals will be archived. Or lost. Technically — there's no difference.",
   'channel.confirm': 'CONFIRM',
   'channel.transmission': '📡 TRANSMISSION · SIGNAL 12%',
   'channel.next': 'NEXT',
@@ -244,7 +251,8 @@ export const messages: Record<string, string> = {
   'mining.click_hint': 'TAP',
   'mining.hint': '◈ MINE ENERGIUM ◈',
   // ── CharacterCommunicationChannel (remaining) ─────────────────────────────
-  'channel.established_garbled': 'Channel established: {name} [{role}].\n\nReceived a garbled message:',
+  'channel.established_garbled':
+    'Channel established: {name} [{role}].\n\nReceived a garbled message:',
   'channel.history_label': '📁 HISTORY',
   'channel.tab_inbox': 'INBOX',
   'channel.tab_history': 'HISTORY',
@@ -253,7 +261,8 @@ export const messages: Record<string, string> = {
   'channel.no_messages': 'No messages yet.',
   'channel.message_n': 'MESSAGE #{n}',
   'channel.signal_blocked_label': '📡 CHANNEL STATUS · SIGNAL 12%',
-  'channel.signal_blocked_text': 'Channel is unstable. Source of interference — {alien}.\n\nWhile they remain active, communication cannot be restored. Defeat them — and the channel will operate at full capacity.',
+  'channel.signal_blocked_text':
+    'Channel is unstable. Source of interference — {alien}.\n\nWhile they remain active, communication cannot be restored. Defeat them — and the channel will operate at full capacity.',
   'channel.signal_active_label': '📡 CHANNEL STATUS · ACTIVE',
   'channel.no_new_messages': 'No new messages.',
   'channel.close': 'CLOSE',
@@ -308,8 +317,6 @@ export const messages: Record<string, string> = {
   'shop.purchase_error_text': 'Purchase not completed.',
   'shop.watch_btn': 'WATCH',
   'shop.header_title': '🛒 SHOP',
-  'shop.loot_title': '📦 Container contents:',
-  'shop.loot_dismiss': 'Tap to close',
   'shop.buy_btn': 'BUY',
   'shop.effect_click': 'click mining',
   'shop.effect_passive': 'passive income',
@@ -320,7 +327,8 @@ export const messages: Record<string, string> = {
   'shop.stars_purchase_pending_title': 'Purchase pending',
   'shop.stars_payment_error_text': 'Status: {status}',
   'shop.stars_telegram_unavail_title': 'Telegram unavailable',
-  'shop.stars_telegram_unavail_text': 'Open the Mini App inside Telegram or set EXPO_PUBLIC_TELEGRAM_TEST_MODE=true for local catalog testing.',
+  'shop.stars_telegram_unavail_text':
+    'Open the Mini App inside Telegram or set EXPO_PUBLIC_TELEGRAM_TEST_MODE=true for local catalog testing.',
   'shop.stars_purchase_complete_title': 'Purchase complete',
   'shop.stars_payment_error_title': 'Payment error',
   'shop.stars_invoice_error_title': 'Error',
@@ -329,27 +337,30 @@ export const messages: Record<string, string> = {
   'shop.stars_retry': 'Retry',
   'shop.stars_empty': 'No items available',
   'shop.stars_test_mode_title': 'TEST MODE',
-  'shop.stars_test_mode_text': 'Stars tab enabled locally for catalog testing. Real payment and webhook confirmation require running inside Telegram. For auth in dev mode pass EXPO_PUBLIC_TELEGRAM_TEST_INIT_DATA.',
+  'shop.stars_test_mode_text':
+    'Stars tab enabled locally for catalog testing. Real payment and webhook confirmation require running inside Telegram. For auth in dev mode pass EXPO_PUBLIC_TELEGRAM_TEST_INIT_DATA.',
   'shop.stars_applied_credits': '+{amount} credits were added to your balance.',
-  'shop.stars_applied_metal': '{icon} {quantity} {metalId} were added to your inventory.',
-  'shop.stars_applied_booster': '{name} was delivered and activated immediately.',
-  'shop.stars_applied_lootbox': '{name} was delivered to your account.',
+  'shop.stars_applied_metal':
+    '{icon} {quantity} {metalId} were added to your inventory.',
+  'shop.stars_applied_booster':
+    '{name} was delivered and activated immediately.',
   // ── CharacterSelectFlow (explain step) ────────────────────────────────────
-  'channel.signal_unstable_explain': 'Signal unstable. Source of interference — {alienName}.\n\nWhile they are active, connection quality does not exceed 12%. After defeating them, the channel will be restored and {characterName} will be able to communicate fully.\n\nForm SVZ-1 "Request for Communication Restoration" has been filed automatically. Expected resolution time: after victory.',
+  'channel.signal_unstable_explain':
+    'Signal unstable. Source of interference — {alienName}.\n\nWhile they are active, connection quality does not exceed 12%. After defeating them, the channel will be restored and {characterName} will be able to communicate fully.\n\nForm SVZ-1 "Request for Communication Restoration" has been filed automatically. Expected resolution time: after victory.',
   // ── CharacterSelectFlow (metal deal offer) ────────────────────────────────
   'channel.offer_void_crystal': '✨ ×{amount} Void Crystal',
-  'channel.offer_echo_shard':   '🔊 ×{amount} Echo Shard',
-  'channel.offer_energy_cost':  '— {cost} energium',
+  'channel.offer_echo_shard': '🔊 ×{amount} Echo Shard',
+  'channel.offer_energy_cost': '— {cost} energium',
   // ── ShopScreen boost effect line ──────────────────────────────────────────
   'shop.boost_effect_line': '×{multiplier} {stat} for {duration}',
   // ── Research tab names (used in unlock toast) ─────────────────────────────
   'research.tab_mining': '"Mining"',
   'research.tab_battle': '"Battle"',
   // ── Analytics export ──────────────────────────────────────────────────────
-  'analytics.error_web':        'File export not available in web version',
-  'analytics.error_log_empty':  'Log is empty — no data to export',
+  'analytics.error_web': 'File export not available in web version',
+  'analytics.error_log_empty': 'Log is empty — no data to export',
   'analytics.error_no_sharing': 'Sharing not available on this device',
-  'analytics.share_title':      'Export Cosmo Analytics',
+  'analytics.share_title': 'Export Cosmo Analytics',
   // ── PrestigePopup ─────────────────────────────────────────────────────────
   'prestige.pp_unit': 'pp',
   // ── PrestigeBtn ──────────────────────────────────────────────────────────
@@ -359,5 +370,6 @@ export const messages: Record<string, string> = {
   'click_power_info.text': 'Each tap yields {clickPower} ⚡ energium.',
   // ── Passive rate info popup ───────────────────────────────────────────────
   'passive_rate_info.title': 'PASSIVE RATE',
-  'passive_rate_info.text': 'Your drones extract {passiveRate} ⚡ energium per second.',
+  'passive_rate_info.text':
+    'Your drones extract {passiveRate} ⚡ energium per second.',
 };

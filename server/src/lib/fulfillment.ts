@@ -11,7 +11,6 @@
  *   currency_pack       → Grant(credits_grant)
  *   metal_pack          → Grant(metal_grant)
  *   booster             → Grant(booster_grant)
- *   loot_box            → rolls metals server-side; Grant(loot_box_reward_grant)
  *   premium_unlock      → NOT delivered via grant (unsupported in P0); logged, not failed
  *
  * Server NEVER writes gameplay fields directly to userSave.
@@ -26,64 +25,6 @@ import { makeShopItemSnapshot, readShopItemSnapshot } from './shopItemSnapshot';
 export type FulfillResult =
   | { ok: true; alreadyFulfilled: boolean }
   | { ok: false; reason: string };
-
-// ── Loot box roll ─────────────────────────────────────────────────────────────
-
-type MetalId = 'iron' | 'titan' | 'iridium' | 'voidCrystal' | 'echoShard';
-
-interface LootRollResult {
-  rolledMetals: Partial<Record<MetalId, number>>;
-}
-
-const LOOT_TABLES: Record<
-  string,
-  { metal: MetalId; min: number; max: number; weight: number }[]
-> = {
-  basic: [
-    { metal: 'iron', min: 10, max: 40, weight: 50 },
-    { metal: 'titan', min: 3, max: 12, weight: 35 },
-    { metal: 'iridium', min: 1, max: 4, weight: 15 },
-  ],
-  advanced: [
-    { metal: 'iron', min: 20, max: 80, weight: 30 },
-    { metal: 'titan', min: 8, max: 25, weight: 30 },
-    { metal: 'iridium', min: 3, max: 10, weight: 20 },
-    { metal: 'voidCrystal', min: 1, max: 4, weight: 10 },
-    { metal: 'echoShard', min: 1, max: 4, weight: 10 },
-  ],
-  premium: [
-    { metal: 'voidCrystal', min: 4, max: 10, weight: 50 },
-    { metal: 'echoShard', min: 4, max: 10, weight: 50 },
-  ],
-};
-
-function randInt(min: number, max: number): number {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
-function rollLootBox(tier: string): LootRollResult {
-  // Premium crates always give both rare metals in doubled quantity
-  if (tier === 'premium') {
-    return {
-      rolledMetals: {
-        voidCrystal: randInt(4, 10),
-        echoShard: randInt(4, 10),
-      },
-    };
-  }
-
-  const table = LOOT_TABLES[tier] ?? LOOT_TABLES.basic;
-  const total = table.reduce((s, e) => s + e.weight, 0);
-  let roll = Math.random() * total;
-
-  const picked =
-    table.find((e) => {
-      roll -= e.weight;
-      return roll <= 0;
-    }) ?? table[table.length - 1];
-
-  return { rolledMetals: { [picked.metal]: randInt(picked.min, picked.max) } };
-}
 
 // ── Main fulfillment ──────────────────────────────────────────────────────────
 
@@ -109,7 +50,10 @@ export async function fulfillPurchase(
   }
 
   if (purchase.status === 'failed' || purchase.status === 'refunded') {
-    return { ok: false, reason: `Purchase is in terminal state: ${purchase.status}` };
+    return {
+      ok: false,
+      reason: `Purchase is in terminal state: ${purchase.status}`,
+    };
   }
 
   // Captured outside the transaction so we can write the inventory audit record
@@ -156,23 +100,12 @@ export async function fulfillPurchase(
       grantPayload = {
         shopItemId: item.id,
         effectType: meta.effectType ?? '',
-        ...(meta.multiplier !== undefined ? { multiplier: meta.multiplier } : {}),
+        ...(meta.multiplier !== undefined
+          ? { multiplier: meta.multiplier }
+          : {}),
         ...(meta.bonus !== undefined ? { bonus: meta.bonus } : {}),
         durationMs: meta.durationMs ?? 3_600_000,
       };
-    } else if (item.type === 'loot_box') {
-      const tier = (meta.tier as string) ?? 'basic';
-      const rollResult = rollLootBox(tier);
-
-      // Store the roll in purchase metadata for observability / client polling
-      const existingMeta = purchaseMeta;
-      await tx.purchase.update({
-        where: { id: purchaseId },
-        data: { metadata: { ...existingMeta, ...rollResult } },
-      });
-
-      grantKind = 'loot_box_reward_grant';
-      grantPayload = { rolledMetals: rollResult.rolledMetals };
     } else if (item.type === 'premium_unlock') {
       // premium_unlock has no deterministic mobile apply path in P0.
       // Do not create a grant; log a warning and mark the purchase completed.
@@ -201,13 +134,10 @@ export async function fulfillPurchase(
   // Inventory audit: write a read-model record after the transaction commits.
   // Best-effort — failure here does not affect grant delivery or gameplay state.
   if (fulfilledGrantKind) {
-    addToInventory(
-      purchase.userId,
-      item.id,
-      item.type,
-      1,
-      { grantKind: fulfilledGrantKind, purchaseId: purchase.id },
-    ).catch(() => {
+    addToInventory(purchase.userId, item.id, item.type, 1, {
+      grantKind: fulfilledGrantKind,
+      purchaseId: purchase.id,
+    }).catch(() => {
       // Audit write failure is non-fatal; the grant is already delivered.
     });
   }

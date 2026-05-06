@@ -1,29 +1,24 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
-import { Canvas, Circle } from "@shopify/react-native-skia";
+import { StyleSheet, View } from "react-native";
+import Svg, {
+  Circle as SvgCircle,
+  Image as SvgImage,
+  Line as SvgLine,
+  Text as SvgText,
+} from "react-native-svg";
 import Animated, {
+  cancelAnimation,
   Easing,
-  useAnimatedStyle,
-  useDerivedValue,
+  useAnimatedProps,
   useSharedValue,
+  withRepeat,
   withSequence,
   withTiming,
 } from "react-native-reanimated";
 import { formatNum } from "../game/formatNum";
 import type { AnimatedMineEffectsProps } from "./animatedMineEffectsShared";
-import { MINE_DOT_COLORS } from "./animatedMineEffectsShared";
 
 export type { AnimatedMineEffectsProps } from "./animatedMineEffectsShared";
-
-type BurstParticle = {
-  id: number;
-  born: number;
-  ox: number;
-  oy: number;
-  angleRad: number;
-  dist: number;
-  color: string;
-};
 
 type BurstRipple = {
   id: number;
@@ -42,37 +37,58 @@ type FloatRow = {
 };
 
 type MineLayers = {
-  particles: BurstParticle[];
   ripples: BurstRipple[];
   floats: FloatRow[];
 };
 
-const MAX_MINE_PARTICLES = 30; // ~3 clicks
 const MAX_MINE_RIPPLES = 6;
 const MAX_MINE_FLOATS = 3;
 const CANVAS_OVERFLOW = 130;
+const ASTEROID_HALF = 85;
+const RIPPLE_BASE_RADIUS = 29;
+const FLOAT_RISE = 62;
+const FLOAT_DURATION_MS = 900;
+const METAL_FLOAT_DURATION_MS = 1000;
+const METAL_FLOAT_RISE = 90;
+const METAL_FLOAT_START_OFFSET_Y = -71;
+const METAL_ICON_SIZE = 16;
+const METAL_TEXT_FONT_SIZE = 14;
+const METAL_TEXT_GAP = 4;
+const PLANET_PULSE_SCALE_TO = 1.06;
+const PLANET_PULSE_IN_MS = 120;
+const PLANET_PULSE_OUT_MS = 190;
 
-function SkiaBurstParticle({
-  ox,
-  oy,
-  angleRad,
-  dist,
-  color,
-}: Pick<BurstParticle, "ox" | "oy" | "angleRad" | "dist" | "color">) {
-  const progress = useSharedValue(0);
-  useEffect(() => {
-    progress.value = 0;
-    progress.value = withTiming(1, { duration: 700, easing: Easing.out(Easing.quad) });
-  }, [progress]);
+// ── Passive mining FX (orbit drone + beam + rising mineral particles) ──────
+const PASSIVE_ORBIT_RADIUS = 150;
+const PASSIVE_DRONE_RADIUS = 5;
+const PASSIVE_RING_COLOR = "rgba(0,212,255,0.3)";
+const PASSIVE_DRONE_COLOR = "rgba(0,212,255,0.7)";
+const PASSIVE_BEAM_COLOR = "rgba(0,212,255,0.55)";
+const PASSIVE_BEAM_WIDTH = 1.5;
+const PASSIVE_FLOAT_RISE = 55;
+const PASSIVE_FLOAT_DURATION_MS = 1000;
+const PASSIVE_FLOAT_INTERVAL_MS = 1600;
+const PASSIVE_FLOAT_SPAWN_TICK_MS = 80;
+const PASSIVE_FLOAT_RADIUS = 2.5;
+const PASSIVE_FLOAT_X_JITTER = 36;
+const PASSIVE_ORBIT_PERIOD_MS = 14000;
+const PASSIVE_MAX_FLOATS = 48;
+const PASSIVE_CENTER = CANVAS_OVERFLOW + ASTEROID_HALF;
 
-  const cx = useDerivedValue(() => ox + Math.cos(angleRad) * dist * progress.value);
-  const cy = useDerivedValue(() => oy + Math.sin(angleRad) * dist * progress.value);
-  const opacity = useDerivedValue(() => 1 - progress.value * 0.97);
-
-  return <Circle cx={cx} cy={cy} r={2} color={color} opacity={opacity} />;
+function passiveOrbitPeriodMs(passive: number): number {
+  if (passive <= 0) return PASSIVE_ORBIT_PERIOD_MS;
+  return Math.max(
+    PASSIVE_ORBIT_PERIOD_MS / (1 + Math.log10(Math.max(1, passive)) * 0.5),
+    PASSIVE_ORBIT_PERIOD_MS / 4,
+  );
 }
 
-function SkiaRippleRing({
+const AnimatedSvgCircle = Animated.createAnimatedComponent(SvgCircle);
+const AnimatedSvgText = Animated.createAnimatedComponent(SvgText);
+const AnimatedSvgImage = Animated.createAnimatedComponent(SvgImage);
+const AnimatedSvgLine = Animated.createAnimatedComponent(SvgLine);
+
+function SvgRippleRing({
   ox,
   oy,
   mineColor,
@@ -84,23 +100,24 @@ function SkiaRippleRing({
     progress.value = withTiming(1, { duration: 600, easing: Easing.out(Easing.quad) });
   }, [progress]);
 
-  const r = useDerivedValue(() => 29 * progress.value * scaleTo);
-  const opacity = useDerivedValue(() => 1 - progress.value);
+  const animatedProps = useAnimatedProps(() => ({
+    r: RIPPLE_BASE_RADIUS * scaleTo * progress.value,
+    opacity: 1 - progress.value,
+  }));
 
   return (
-    <Circle
+    <AnimatedSvgCircle
       cx={ox}
       cy={oy}
-      r={r}
-      color={mineColor}
-      opacity={opacity}
-      style="stroke"
+      stroke={mineColor}
       strokeWidth={2}
+      fill="none"
+      animatedProps={animatedProps}
     />
   );
 }
 
-function FloatLabelRow({
+function SvgFloatNumber({
   floatId,
   ox,
   oy,
@@ -111,24 +128,221 @@ function FloatLabelRow({
   oy: number;
   value: number;
 }) {
-  const translateY = useSharedValue(0);
-  const opacity = useSharedValue(1);
+  const progress = useSharedValue(0);
   useEffect(() => {
-    translateY.value = 0;
-    opacity.value = 1;
-    translateY.value = withTiming(-62, { duration: 900, easing: Easing.out(Easing.quad) });
-    opacity.value = withTiming(0, { duration: 900 });
-  }, [floatId, opacity, translateY]);
+    progress.value = 0;
+    progress.value = withTiming(1, { duration: FLOAT_DURATION_MS, easing: Easing.out(Easing.quad) });
+  }, [floatId, progress]);
 
-  const anim = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-    transform: [{ translateY: translateY.value }],
+  const animatedProps = useAnimatedProps(() => ({
+    y: oy - FLOAT_RISE * progress.value,
+    opacity: 1 - progress.value,
+  }));
+
+  const text = `+${formatNum(value)}`;
+  return (
+    <>
+      <AnimatedSvgText
+        x={ox}
+        fill="none"
+        stroke="rgba(120,60,0,0.85)"
+        strokeWidth={3}
+        fontSize={16}
+        fontWeight="900"
+        textAnchor="middle"
+        alignmentBaseline="middle"
+        animatedProps={animatedProps}
+      >
+        {text}
+      </AnimatedSvgText>
+      <AnimatedSvgText
+        x={ox}
+        fill="#ffd700"
+        fontSize={16}
+        fontWeight="900"
+        textAnchor="middle"
+        alignmentBaseline="middle"
+        animatedProps={animatedProps}
+      >
+        {text}
+      </AnimatedSvgText>
+    </>
+  );
+}
+
+function SvgMetalFloat({
+  floatId,
+  ox,
+  baseY,
+  amount,
+  image,
+}: {
+  floatId: number;
+  ox: number;
+  baseY: number;
+  amount: number;
+  image: number;
+}) {
+  const progress = useSharedValue(0);
+  useEffect(() => {
+    progress.value = 0;
+    progress.value = withTiming(1, {
+      duration: METAL_FLOAT_DURATION_MS,
+      easing: Easing.out(Easing.quad),
+    });
+  }, [floatId, progress]);
+
+  // SVG group transform shorthands (translateY) are not reliably reactive via
+  // useAnimatedProps, so animate `y` on each child directly.
+  const iconAnimatedProps = useAnimatedProps(() => ({
+    y: baseY - METAL_ICON_SIZE / 2 - METAL_FLOAT_RISE * progress.value,
+    opacity: 1 - progress.value,
+  }));
+
+  const textAnimatedProps = useAnimatedProps(() => ({
+    y: baseY - METAL_FLOAT_RISE * progress.value,
+    opacity: 1 - progress.value,
+  }));
+
+  const text = `+${formatNum(amount)}`;
+  const iconLeft = ox - METAL_ICON_SIZE - METAL_TEXT_GAP;
+  const textX = ox - METAL_TEXT_GAP / 2;
+
+  return (
+    <>
+      <AnimatedSvgImage
+        href={image}
+        x={iconLeft}
+        width={METAL_ICON_SIZE}
+        height={METAL_ICON_SIZE}
+        preserveAspectRatio="xMidYMid meet"
+        animatedProps={iconAnimatedProps}
+      />
+      <AnimatedSvgText
+        x={textX}
+        fill="none"
+        stroke="rgba(120,60,0,0.85)"
+        strokeWidth={3}
+        fontSize={METAL_TEXT_FONT_SIZE}
+        fontWeight="900"
+        textAnchor="start"
+        alignmentBaseline="middle"
+        animatedProps={textAnimatedProps}
+      >
+        {text}
+      </AnimatedSvgText>
+      <AnimatedSvgText
+        x={textX}
+        fill="#ffd700"
+        fontSize={METAL_TEXT_FONT_SIZE}
+        fontWeight="900"
+        textAnchor="start"
+        alignmentBaseline="middle"
+        animatedProps={textAnimatedProps}
+      >
+        {text}
+      </AnimatedSvgText>
+    </>
+  );
+}
+
+function PassiveOrbit({ passiveRate }: { passiveRate: number }) {
+  const angle = useSharedValue(0);
+
+  useEffect(() => {
+    cancelAnimation(angle);
+    angle.value = 0;
+    const period = passiveOrbitPeriodMs(passiveRate);
+    angle.value = withRepeat(
+      withTiming(2 * Math.PI, { duration: period, easing: Easing.linear }),
+      -1,
+      false,
+    );
+    return () => {
+      cancelAnimation(angle);
+    };
+  }, [angle, passiveRate]);
+
+  const droneAnimatedProps = useAnimatedProps(() => {
+    const theta = angle.value - Math.PI / 2;
+    return {
+      cx: PASSIVE_CENTER + PASSIVE_ORBIT_RADIUS * Math.cos(theta),
+      cy: PASSIVE_CENTER + PASSIVE_ORBIT_RADIUS * Math.sin(theta),
+    };
+  });
+
+  const beamAnimatedProps = useAnimatedProps(() => {
+    const theta = angle.value - Math.PI / 2;
+    return {
+      x1: PASSIVE_CENTER + PASSIVE_ORBIT_RADIUS * Math.cos(theta),
+      y1: PASSIVE_CENTER + PASSIVE_ORBIT_RADIUS * Math.sin(theta),
+      opacity:
+        passiveRate <= 0
+          ? 0
+          : 0.1 + 0.2 * Math.abs(Math.sin(angle.value * 4)),
+    };
+  });
+
+  return (
+    <>
+      <SvgCircle
+        cx={PASSIVE_CENTER}
+        cy={PASSIVE_CENTER}
+        r={PASSIVE_ORBIT_RADIUS}
+        stroke={PASSIVE_RING_COLOR}
+        strokeWidth={1}
+        fill="none"
+      />
+      <AnimatedSvgLine
+        x2={PASSIVE_CENTER}
+        y2={PASSIVE_CENTER}
+        stroke={PASSIVE_BEAM_COLOR}
+        strokeWidth={PASSIVE_BEAM_WIDTH}
+        animatedProps={beamAnimatedProps}
+      />
+      <AnimatedSvgCircle
+        r={PASSIVE_DRONE_RADIUS}
+        fill={PASSIVE_DRONE_COLOR}
+        animatedProps={droneAnimatedProps}
+      />
+    </>
+  );
+}
+
+function SvgPassiveFloat({
+  floatId,
+  ox,
+  mineColor,
+  onDone,
+}: {
+  floatId: number;
+  ox: number;
+  mineColor: string;
+  onDone: (id: number) => void;
+}) {
+  const progress = useSharedValue(0);
+  useEffect(() => {
+    progress.value = 0;
+    progress.value = withTiming(1, {
+      duration: PASSIVE_FLOAT_DURATION_MS,
+      easing: Easing.linear,
+    });
+    const t = setTimeout(() => onDone(floatId), PASSIVE_FLOAT_DURATION_MS + 24);
+    return () => clearTimeout(t);
+  }, [floatId, onDone, progress]);
+
+  const animatedProps = useAnimatedProps(() => ({
+    cy: PASSIVE_CENTER - PASSIVE_FLOAT_RISE * progress.value,
+    opacity: (1 - progress.value) * 0.85,
   }));
 
   return (
-    <Animated.View style={[styles.floatNum, { left: ox - 20, top: oy - 12 }, anim]} pointerEvents="none">
-      <Text style={styles.floatText} numberOfLines={1}>+{formatNum(value)}</Text>
-    </Animated.View>
+    <AnimatedSvgCircle
+      cx={ox}
+      r={PASSIVE_FLOAT_RADIUS}
+      fill={mineColor}
+      animatedProps={animatedProps}
+    />
   );
 }
 
@@ -137,33 +351,63 @@ export function AnimatedMineEffects({
   origin,
   clickPower,
   mineColor,
+  passiveRate = 0,
+  planetImage,
+  metalFloats,
   style,
   children,
 }: AnimatedMineEffectsProps) {
-  const pulseScale = useSharedValue(1);
-  const particleIdRef = useRef(0);
   const rippleIdRef = useRef(0);
   const floatIdRef = useRef(0);
 
-  const [layers, setLayers] = useState<MineLayers>({ particles: [], ripples: [], floats: [] });
-  const { particles, ripples, floats } = layers;
+  const [layers, setLayers] = useState<MineLayers>({ ripples: [], floats: [] });
+  const { ripples, floats } = layers;
+
+  const [passiveFloats, setPassiveFloats] = useState<{ id: number; x: number }[]>([]);
+  const passiveFloatIdRef = useRef(0);
+  const passiveLastSpawnRef = useRef(0);
+  const passiveRateRef = useRef(passiveRate);
+  passiveRateRef.current = passiveRate;
+  const planetScale = useSharedValue(1);
+
+  useEffect(() => {
+    const tick = () => {
+      const passive = passiveRateRef.current;
+      if (passive <= 0) return;
+      const now = Date.now();
+      const spawnInterval = Math.max(
+        200,
+        PASSIVE_FLOAT_INTERVAL_MS / (1 + Math.log10(passive)),
+      );
+      if (now - passiveLastSpawnRef.current < spawnInterval) return;
+      passiveLastSpawnRef.current = now;
+      const burst = passive >= 100 ? 2 : 1;
+      setPassiveFloats((prev) => {
+        const next = [...prev];
+        for (let i = 0; i < burst; i++) {
+          next.push({
+            id: ++passiveFloatIdRef.current,
+            x:
+              PASSIVE_CENTER +
+              (Math.random() * PASSIVE_FLOAT_X_JITTER -
+                PASSIVE_FLOAT_X_JITTER / 2),
+          });
+        }
+        return next.slice(-PASSIVE_MAX_FLOATS);
+      });
+    };
+    const iv = setInterval(tick, PASSIVE_FLOAT_SPAWN_TICK_MS);
+    return () => clearInterval(iv);
+  }, []);
+
+  const removePassiveFloat = useCallback((id: number) => {
+    setPassiveFloats((prev) => prev.filter((f) => f.id !== id));
+  }, []);
 
   const originMemo = useMemo(
     () => (origin ? { x: origin.x, y: origin.y } : undefined),
     [origin?.x, origin?.y],
   );
-
-  useEffect(() => {
-    pulseScale.value = 1;
-    pulseScale.value = withSequence(
-      withTiming(1.08, { duration: 120, easing: Easing.out(Easing.quad) }),
-      withTiming(1, { duration: 190, easing: Easing.out(Easing.quad) }),
-    );
-  }, [trigger, pulseScale]);
-
-  const pulseStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: pulseScale.value }],
-  }));
 
   useEffect(() => {
     if (!originMemo) return;
@@ -172,39 +416,9 @@ export function AnimatedMineEffects({
     const x0 = originMemo.x;
     const y0 = originMemo.y;
 
-    const particleCount = 10;
-    const newParticles: BurstParticle[] = [];
-    for (let i = 0; i < particleCount; i++) {
-      const angleDeg = (360 / particleCount) * i + (Math.random() * 24 - 12);
-      const angleRad = (angleDeg * Math.PI) / 180;
-      const dist = Math.random() * 70 + 25;
-      const color = MINE_DOT_COLORS[Math.floor(Math.random() * MINE_DOT_COLORS.length)]!;
-      newParticles.push({
-        id: ++particleIdRef.current,
-        born: now,
-        ox: x0,
-        oy: y0,
-        angleRad,
-        dist,
-        color,
-      });
-    }
-
     const newRipples: BurstRipple[] = [
-      {
-        id: ++rippleIdRef.current,
-        born: now,
-        ox: x0,
-        oy: y0,
-        scaleTo: 3.2,
-      },
-      {
-        id: ++rippleIdRef.current,
-        born: now,
-        ox: x0,
-        oy: y0,
-        scaleTo: 3.5,
-      },
+      { id: ++rippleIdRef.current, born: now, ox: x0, oy: y0, scaleTo: 3.2 },
+      { id: ++rippleIdRef.current, born: now, ox: x0, oy: y0, scaleTo: 3.5 },
     ];
 
     const newFloat: FloatRow = {
@@ -216,16 +430,14 @@ export function AnimatedMineEffects({
     };
 
     setLayers((prev) => ({
-      particles: [...prev.particles, ...newParticles].slice(-MAX_MINE_PARTICLES),
       ripples: [...prev.ripples, ...newRipples].slice(-MAX_MINE_RIPPLES),
       floats: [...prev.floats, newFloat].slice(-MAX_MINE_FLOATS),
     }));
 
-    const cleanupAt = 950;
+    const cleanupAt = Math.max(950, FLOAT_DURATION_MS + 50);
     const t = setTimeout(() => {
       const cutoff = Date.now();
       setLayers((prev) => ({
-        particles: prev.particles.filter((p) => cutoff - p.born < cleanupAt),
         ripples: prev.ripples.filter((r) => cutoff - r.born < cleanupAt),
         floats: prev.floats.filter((f) => cutoff - f.born < cleanupAt),
       }));
@@ -233,38 +445,88 @@ export function AnimatedMineEffects({
     return () => clearTimeout(t);
   }, [trigger, originMemo, clickPower]);
 
+  useEffect(() => {
+    planetScale.value = 1;
+    planetScale.value = withSequence(
+      withTiming(PLANET_PULSE_SCALE_TO, {
+        duration: PLANET_PULSE_IN_MS,
+        easing: Easing.out(Easing.quad),
+      }),
+      withTiming(1, {
+        duration: PLANET_PULSE_OUT_MS,
+        easing: Easing.out(Easing.quad),
+      }),
+    );
+  }, [trigger, planetScale]);
+
+  const planetImageAnimatedProps = useAnimatedProps(() => {
+    const size = ASTEROID_HALF * 2 * planetScale.value;
+    return {
+      x: PASSIVE_CENTER - size / 2,
+      y: PASSIVE_CENTER - size / 2,
+      width: size,
+      height: size,
+    };
+  });
+
   return (
-    <Animated.View style={[styles.root, style, pulseStyle]}>
+    <View style={[styles.root, style]}>
       {children}
 
-      <Canvas style={styles.overflowCanvas} pointerEvents="none">
-        {ripples.map((r) => (
-          <SkiaRippleRing
-            key={r.id}
-            ox={r.ox + CANVAS_OVERFLOW}
-            oy={r.oy + CANVAS_OVERFLOW}
-            mineColor={mineColor}
-            scaleTo={r.scaleTo}
-          />
-        ))}
-        {particles.map((p) => (
-          <SkiaBurstParticle
-            key={p.id}
-            ox={p.ox + CANVAS_OVERFLOW}
-            oy={p.oy + CANVAS_OVERFLOW}
-            angleRad={p.angleRad}
-            dist={p.dist}
-            color={p.color}
-          />
-        ))}
-      </Canvas>
-
       <View pointerEvents="none" style={styles.overflowCanvas}>
-        {floats.map((f) => (
-          <FloatLabelRow key={f.id} floatId={f.id} ox={f.ox + CANVAS_OVERFLOW} oy={f.oy + CANVAS_OVERFLOW} value={f.value} />
-        ))}
+        <Svg
+          style={[StyleSheet.absoluteFill, { overflow: 'visible' }]}
+          width="100%"
+          height="100%"
+        >
+          <PassiveOrbit passiveRate={passiveRate} />
+          {passiveFloats.map((f) => (
+            <SvgPassiveFloat
+              key={f.id}
+              floatId={f.id}
+              ox={f.x}
+              mineColor={mineColor}
+              onDone={removePassiveFloat}
+            />
+          ))}
+          {planetImage !== undefined && (
+            <AnimatedSvgImage
+              href={planetImage}
+              preserveAspectRatio="xMidYMid meet"
+              animatedProps={planetImageAnimatedProps}
+            />
+          )}
+          {ripples.map((r) => (
+            <SvgRippleRing
+              key={r.id}
+              ox={r.ox + CANVAS_OVERFLOW}
+              oy={r.oy + CANVAS_OVERFLOW}
+              mineColor={mineColor}
+              scaleTo={r.scaleTo}
+            />
+          ))}
+          {floats.map((f) => (
+            <SvgFloatNumber
+              key={f.id}
+              floatId={f.id}
+              ox={f.ox + CANVAS_OVERFLOW}
+              oy={f.oy + CANVAS_OVERFLOW}
+              value={f.value}
+            />
+          ))}
+          {metalFloats?.map((mf) => (
+            <SvgMetalFloat
+              key={mf.id}
+              floatId={mf.id}
+              ox={CANVAS_OVERFLOW + ASTEROID_HALF + mf.offsetX}
+              baseY={CANVAS_OVERFLOW + ASTEROID_HALF + METAL_FLOAT_START_OFFSET_Y}
+              amount={mf.amount}
+              image={mf.image}
+            />
+          ))}
+        </Svg>
       </View>
-    </Animated.View>
+    </View>
   );
 }
 
@@ -279,18 +541,5 @@ const styles = StyleSheet.create({
     left: -CANVAS_OVERFLOW,
     right: -CANVAS_OVERFLOW,
     bottom: -CANVAS_OVERFLOW,
-  },
-  floatNum: {
-    position: "absolute",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  floatText: {
-    fontSize: 16,
-    fontWeight: "900",
-    color: "#ffd700",
-    textShadowColor: "rgba(255,200,0,0.8)",
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 10,
   },
 });

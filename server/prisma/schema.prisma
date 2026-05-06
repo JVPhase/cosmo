@@ -86,7 +86,7 @@ model GameplaySave {
   id        String   @id @default(cuid())
   userId    String   @unique
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  data      Json     // GameplaySaveEnvelopeV2
+  data      Json // GameplaySaveEnvelopeV2
   rev       Int      @default(0)
   updatedAt DateTime @updatedAt
   createdAt DateTime @default(now())
@@ -123,7 +123,7 @@ model GameConfig {
 // plus any Stars-priced items defined here.
 model ShopItem {
   id           String     @id // matches game-config item id, e.g. "booster_mining_1h"
-  type         String // "booster" | "metal_pack" | "loot_box" | "skin" | "bundle" | "premium_unlock"
+  type         String // "booster" | "metal_pack" | "skin" | "bundle" | "premium_unlock"
   name         String
   description  String
   priceStars   Int? // Telegram Stars price (null = not purchaseable with Stars)
@@ -169,9 +169,9 @@ model Grant {
   id         String    @id @default(cuid())
   userId     String
   seq        Int
-  kind       String    // "credits_grant" | "metal_grant" | "booster_grant" | "loot_box_reward_grant"
-  payload    Json      // deterministic reward payload, no rolling on client
-  source     String?   // e.g. "purchase"
+  kind       String // "credits_grant" | "metal_grant" | "booster_grant"
+  payload    Json // deterministic reward payload, no rolling on client
+  source     String? // e.g. "purchase"
   purchaseId String?
   ackedAt    DateTime?
   createdAt  DateTime  @default(now())
@@ -184,16 +184,16 @@ model Grant {
 // Server-authoritative inventory for each user.
 // itemId matches game-config IDs (e.g. "booster_mining_1h", "metal_iron").
 model Inventory {
-  id        String    @id @default(cuid())
+  id        String   @id @default(cuid())
   userId    String
-  itemType  String // "booster" | "metal_pack" | "loot_box" | "skin" | "premium_unlock"
+  itemType  String // "booster" | "metal_pack" | "skin" | "premium_unlock"
   itemId    String // matches ShopItem.id / game-config id
-  quantity  Int       @default(1)
+  quantity  Int      @default(1)
   // For time-limited items: expiry, effect metadata, consume state, etc.
   metadata  Json?
-  user      User      @relation(fields: [userId], references: [id])
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([userId, itemId])
   @@index([userId])
@@ -210,58 +210,58 @@ model CrmUser {
 }
 
 model CrmAccount {
-  id        String   @id @default(cuid())
-  name      String
-  industry  String?
-  region    String?
-  status    String   @default("Active")
-  health    String   @default("Stable")
-  arr       Int?
-  ownerId   String?
-  owner     User?    @relation(fields: [ownerId], references: [id])
-  deals     CrmDeal[]
-  activities CrmActivity[]
+  id             String        @id @default(cuid())
+  name           String
+  industry       String?
+  region         String?
+  status         String        @default("Active")
+  health         String        @default("Stable")
+  arr            Int?
+  ownerId        String?
+  owner          User?         @relation(fields: [ownerId], references: [id])
+  deals          CrmDeal[]
+  activities     CrmActivity[]
   convertedLeads CrmLead[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
   @@index([ownerId])
   @@index([status])
 }
 
 model CrmLead {
-  id                 String   @id @default(cuid())
+  id                 String        @id @default(cuid())
   name               String
   email              String?
   company            String?
   source             String?
-  status             String   @default("New")
+  status             String        @default("New")
   score              Int?
   ownerId            String?
-  owner              User?    @relation(fields: [ownerId], references: [id])
+  owner              User?         @relation(fields: [ownerId], references: [id])
   convertedAccountId String?
-  convertedAccount   CrmAccount? @relation(fields: [convertedAccountId], references: [id])
+  convertedAccount   CrmAccount?   @relation(fields: [convertedAccountId], references: [id])
   activities         CrmActivity[]
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
 
   @@index([ownerId])
   @@index([status])
 }
 
 model CrmDeal {
-  id        String   @id @default(cuid())
-  name      String
-  stage     String   @default("Qualified")
-  value     Int?
-  closeDate DateTime?
-  ownerId   String?
-  owner     User?    @relation(fields: [ownerId], references: [id])
-  accountId String?
-  account   CrmAccount? @relation(fields: [accountId], references: [id])
+  id         String        @id @default(cuid())
+  name       String
+  stage      String        @default("Qualified")
+  value      Int?
+  closeDate  DateTime?
+  ownerId    String?
+  owner      User?         @relation(fields: [ownerId], references: [id])
+  accountId  String?
+  account    CrmAccount?   @relation(fields: [accountId], references: [id])
   activities CrmActivity[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
 
   @@index([ownerId])
   @@index([accountId])
@@ -269,22 +269,22 @@ model CrmDeal {
 }
 
 model CrmActivity {
-  id        String   @id @default(cuid())
-  type      String   @default("Note")
+  id        String      @id @default(cuid())
+  type      String      @default("Note")
   title     String
   notes     String?
   dueAt     DateTime?
   doneAt    DateTime?
   ownerId   String?
-  owner     User?    @relation(fields: [ownerId], references: [id])
+  owner     User?       @relation(fields: [ownerId], references: [id])
   accountId String?
   account   CrmAccount? @relation(fields: [accountId], references: [id])
   leadId    String?
-  lead      CrmLead? @relation(fields: [leadId], references: [id])
+  lead      CrmLead?    @relation(fields: [leadId], references: [id])
   dealId    String?
-  deal      CrmDeal? @relation(fields: [dealId], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  deal      CrmDeal?    @relation(fields: [dealId], references: [id])
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
 
   @@index([ownerId])
   @@index([accountId])
@@ -297,14 +297,14 @@ model CrmActivity {
 // kind: "ad" | "iap"
 // name / lore: i18n keys resolved via the config namespace (e.g. "iap_pack.credits_ad.name")
 model IapPack {
-  id        String   @id   // "credits_ad" | "credits_100" | "credits_300" | "credits_800" | "credits_2000"
-  kind      String         // "ad" | "iap"
+  id        String   @id // "credits_ad" | "credits_100" | "credits_300" | "credits_800" | "credits_2000"
+  kind      String // "ad" | "iap"
   icon      String
   credits   Int
-  name      String         // i18n key in config namespace
-  lore      String         // i18n key in config namespace
-  productId String?        // Apple/Google store product ID (null for kind="ad")
-  basePrice String?        // Fallback display price, e.g. "$0.99" (null for kind="ad")
+  name      String // i18n key in config namespace
+  lore      String // i18n key in config namespace
+  productId String? // Apple/Google store product ID (null for kind="ad")
+  basePrice String? // Fallback display price, e.g. "$0.99" (null for kind="ad")
   isActive  Boolean  @default(true)
   sortOrder Int      @default(0)
   createdAt DateTime @default(now())
@@ -316,14 +316,14 @@ model IapPack {
 // messages: JSON object { "key": "translated value" }
 // version increments on every write.
 model LocaleBundle {
-  id          String   @id @default(cuid())
-  app         String   // "mobile" | "crm"
-  namespace   String   // "ui" | "alerts" | "story" | "dialogues" | "config"
-  locale      String   // "ru" | "en" | …
-  messages    Json     // { "key": "value" }
-  version     Int      @default(1)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(cuid())
+  app       String // "mobile" | "crm"
+  namespace String // "ui" | "alerts" | "story" | "dialogues" | "config"
+  locale    String // "ru" | "en" | …
+  messages  Json // { "key": "value" }
+  version   Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([app, namespace, locale])
   @@index([app, namespace])
@@ -337,12 +337,12 @@ model UserConsent {
   userId      String
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   consentType String
-  version     String    // document version at time of consent, e.g. "1.0"
+  version     String // document version at time of consent, e.g. "1.0"
   grantedAt   DateTime  @default(now())
   revokedAt   DateTime?
   ipAddress   String?
   userAgent   String?
-  metadata    Json?     // e.g. { "source": "onboarding" }
+  metadata    Json? // e.g. { "source": "onboarding" }
 
   @@unique([userId, consentType])
   @@index([userId])

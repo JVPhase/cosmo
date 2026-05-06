@@ -1,4 +1,9 @@
-export { computePlayerLevel, xpAtLevelStart, xpForNextLevel, xpProgressFraction } from './calculators';
+export {
+  computePlayerLevel,
+  xpAtLevelStart,
+  xpForNextLevel,
+  xpProgressFraction,
+} from './calculators';
 export { XP_THRESHOLDS, MAX_LEVEL } from './player';
 export type {
   BoostStatDto,
@@ -12,7 +17,6 @@ export type {
   CreditsGrantPayload,
   MetalGrantPayload,
   BoosterGrantPayload,
-  LootBoxRewardGrantPayload,
   GrantDto,
   TelegramGameSummaryDto,
   ShopItemIdCanonical,

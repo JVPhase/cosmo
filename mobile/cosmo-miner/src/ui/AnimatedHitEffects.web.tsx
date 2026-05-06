@@ -1,14 +1,19 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   Animated,
   LayoutChangeEvent,
   Pressable,
   StyleSheet,
   View,
-} from "react-native";
-import { formatNum } from "../game/formatNum";
-import type { AnimatedHitEffectsProps } from "./animatedHitEffectsShared";
-import { SPARK_COLORS } from "./animatedHitEffectsShared";
+} from 'react-native';
+import { formatNum } from '../game/formatNum';
+import type { AnimatedHitEffectsProps } from './animatedHitEffectsShared';
 
 type HealFloatFx = {
   born: number;
@@ -18,13 +23,12 @@ type HealFloatFx = {
   driftX: number;
 };
 
-export type { AnimatedHitEffectsProps } from "./animatedHitEffectsShared";
+export type { AnimatedHitEffectsProps } from './animatedHitEffectsShared';
 
-const SPARK_COUNT = 14;
-const RIPPLE_COUNT = 3;
-const RIPPLE_DELAY_MS = 60;
+const RIPPLE_COUNT = 1;
 const RIPPLE_DURATION_MS = 550;
 const RIPPLE_BASE_RADIUS = 26;
+const RIPPLE_COLOR = '#ff4400';
 const FLOAT_PHASE1_MS = 120;
 const FLOAT_PHASE2_MS = 700;
 const EFFECT_MAX_AGE_MS = 900;
@@ -33,17 +37,6 @@ const EFFECT_MAX_AGE_MS = 900;
 const DEG = Math.PI / 180;
 const toCanvasRad = (deg: number) => (deg - 90) * DEG;
 const RING_WIDTH = 7;
-
-type SparkFx = {
-  born: number;
-  originX: number;
-  originY: number;
-  angle: number;
-  dist: number;
-  color: string;
-  size: number;
-  duration: number;
-};
 
 type RippleFx = {
   born: number;
@@ -78,7 +71,6 @@ export function AnimatedHitEffects({
 }: AnimatedHitEffectsProps) {
   const pulseScale = useRef(new Animated.Value(1)).current;
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const sparksRef = useRef<SparkFx[]>([]);
   const ripplesRef = useRef<RippleFx[]>([]);
   const floatsRef = useRef<FloatFx[]>([]);
   const rafRef = useRef<number | null>(null);
@@ -101,12 +93,13 @@ export function AnimatedHitEffects({
   const resizeCanvas = () => {
     const canvas = canvasRef.current;
     if (!canvas || layout.w <= 0 || layout.h <= 0) return;
-    const dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
+    const dpr =
+      typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
     canvas.width = Math.round(layout.w * dpr);
     canvas.height = Math.round(layout.h * dpr);
     canvas.style.width = `${layout.w}px`;
     canvas.style.height = `${layout.h}px`;
-    const ctx = canvas.getContext("2d");
+    const ctx = canvas.getContext('2d');
     if (ctx) {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
@@ -128,13 +121,18 @@ export function AnimatedHitEffects({
     const { w: lw, h: lh } = layoutRef.current;
     if (!canvas || lw <= 0 || lh <= 0) return;
 
-    const ctx = canvas.getContext("2d");
+    const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    sparksRef.current = sparksRef.current.filter((p) => now - p.born < EFFECT_MAX_AGE_MS);
-    ripplesRef.current = ripplesRef.current.filter((r) => now - r.born < EFFECT_MAX_AGE_MS);
-    floatsRef.current = floatsRef.current.filter((f) => now - f.born < EFFECT_MAX_AGE_MS);
-    healFloatsRef.current = healFloatsRef.current.filter((h) => now - h.born < EFFECT_MAX_AGE_MS);
+    ripplesRef.current = ripplesRef.current.filter(
+      (r) => now - r.born < EFFECT_MAX_AGE_MS,
+    );
+    floatsRef.current = floatsRef.current.filter(
+      (f) => now - f.born < EFFECT_MAX_AGE_MS,
+    );
+    healFloatsRef.current = healFloatsRef.current.filter(
+      (h) => now - h.born < EFFECT_MAX_AGE_MS,
+    );
 
     ctx.clearRect(0, 0, lw, lh);
 
@@ -149,18 +147,20 @@ export function AnimatedHitEffects({
       // Background ring
       ctx.beginPath();
       ctx.arc(cx, cy, ringRadius, 0, Math.PI * 2);
-      ctx.strokeStyle = "rgba(255,255,255,0.1)";
+      ctx.strokeStyle = 'rgba(255,255,255,0.1)';
       ctx.lineWidth = RING_WIDTH;
       ctx.stroke();
 
       // Success zone arc (red)
       ctx.beginPath();
       ctx.arc(
-        cx, cy, ringRadius,
+        cx,
+        cy,
+        ringRadius,
         toCanvasRad(successZoneStart),
         toCanvasRad(successZoneStart + successZoneDeg),
       );
-      ctx.strokeStyle = "rgba(255,60,60,0.9)";
+      ctx.strokeStyle = 'rgba(255,60,60,0.9)';
       ctx.lineWidth = RING_WIDTH;
       ctx.stroke();
 
@@ -172,35 +172,21 @@ export function AnimatedHitEffects({
       const needleOuter = ringRadius + RING_WIDTH / 2 + 6;
 
       ctx.beginPath();
-      ctx.moveTo(cx + needleInner * Math.cos(needleRad), cy + needleInner * Math.sin(needleRad));
-      ctx.lineTo(cx + needleOuter * Math.cos(needleRad), cy + needleOuter * Math.sin(needleRad));
-      ctx.strokeStyle = "#ffffff";
+      ctx.moveTo(
+        cx + needleInner * Math.cos(needleRad),
+        cy + needleInner * Math.sin(needleRad),
+      );
+      ctx.lineTo(
+        cx + needleOuter * Math.cos(needleRad),
+        cy + needleOuter * Math.sin(needleRad),
+      );
+      ctx.strokeStyle = '#ffffff';
       ctx.lineWidth = 3;
-      ctx.lineCap = "round";
+      ctx.lineCap = 'round';
       ctx.stroke();
-      ctx.lineCap = "butt";
+      ctx.lineCap = 'butt';
     }
 
-    // --- Sparks (no shadowBlur — use globalAlpha + solid color) ---
-    for (const p of sparksRef.current) {
-      const age = now - p.born;
-      if (age < 0 || age >= p.duration) continue;
-      const t = age / p.duration;
-      const dist = p.dist * t;
-      const x = p.originX + Math.cos(p.angle) * dist;
-      const y = p.originY + Math.sin(p.angle) * dist;
-      const scaleSpark = 1 - t;
-      const opacity = age < 80
-        ? 1
-        : Math.max(0, 1 - (age - 80) / (p.duration - 80));
-      const r = (p.size / 2) * scaleSpark;
-      if (r <= 0.05) continue;
-      ctx.globalAlpha = opacity;
-      ctx.fillStyle = p.color;
-      ctx.beginPath();
-      ctx.arc(x, y, r, 0, Math.PI * 2);
-      ctx.fill();
-    }
     ctx.globalAlpha = 1;
 
     // --- Ripples (no shadowBlur) ---
@@ -222,9 +208,9 @@ export function AnimatedHitEffects({
 
     // --- Floating damage numbers (no shadowBlur) ---
     const floatTotalMs = FLOAT_PHASE1_MS + FLOAT_PHASE2_MS;
-    ctx.font = "900 17px system-ui, -apple-system, sans-serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
+    ctx.font = '900 17px system-ui, -apple-system, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
     for (const f of floatsRef.current) {
       const age = now - f.born;
       if (age < 0 || age > floatTotalMs) continue;
@@ -246,15 +232,15 @@ export function AnimatedHitEffects({
       }
 
       ctx.globalAlpha = opacity;
-      ctx.fillStyle = "#ff6622";
+      ctx.fillStyle = '#ff6622';
       ctx.fillText(`⚔️ ${formatNum(f.value)}`, f.originX + tx, f.originY + ty);
     }
     ctx.globalAlpha = 1;
 
     // --- Heal floats (green, same rise animation) ---
-    ctx.font = "900 17px system-ui, -apple-system, sans-serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
+    ctx.font = '900 17px system-ui, -apple-system, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
     for (const h of healFloatsRef.current) {
       const age = now - h.born;
       if (age < 0 || age > floatTotalMs) continue;
@@ -276,7 +262,7 @@ export function AnimatedHitEffects({
       }
 
       ctx.globalAlpha = opacity;
-      ctx.fillStyle = "#44ff88";
+      ctx.fillStyle = '#44ff88';
       ctx.fillText(h.label, h.originX + tx, h.originY + ty);
     }
     ctx.globalAlpha = 1;
@@ -288,9 +274,9 @@ export function AnimatedHitEffects({
       const ring = skillRingRef.current;
       const ringAlive = !!ring?.active && !ring.attempted;
       const alive =
-        sparksRef.current.length + ripplesRef.current.length + floatsRef.current.length > 0
-        || healFloatsRef.current.length > 0
-        || ringAlive;
+        ripplesRef.current.length + floatsRef.current.length > 0 ||
+        healFloatsRef.current.length > 0 ||
+        ringAlive;
       if (alive) {
         rafRef.current = requestAnimationFrame(step);
       } else {
@@ -308,9 +294,21 @@ export function AnimatedHitEffects({
 
     pulseScale.setValue(1);
     Animated.sequence([
-      Animated.timing(pulseScale, { toValue: 1.06, duration: 80, useNativeDriver: true }),
-      Animated.timing(pulseScale, { toValue: 0.97, duration: 80, useNativeDriver: true }),
-      Animated.timing(pulseScale, { toValue: 1, duration: 140, useNativeDriver: true }),
+      Animated.timing(pulseScale, {
+        toValue: 1.06,
+        duration: 80,
+        useNativeDriver: true,
+      }),
+      Animated.timing(pulseScale, {
+        toValue: 0.97,
+        duration: 80,
+        useNativeDriver: true,
+      }),
+      Animated.timing(pulseScale, {
+        toValue: 1,
+        duration: 140,
+        useNativeDriver: true,
+      }),
     ]).start();
 
     if (!originMemo) return;
@@ -319,25 +317,14 @@ export function AnimatedHitEffects({
     const x0 = originMemo.x;
     const y0 = originMemo.y;
 
-    for (let i = 0; i < SPARK_COUNT; i++) {
-      const angleDeg = (360 / SPARK_COUNT) * i + (Math.random() * 30 - 15);
-      const angle = (angleDeg * Math.PI) / 180;
-      const dist = Math.random() * 90 + 30;
-      const color = SPARK_COLORS[Math.floor(Math.random() * SPARK_COLORS.length)]!;
-      const size = Math.random() * 4 + 3;
-      const duration = Math.random() * 200 + 500;
-      sparksRef.current.push({ born, originX: x0, originY: y0, angle, dist, color, size, duration });
-    }
-
-    const rippleColors = ["#ff4400", "#ff8800", "#ffcc00"];
     for (let k = 0; k < RIPPLE_COUNT; k++) {
       ripplesRef.current.push({
         born,
-        delayMs: k * RIPPLE_DELAY_MS,
+        delayMs: 0,
         originX: x0,
         originY: y0,
         rippleIndex: k,
-        strokeColor: rippleColors[k]!,
+        strokeColor: RIPPLE_COLOR,
       });
     }
 
@@ -382,7 +369,6 @@ export function AnimatedHitEffects({
         cancelAnimationFrame(rafRef.current);
         rafRef.current = null;
       }
-      sparksRef.current = [];
       ripplesRef.current = [];
       floatsRef.current = [];
       healFloatsRef.current = [];
@@ -394,9 +380,10 @@ export function AnimatedHitEffects({
     if (!ring?.active || ring.attempted) return;
     const elapsed = performance.now() - ringStartRef.current;
     const angle = ((elapsed / ring.speedMs) * 360) % 360;
-    const relAngle = ((angle - ring.successZoneStart) + 360) % 360;
+    const relAngle = (angle - ring.successZoneStart + 360) % 360;
     const hit = relAngle < ring.successZoneDeg;
-    if (hit) ring.onSuccess(); else ring.onFail();
+    if (hit) ring.onSuccess();
+    else ring.onFail();
   }, []);
 
   const ringInteractive = !!skillRing?.active && !skillRing.attempted;
@@ -404,27 +391,32 @@ export function AnimatedHitEffects({
 
   return (
     <View style={styles.bleedRoot}>
-      <Animated.View style={[styles.hittable, style, { transform: [{ scale: pulseScale }] }]}>
+      <Animated.View
+        style={[styles.hittable, style, { transform: [{ scale: pulseScale }] }]}
+      >
         {children}
       </Animated.View>
       <View
-        pointerEvents={ringInteractive ? "box-none" : "none"}
+        pointerEvents={ringInteractive ? 'box-none' : 'none'}
         style={[StyleSheet.absoluteFill, styles.canvasLayer]}
         onLayout={onLayout}
       >
         <canvas
           ref={canvasRef}
           style={{
-            position: "absolute",
+            position: 'absolute',
             left: 0,
             top: 0,
             width: layout.w || undefined,
             height: layout.h || undefined,
-            pointerEvents: "none",
+            pointerEvents: 'none',
           }}
         />
         {ringInteractive && (
-          <View style={[StyleSheet.absoluteFill, styles.ringPressLayer]} pointerEvents="box-none">
+          <View
+            style={[StyleSheet.absoluteFill, styles.ringPressLayer]}
+            pointerEvents="box-none"
+          >
             <Pressable
               onPressIn={handleRingPress}
               style={{ width: ringSize, height: ringSize }}
@@ -439,22 +431,22 @@ export function AnimatedHitEffects({
 const styles = StyleSheet.create({
   bleedRoot: {
     flex: 1,
-    alignSelf: "stretch",
-    width: "100%",
+    alignSelf: 'stretch',
+    width: '100%',
     minHeight: 0,
-    position: "relative",
-    alignItems: "center",
-    justifyContent: "center",
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   hittable: {
-    position: "relative",
+    position: 'relative',
     zIndex: 0,
   },
   canvasLayer: {
     zIndex: 1,
   },
   ringPressLayer: {
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

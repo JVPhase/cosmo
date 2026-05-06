@@ -22,8 +22,14 @@ import {
 } from '../lib/telegram';
 import { fulfillPurchase } from '../lib/fulfillment';
 import { getUserInventory } from '../lib/inventory';
-import { TELEGRAM_SHOP_SYNC_ONLY, TELEGRAM_SUMMARY_CANONICAL } from '../lib/features';
-import { makeShopItemSnapshot, readShopItemSnapshot } from '../lib/shopItemSnapshot';
+import {
+  TELEGRAM_SHOP_SYNC_ONLY,
+  TELEGRAM_SUMMARY_CANONICAL,
+} from '../lib/features';
+import {
+  makeShopItemSnapshot,
+  readShopItemSnapshot,
+} from '../lib/shopItemSnapshot';
 import {
   computePlayerLevel,
   xpProgressFraction,
@@ -41,7 +47,7 @@ function requireEnv(name: string): string {
 
 // ── route-level slow-down (created once, reused per request) ──────────────────
 
-const tgAuthSlowDown = makeSlowDown(LIMITS.telegramAuth.slowDown!, ipKey)
+const tgAuthSlowDown = makeSlowDown(LIMITS.telegramAuth.slowDown!, ipKey);
 
 // ── routes ────────────────────────────────────────────────────────────────────
 
@@ -112,7 +118,9 @@ export async function telegramRoutes(app: FastifyInstance) {
         });
         const tg = newUser.telegramUser;
         if (!tg) {
-          return reply.status(500).send({ error: 'Telegram profile was not created' });
+          return reply
+            .status(500)
+            .send({ error: 'Telegram profile was not created' });
         }
         userId = tg.userId;
         isNewUser = true;
@@ -182,24 +190,31 @@ export async function telegramRoutes(app: FastifyInstance) {
       xpThresholds?: number[];
       maxLevel?: number;
     };
-    const xpThresholds: readonly number[] = playerConfig.xpThresholds ?? XP_THRESHOLDS;
+    const xpThresholds: readonly number[] =
+      playerConfig.xpThresholds ?? XP_THRESHOLDS;
     const maxLevel: number = playerConfig.maxLevel ?? MAX_LEVEL;
 
     const gameSummary = TELEGRAM_SUMMARY_CANONICAL
       ? {
           playerXP,
           level: computePlayerLevel(playerXP, xpThresholds, maxLevel),
-          xpProgressFraction: xpProgressFraction(playerXP, xpThresholds, maxLevel),
+          xpProgressFraction: xpProgressFraction(
+            playerXP,
+            xpThresholds,
+            maxLevel,
+          ),
           totalEarned: (stateFields.totalEarned as number) ?? 0,
           credits: (stateFields.credits as number) ?? 0,
-          unlockedPlanets: ((stateFields.unlockedPlanetIds as unknown[]) ?? []).length,
+          unlockedPlanets: ((stateFields.unlockedPlanetIds as unknown[]) ?? [])
+            .length,
           saveRev: save?.rev ?? 0,
         }
       : {
           playerXP,
           totalEarned: (stateFields.totalEarned as number) ?? 0,
           credits: (stateFields.credits as number) ?? 0,
-          unlockedPlanets: ((stateFields.unlockedPlanetIds as unknown[]) ?? []).length,
+          unlockedPlanets: ((stateFields.unlockedPlanetIds as unknown[]) ?? [])
+            .length,
           saveRev: save?.rev ?? 0,
         };
 
@@ -259,68 +274,83 @@ export async function telegramRoutes(app: FastifyInstance) {
    * Only items with deliveryMode: 'grant_sync' may be purchased.
    * Unsupported SKUs are rejected here AND filtered from the catalog.
    */
-  app.post('/shop/invoice', { preHandler: [app.authenticate] }, async (req, reply) => {
-    const { userId } = req.user as JwtPayload;
-    const { shopItemId } = (req.body ?? {}) as { shopItemId?: unknown };
+  app.post(
+    '/shop/invoice',
+    { preHandler: [app.authenticate] },
+    async (req, reply) => {
+      const { userId } = req.user as JwtPayload;
+      const { shopItemId } = (req.body ?? {}) as { shopItemId?: unknown };
 
-    if (typeof shopItemId !== 'string') {
-      return reply.status(400).send({ error: 'shopItemId is required' });
-    }
+      if (typeof shopItemId !== 'string') {
+        return reply.status(400).send({ error: 'shopItemId is required' });
+      }
 
-    const item = await prisma.shopItem.findUnique({ where: { id: shopItemId, isActive: true } });
-    if (!item) return reply.status(404).send({ error: 'Shop item not found' });
-    if (!item.priceStars) {
-      return reply.status(400).send({ error: 'Item is not available for Stars purchase' });
-    }
-
-    // When TELEGRAM_SHOP_SYNC_ONLY is enabled (default), only grant_sync items
-    // may be purchased via this endpoint. premium_unlock and other unsupported
-    // items are blocked until mobile support is ready.
-    const itemMeta = (item.metadata as Record<string, unknown>) ?? {};
-    if (TELEGRAM_SHOP_SYNC_ONLY && itemMeta.deliveryMode !== 'grant_sync') {
-      return reply.status(400).send({ error: 'Item is not available for purchase in this version' });
-    }
-
-    // Create a pending purchase — fulfilled on successful_payment webhook
-    const purchase = await prisma.purchase.create({
-      data: {
-        userId,
-        shopItemId,
-        paymentMethod: 'stars',
-        starsAmount: item.priceStars,
-        status: 'pending',
-        metadata: {
-          initiatedAt: new Date().toISOString(),
-          shopItemSnapshot: makeShopItemSnapshot(item) as unknown as Prisma.InputJsonValue,
-        } as Prisma.InputJsonValue,
-      },
-    });
-
-    const botToken = requireEnv('TELEGRAM_BOT_TOKEN');
-    let invoiceUrl: string;
-    try {
-      invoiceUrl = await createStarsInvoiceLink(botToken, {
-        title: item.name,
-        description: item.description,
-        // Payload is the purchase ID — we resolve it in the webhook
-        payload: purchase.id,
-        priceStars: item.priceStars,
+      const item = await prisma.shopItem.findUnique({
+        where: { id: shopItemId, isActive: true },
       });
-    } catch (err: unknown) {
-      // Roll back the pending purchase so we don't accumulate orphans
-      await prisma.purchase.delete({ where: { id: purchase.id } });
-      const msg = err instanceof Error ? err.message : 'Failed to create invoice';
-      return reply.status(502).send({ error: msg });
-    }
+      if (!item)
+        return reply.status(404).send({ error: 'Shop item not found' });
+      if (!item.priceStars) {
+        return reply
+          .status(400)
+          .send({ error: 'Item is not available for Stars purchase' });
+      }
 
-    return { invoiceUrl, purchaseId: purchase.id };
-  });
+      // When TELEGRAM_SHOP_SYNC_ONLY is enabled (default), only grant_sync items
+      // may be purchased via this endpoint. premium_unlock and other unsupported
+      // items are blocked until mobile support is ready.
+      const itemMeta = (item.metadata as Record<string, unknown>) ?? {};
+      if (TELEGRAM_SHOP_SYNC_ONLY && itemMeta.deliveryMode !== 'grant_sync') {
+        return reply
+          .status(400)
+          .send({
+            error: 'Item is not available for purchase in this version',
+          });
+      }
+
+      // Create a pending purchase — fulfilled on successful_payment webhook
+      const purchase = await prisma.purchase.create({
+        data: {
+          userId,
+          shopItemId,
+          paymentMethod: 'stars',
+          starsAmount: item.priceStars,
+          status: 'pending',
+          metadata: {
+            initiatedAt: new Date().toISOString(),
+            shopItemSnapshot: makeShopItemSnapshot(
+              item,
+            ) as unknown as Prisma.InputJsonValue,
+          } as Prisma.InputJsonValue,
+        },
+      });
+
+      const botToken = requireEnv('TELEGRAM_BOT_TOKEN');
+      let invoiceUrl: string;
+      try {
+        invoiceUrl = await createStarsInvoiceLink(botToken, {
+          title: item.name,
+          description: item.description,
+          // Payload is the purchase ID — we resolve it in the webhook
+          payload: purchase.id,
+          priceStars: item.priceStars,
+        });
+      } catch (err: unknown) {
+        // Roll back the pending purchase so we don't accumulate orphans
+        await prisma.purchase.delete({ where: { id: purchase.id } });
+        const msg =
+          err instanceof Error ? err.message : 'Failed to create invoice';
+        return reply.status(502).send({ error: msg });
+      }
+
+      return { invoiceUrl, purchaseId: purchase.id };
+    },
+  );
 
   /**
    * GET /telegram/purchase/:purchaseId/result
    * Returns the completed purchase record including server-rolled results.
    *
-   * For loot_box: metadata contains { rolledMetals: {...} }
    * For premium_unlock: metadata contains { appliedPlanets? } or { energyRefund?, nodesReset? }
    *
    * Polls up to 5 s if the purchase is still pending (webhook may not have fired yet).
@@ -342,15 +372,19 @@ export async function telegramRoutes(app: FastifyInstance) {
         });
         if (!purchase) break;
         if (purchase.status === 'completed') break;
-        if (purchase.status === 'failed' || purchase.status === 'refunded') break;
+        if (purchase.status === 'failed' || purchase.status === 'refunded')
+          break;
         // Still pending — wait 500 ms and retry
         await new Promise((resolve) => setTimeout(resolve, 500));
       }
 
-      if (!purchase) return reply.status(404).send({ error: 'Purchase not found' });
-      if (purchase.userId !== userId) return reply.status(403).send({ error: 'Forbidden' });
+      if (!purchase)
+        return reply.status(404).send({ error: 'Purchase not found' });
+      if (purchase.userId !== userId)
+        return reply.status(403).send({ error: 'Forbidden' });
 
-      const rawPurchaseMeta = ((purchase.metadata as Record<string, unknown>) ?? {});
+      const rawPurchaseMeta =
+        (purchase.metadata as Record<string, unknown>) ?? {};
       const purchaseMetadata = { ...rawPurchaseMeta };
       delete purchaseMetadata.shopItemSnapshot;
       const snapshot =
@@ -387,61 +421,77 @@ export async function telegramRoutes(app: FastifyInstance) {
    *   { "url": "https://your-server/telegram/webhook",
    *     "secret_token": "<TELEGRAM_WEBHOOK_SECRET>" }
    */
-  app.post('/webhook', { config: { rateLimit: LIMITS.telegramWebhook } }, async (req, reply) => {
-    const webhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET ?? '';
-    const headerSecret = req.headers['x-telegram-bot-api-secret-token'] as string | undefined;
+  app.post(
+    '/webhook',
+    { config: { rateLimit: LIMITS.telegramWebhook } },
+    async (req, reply) => {
+      const webhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET ?? '';
+      const headerSecret = req.headers['x-telegram-bot-api-secret-token'] as
+        | string
+        | undefined;
 
-    if (webhookSecret && !verifyWebhookSecret(headerSecret, webhookSecret)) {
-      return reply.status(401).send({ error: 'Unauthorized' });
-    }
-
-    const update = req.body as TelegramUpdate;
-    const botToken = requireEnv('TELEGRAM_BOT_TOKEN');
-
-    // ── pre_checkout_query — must respond within 10 seconds ──────────────────
-    if (update.pre_checkout_query) {
-      const pcq = update.pre_checkout_query;
-      const purchaseId = pcq.invoice_payload;
-
-      const purchase = await prisma.purchase.findUnique({ where: { id: purchaseId } });
-
-      if (!purchase || purchase.status !== 'pending') {
-        // Reject — order no longer valid
-        await answerPreCheckoutQuery(botToken, pcq.id, false, 'Order expired or invalid');
-      } else {
-        await answerPreCheckoutQuery(botToken, pcq.id, true);
+      if (webhookSecret && !verifyWebhookSecret(headerSecret, webhookSecret)) {
+        return reply.status(401).send({ error: 'Unauthorized' });
       }
 
+      const update = req.body as TelegramUpdate;
+      const botToken = requireEnv('TELEGRAM_BOT_TOKEN');
+
+      // ── pre_checkout_query — must respond within 10 seconds ──────────────────
+      if (update.pre_checkout_query) {
+        const pcq = update.pre_checkout_query;
+        const purchaseId = pcq.invoice_payload;
+
+        const purchase = await prisma.purchase.findUnique({
+          where: { id: purchaseId },
+        });
+
+        if (!purchase || purchase.status !== 'pending') {
+          // Reject — order no longer valid
+          await answerPreCheckoutQuery(
+            botToken,
+            pcq.id,
+            false,
+            'Order expired or invalid',
+          );
+        } else {
+          await answerPreCheckoutQuery(botToken, pcq.id, true);
+        }
+
+        return reply.status(200).send({ ok: true });
+      }
+
+      // ── successful_payment — fulfill the purchase ─────────────────────────────
+      if (update.message?.successful_payment) {
+        const sp = update.message.successful_payment;
+        const purchaseId = sp.invoice_payload;
+        const chargeId = sp.telegram_payment_charge_id;
+
+        // Check idempotency by charge ID first (handles webhook retries)
+        const existing = await prisma.purchase.findFirst({
+          where: { telegramPaymentChargeId: chargeId },
+        });
+        if (existing?.status === 'completed') {
+          return reply.status(200).send({ ok: true }); // already delivered
+        }
+
+        const result = await fulfillPurchase(purchaseId, chargeId);
+        if (!result.ok) {
+          app.log.error(
+            { purchaseId, chargeId, reason: result.reason },
+            'Fulfillment failed',
+          );
+          // Still return 200 — Telegram will not retry on 200
+          return reply.status(200).send({ ok: true, warning: result.reason });
+        }
+
+        return reply.status(200).send({ ok: true });
+      }
+
+      // Unknown update type — ack and ignore
       return reply.status(200).send({ ok: true });
-    }
-
-    // ── successful_payment — fulfill the purchase ─────────────────────────────
-    if (update.message?.successful_payment) {
-      const sp = update.message.successful_payment;
-      const purchaseId = sp.invoice_payload;
-      const chargeId = sp.telegram_payment_charge_id;
-
-      // Check idempotency by charge ID first (handles webhook retries)
-      const existing = await prisma.purchase.findFirst({
-        where: { telegramPaymentChargeId: chargeId },
-      });
-      if (existing?.status === 'completed') {
-        return reply.status(200).send({ ok: true }); // already delivered
-      }
-
-      const result = await fulfillPurchase(purchaseId, chargeId);
-      if (!result.ok) {
-        app.log.error({ purchaseId, chargeId, reason: result.reason }, 'Fulfillment failed');
-        // Still return 200 — Telegram will not retry on 200
-        return reply.status(200).send({ ok: true, warning: result.reason });
-      }
-
-      return reply.status(200).send({ ok: true });
-    }
-
-    // Unknown update type — ack and ignore
-    return reply.status(200).send({ ok: true });
-  });
+    },
+  );
 }
 
 // ── Telegram update types (minimal surface we need) ───────────────────────────

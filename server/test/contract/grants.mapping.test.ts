@@ -28,6 +28,8 @@ import {
 // All imports in grants.ts are `import type` — they are erased at runtime by tsx.
 // No React Native modules are actually loaded.
 import { applyGrants } from '../../../mobile/cosmo-miner/src/game/grants';
+import type { GameStateInit } from '../../../mobile/cosmo-miner/src/game/types';
+import type { MetalId } from '../../../mobile/cosmo-miner/src/game/METALS';
 
 // ── Test shop items ───────────────────────────────────────────────────────────
 
@@ -52,16 +54,15 @@ const GRANT_TEST_ITEMS = {
       deliveryMode: 'grant_sync',
     },
   },
-  loot: {
-    id: 'test_grants_loot',
-    type: 'loot_box',
-    metadata: { tier: 'advanced', deliveryMode: 'grant_sync' },
-  },
 } as const;
 
 // ── Suite ─────────────────────────────────────────────────────────────────────
 
 describe('Contract: grants payload → mobile state mapping', () => {
+  type MinimalApplyState = Required<
+    Pick<GameStateInit, 'credits' | 'metals' | 'discoveredMetals' | 'activeBoosts'>
+  >;
+
   let userId: string;
 
   before(async () => {
@@ -127,34 +128,17 @@ describe('Contract: grants payload → mobile state mapping', () => {
       assert.match(expectedInstanceId, /^grant_\d+$/);
     });
 
-    it('loot_box_reward_grant has { rolledMetals: Record<string, number> }', async () => {
-      const p = await createTestPurchase(userId, GRANT_TEST_ITEMS.loot.id);
-      await fulfillPurchase(p.id);
-      const g = await db.grant.findFirst({ where: { purchaseId: p.id } });
-      assert.ok(g);
-      assert.equal(g!.kind, 'loot_box_reward_grant');
-      const pl = g!.payload as Record<string, unknown>;
-      assert.ok(typeof pl.rolledMetals === 'object' && pl.rolledMetals !== null);
-      for (const qty of Object.values(pl.rolledMetals as Record<string, unknown>)) {
-        assert.equal(typeof qty, 'number');
-      }
-    });
   });
 
   // ── B. Mobile apply contract ──────────────────────────────────────────────
 
   describe('B — mobile applyGrants applies server grants correctly', () => {
     /** Minimal state compatible with mobile's GameStateInit. */
-    const EMPTY_STATE = {
+    const EMPTY_STATE: MinimalApplyState = {
       credits: 0,
-      metals: {} as Record<string, number>,
-      discoveredMetals: [] as string[],
-      activeBoosts: [] as Array<{
-        instanceId: string;
-        shopItemId: string;
-        effect: unknown;
-        expiresAt: number;
-      }>,
+      metals: {} as Partial<Record<MetalId, number>>,
+      discoveredMetals: [],
+      activeBoosts: [],
     };
 
     it('credits_grant: increments credits by payload.amount', async () => {
@@ -191,7 +175,7 @@ describe('Contract: grants payload → mobile state mapping', () => {
       };
 
       const { state } = applyGrants({ ...EMPTY_STATE }, [grantDto as never], 0);
-      const pl = g!.payload as { metalId: string; quantity: number };
+      const pl = g!.payload as { metalId: MetalId; quantity: number };
 
       const s = state as typeof EMPTY_STATE;
       assert.equal(s.metals[pl.metalId], pl.quantity, 'metals quantity mismatch');
@@ -247,30 +231,6 @@ describe('Contract: grants payload → mobile state mapping', () => {
 
       const s2 = state2 as typeof EMPTY_STATE;
       assert.equal(s2.activeBoosts.length, 1, 'Duplicate grant must not produce a second boost');
-    });
-
-    it('loot_box_reward_grant: adds rolledMetals to state', async () => {
-      const p = await createTestPurchase(userId, GRANT_TEST_ITEMS.loot.id);
-      await fulfillPurchase(p.id);
-      const g = await db.grant.findFirst({ where: { purchaseId: p.id } });
-      assert.ok(g);
-
-      const pl = g!.payload as { rolledMetals: Record<string, number> };
-      const grantDto = {
-        id: g!.id,
-        seq: g!.seq,
-        kind: g!.kind,
-        payload: g!.payload as Record<string, unknown>,
-        createdAt: g!.createdAt.toISOString(),
-      };
-
-      const { state } = applyGrants({ ...EMPTY_STATE }, [grantDto as never], 0);
-      const s = state as typeof EMPTY_STATE;
-
-      for (const [metalId, qty] of Object.entries(pl.rolledMetals)) {
-        assert.equal(s.metals[metalId], qty, `metals["${metalId}"] mismatch after loot apply`);
-        assert.ok(s.discoveredMetals.includes(metalId), `${metalId} not in discoveredMetals`);
-      }
     });
 
     it('grants applied in strict seq order — out-of-order grant skipped', async () => {

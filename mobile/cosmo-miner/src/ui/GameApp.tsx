@@ -32,7 +32,7 @@ import { ShipyardScreen } from '../screens/shipyard';
 import { ShopScreen } from '../screens/ShopScreen';
 import { UpgradesScreen } from '../screens/UpgradesScreen';
 import { CharacterCommunicationChannel } from './CharacterCommunicationChannel';
-import { DevTools } from './DevTools';
+// import { DevTools } from './DevTools';
 import { GameModals } from './GameModals';
 import { GameToasts } from './GameToasts';
 import { GlobalStatsBar } from './GlobalStatsBar';
@@ -42,6 +42,7 @@ import { StarField } from './StarField';
 import { TabBar } from './TabBar';
 import type { TabId } from './TabBar';
 import { getModuleById } from '../game/MODULES';
+import type { SupportedLocale } from './LocalePickerOverlay';
 
 class GameAppErrorBoundary extends Component<
   { children: React.ReactNode },
@@ -101,6 +102,7 @@ type Props = {
   tab: TabId;
   onSetTab: (t: TabId) => void;
   onReset: (showIntro?: boolean) => void;
+  onChangeLocale: (locale: SupportedLocale) => Promise<void> | void;
 };
 
 export function GameApp({
@@ -110,6 +112,7 @@ export function GameApp({
   tab,
   onSetTab,
   onReset,
+  onChangeLocale,
 }: Props) {
   const appliedGrantSeqRef = useRef(initialAppliedGrantSeq);
   const safeInsets = useSafeAreaInsets();
@@ -331,6 +334,7 @@ export function GameApp({
             !!game.characterMessage ||
             game.characterFlowStep === 'select'
           }
+          onChangeLocale={onChangeLocale}
         />
       );
       break;
@@ -610,7 +614,7 @@ export function GameApp({
           playerLevel={game.playerLevel}
         />
 
-        <DevTools
+        {/* <DevTools
           energy={game.energy}
           iron={game.metals.iron}
           titan={game.metals.titan}
@@ -630,7 +634,7 @@ export function GameApp({
             });
           }}
           onReset={onReset}
-        />
+        /> */}
       </RNSAView>
     </LinearGradient>
   );

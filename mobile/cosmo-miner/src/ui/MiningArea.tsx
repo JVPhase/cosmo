@@ -1,22 +1,21 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   Animated,
-  Image,
   Pressable,
-  StyleSheet,
   Text,
   View,
   type GestureResponderEvent,
+  StyleSheet,
 } from 'react-native';
 import { AnimatedMineEffects } from './AnimatedMineEffects';
-import { PassiveMiningFx } from './PassiveMiningFx';
+import type { MetalFloatRenderItem } from './animatedMineEffectsShared';
 import { t } from '../game/i18n';
 import type { MetalId } from '../game/METALS';
 import type { PlanetDefinition } from '../game/PLANETS';
 
 type MetalDefinition = {
   id: MetalId;
-  image: any;
+  image: number;
 };
 
 export type MetalFloat = {
@@ -25,8 +24,6 @@ export type MetalFloat = {
   metalId: MetalId;
   amount: number;
   offsetX: number;
-  translateY: Animated.Value;
-  opacity: Animated.Value;
 };
 
 export type TapState = { count: number; origin?: { x: number; y: number } };
@@ -56,6 +53,23 @@ export function MiningArea({
   glowScale,
   METALS,
 }: MiningAreaProps) {
+  const metalImageById = useMemo(() => {
+    const map: Partial<Record<MetalId, number>> = {};
+    for (const m of METALS) map[m.id] = m.image;
+    return map;
+  }, [METALS]);
+
+  const metalFloatsForFx = useMemo<MetalFloatRenderItem[]>(() => {
+    const fallbackImage = METALS[0]?.image ?? 0;
+    return metalFloats.map((f) => ({
+      id: f.id,
+      born: f.born,
+      amount: f.amount,
+      offsetX: f.offsetX,
+      image: metalImageById[f.metalId] ?? fallbackImage,
+    }));
+  }, [metalFloats, metalImageById, METALS]);
+
   return (
     <View style={styles.main}>
       <Animated.View
@@ -65,9 +79,6 @@ export function MiningArea({
           { transform: [{ scale: glowScale }] },
         ]}
       />
-      <View style={styles.asteroidOrbitContainer}>
-        <PassiveMiningFx passiveRate={passiveRate} mineColor={planet.color} />
-      </View>
       <View
         ref={miningPlayAreaRef}
         style={styles.miningPlayArea}
@@ -78,6 +89,9 @@ export function MiningArea({
           origin={tapState.origin}
           clickPower={clickPower}
           mineColor={planet.color}
+          passiveRate={passiveRate}
+          planetImage={planet.image}
+          metalFloats={metalFloatsForFx}
           style={styles.asteroidWrap}
         >
           <Pressable
@@ -87,11 +101,6 @@ export function MiningArea({
               pressed ? { opacity: 0.92 } : null,
             ]}
           >
-            <Image
-              source={planet.image}
-              resizeMode="contain"
-              style={styles.asteroidImage}
-            />
             {showClickHint && (
               <View style={styles.asteroidCenter}>
                 <Text style={styles.asteroidIcon}>⛏️</Text>
@@ -102,38 +111,6 @@ export function MiningArea({
             )}
           </Pressable>
         </AnimatedMineEffects>
-      </View>
-
-      <View
-        pointerEvents="none"
-        style={[StyleSheet.absoluteFill, styles.metalFloatOverlay]}
-      >
-        {metalFloats.map((f) => {
-          const metal = METALS.find((m) => m.id === f.metalId)!;
-          return (
-            <Animated.View
-              key={f.id}
-              style={{
-                position: 'absolute',
-                opacity: f.opacity,
-                transform: [
-                  { translateX: f.offsetX },
-                  { translateY: f.translateY },
-                ],
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 3,
-              }}
-            >
-              <Image
-                source={metal.image}
-                style={styles.metalFloatIcon}
-                resizeMode="contain"
-              />
-              <Text style={styles.metalFloatText}>+{f.amount}</Text>
-            </Animated.View>
-          );
-        })}
       </View>
     </View>
   );
@@ -157,14 +134,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  asteroidOrbitContainer: {
-    position: 'absolute',
-    width: 300,
-    height: 300,
-    alignItems: 'center',
-    justifyContent: 'center',
-    pointerEvents: 'none',
-  },
   asteroidPulseGlow: {
     width: 80,
     height: 80,
@@ -187,11 +156,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
-  },
-  asteroidImage: {
-    ...StyleSheet.absoluteFill,
-    width: 170,
-    height: 170,
   },
   asteroidCenter: {
     width: 90,
@@ -224,18 +188,5 @@ const styles = StyleSheet.create({
     color: 'rgba(0,212,255,0.28)',
     letterSpacing: 3,
     fontWeight: '700',
-  },
-  metalFloatOverlay: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  metalFloatIcon: { width: 16, height: 16 },
-  metalFloatText: {
-    fontSize: 14,
-    fontWeight: '900',
-    color: '#ffd700',
-    textShadowColor: 'rgba(255,200,0,0.8)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 8,
   },
 });

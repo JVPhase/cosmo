@@ -8,15 +8,10 @@
  *   credits_grant       — { amount: number }
  *   metal_grant         — { metalId: string, quantity: number }
  *   booster_grant       — { shopItemId: string, effectType: string, multiplier?: number, bonus?: number, durationMs: number }
- *   loot_box_reward_grant — { rolledMetals: Record<string, number> }
  */
 import prisma from './prisma';
 
-export type GrantKind =
-  | 'credits_grant'
-  | 'metal_grant'
-  | 'booster_grant'
-  | 'loot_box_reward_grant';
+export type GrantKind = 'credits_grant' | 'metal_grant' | 'booster_grant';
 
 export interface GrantDto {
   id: string;
@@ -65,14 +60,24 @@ export async function createGrantInTx(
   },
 ) {
   return tx.grant.create({
-    data: { userId, seq, kind, payload: payload as object, source: source ?? null, purchaseId: purchaseId ?? null },
+    data: {
+      userId,
+      seq,
+      kind,
+      payload: payload as object,
+      source: source ?? null,
+      purchaseId: purchaseId ?? null,
+    },
   });
 }
 
 /**
  * Returns pending (un-acked) grants after the given cursor, ordered by seq.
  */
-export async function getPendingGrants(userId: string, afterSeq: number): Promise<GrantDto[]> {
+export async function getPendingGrants(
+  userId: string,
+  afterSeq: number,
+): Promise<GrantDto[]> {
   const grants = await prisma.grant.findMany({
     where: { userId, seq: { gt: afterSeq }, ackedAt: null },
     orderBy: { seq: 'asc' },
@@ -89,7 +94,10 @@ export async function getPendingGrants(userId: string, afterSeq: number): Promis
 /**
  * Marks all grants up to upToSeq as acknowledged.
  */
-export async function ackGrants(userId: string, upToSeq: number): Promise<void> {
+export async function ackGrants(
+  userId: string,
+  upToSeq: number,
+): Promise<void> {
   await prisma.grant.updateMany({
     where: { userId, seq: { lte: upToSeq }, ackedAt: null },
     data: { ackedAt: new Date() },

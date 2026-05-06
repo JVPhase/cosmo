@@ -14,14 +14,7 @@ export type BoostEffect = {
   durationMs: number;
 };
 
-export type ShopCategory = 'boosters' | 'metals' | 'lootboxes' | 'converter';
-
-export type LootEntry = {
-  metalId: MetalId;
-  min: number;
-  max: number;
-  chance: number;
-};
+export type ShopCategory = 'boosters' | 'metals' | 'converter';
 
 export type ShopItem = {
   id: ShopItemId;
@@ -32,7 +25,6 @@ export type ShopItem = {
   loreKey: string;
   boostEffect?: BoostEffect;
   metalReward?: { metalId: MetalId; amount: number }[];
-  lootPool?: LootEntry[];
 };
 
 export type ShopItemId =
@@ -40,9 +32,6 @@ export type ShopItemId =
   | 'booster_xp_1h'
   | 'booster_metal_1h'
   | 'booster_battle_30m'
-  | 'loot_box_basic'
-  | 'loot_box_advanced'
-  | 'loot_box_premium'
   | 'metal_iron'
   | 'metal_titan'
   | 'metal_iridium'
@@ -78,15 +67,4 @@ export function getConverterCreditCost(from: MetalId, to: MetalId): number {
   const diff = getMetalTier(to) - getMetalTier(from);
   if (diff <= 0) return 0;
   return getFormulaConstants().CONVERTER_FEE_PER_TIER * diff;
-}
-
-export function rollLootBox(pool: LootEntry[]): Partial<Record<MetalId, number>> {
-  const result: Partial<Record<MetalId, number>> = {};
-  for (const entry of pool) {
-    if (Math.random() < entry.chance) {
-      const amount = entry.min + Math.floor(Math.random() * (entry.max - entry.min + 1));
-      result[entry.metalId] = (result[entry.metalId] ?? 0) + amount;
-    }
-  }
-  return result;
 }

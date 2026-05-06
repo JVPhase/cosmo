@@ -68,7 +68,6 @@
 Текущая `Inventory` модель плохо подходит для exactly-once применения в mobile:
 
 - она хранит агрегированные количества, а не дискретные grants;
-- consumption для timed boosts и loot box rewards будет неидемпотентным;
 - при падении клиента между consume/save легко получить дублирование или потерю.
 
 `Grant` с монотонным курсором решает эту проблему проще и надежнее.
@@ -207,12 +206,9 @@ model Grant {
 - `credits_grant`
 - `metal_grant`
 - `booster_grant`
-- `loot_box_reward_grant`
 
 Правила:
 
-- `loot_box_reward_grant` должен содержать уже готовый reward payload;
-- сервер не должен отправлять mobile “roll this loot box locally”;
 - неподдержанные эффекты не должны превращаться в grants.
 
 ### Что делать с `Inventory`
@@ -355,12 +351,6 @@ body: { upToSeq: 21 }
 - `instanceId` должен быть детерминированным, например `grant_<seq>`;
 - `expiresAt` вычислять от времени применения на клиенте
 
-`loot_box_reward_grant`
-
-- сервер присылает уже готовые reward values;
-- mobile просто добавляет их в state;
-- roll на клиенте запрещен
-
 ### 4. Autosave
 
 Новый autosave не должен вручную собирать урезанный объект.
@@ -390,7 +380,6 @@ body: { upToSeq: 21 }
 - credit packs через `credits_grant`
 - metal packs через `metal_grant`
 - boosters через `booster_grant`
-- loot boxes только через `loot_box_reward_grant`
 
 Оставить скрытыми:
 

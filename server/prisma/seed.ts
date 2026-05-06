@@ -43,12 +43,16 @@ async function seedCrmAdmin() {
   const password = readRequiredSeedEnv('CRM_ADMIN_PASSWORD');
 
   if (!email && !password) {
-    console.log('Skipping CRM admin seed: CRM_ADMIN_EMAIL / CRM_ADMIN_PASSWORD are not set.');
+    console.log(
+      'Skipping CRM admin seed: CRM_ADMIN_EMAIL / CRM_ADMIN_PASSWORD are not set.',
+    );
     return;
   }
 
   if (!email || !password) {
-    throw new Error('CRM admin seed requires both CRM_ADMIN_EMAIL and CRM_ADMIN_PASSWORD.');
+    throw new Error(
+      'CRM admin seed requires both CRM_ADMIN_EMAIL and CRM_ADMIN_PASSWORD.',
+    );
   }
 
   if (password.length < 8) {
@@ -122,7 +126,12 @@ const SHOP_ITEMS: ShopItemSeed[] = [
     description: 'shop.booster_mining_1h.description',
     priceStars: 25,
     priceCredits: 80,
-    metadata: { effectType: 'clickMultiplier', multiplier: 2, durationMs: 3_600_000, deliveryMode: 'grant_sync' },
+    metadata: {
+      effectType: 'clickMultiplier',
+      multiplier: 2,
+      durationMs: 3_600_000,
+      deliveryMode: 'grant_sync',
+    },
     sortOrder: 10,
   },
   {
@@ -132,7 +141,12 @@ const SHOP_ITEMS: ShopItemSeed[] = [
     description: 'shop.booster_xp_1h.description',
     priceStars: 20,
     priceCredits: 60,
-    metadata: { effectType: 'xpMultiplier', multiplier: 2, durationMs: 3_600_000, deliveryMode: 'grant_sync' },
+    metadata: {
+      effectType: 'xpMultiplier',
+      multiplier: 2,
+      durationMs: 3_600_000,
+      deliveryMode: 'grant_sync',
+    },
     sortOrder: 11,
   },
   {
@@ -142,7 +156,12 @@ const SHOP_ITEMS: ShopItemSeed[] = [
     description: 'shop.booster_metal_1h.description',
     priceStars: 30,
     priceCredits: 90,
-    metadata: { effectType: 'metalDropBonus', bonus: 0.5, durationMs: 3_600_000, deliveryMode: 'grant_sync' },
+    metadata: {
+      effectType: 'metalDropBonus',
+      bonus: 0.5,
+      durationMs: 3_600_000,
+      deliveryMode: 'grant_sync',
+    },
     sortOrder: 12,
   },
   {
@@ -152,7 +171,12 @@ const SHOP_ITEMS: ShopItemSeed[] = [
     description: 'shop.booster_battle_30m.description',
     priceStars: 15,
     priceCredits: 50,
-    metadata: { effectType: 'damageMultiplier', multiplier: 1.5, durationMs: 1_800_000, deliveryMode: 'grant_sync' },
+    metadata: {
+      effectType: 'damageMultiplier',
+      multiplier: 1.5,
+      durationMs: 1_800_000,
+      deliveryMode: 'grant_sync',
+    },
     sortOrder: 13,
   },
 
@@ -194,7 +218,11 @@ const SHOP_ITEMS: ShopItemSeed[] = [
     description: 'shop.metal_void.description',
     priceStars: 90,
     priceCredits: 250,
-    metadata: { metalId: 'voidCrystal', quantity: 5, deliveryMode: 'grant_sync' },
+    metadata: {
+      metalId: 'voidCrystal',
+      quantity: 5,
+      deliveryMode: 'grant_sync',
+    },
     sortOrder: 23,
   },
   {
@@ -206,38 +234,6 @@ const SHOP_ITEMS: ShopItemSeed[] = [
     priceCredits: 250,
     metadata: { metalId: 'echoShard', quantity: 5, deliveryMode: 'grant_sync' },
     sortOrder: 24,
-  },
-
-  // ── Loot Boxes (grant_sync) ────────────────────────────────────────────────
-  {
-    id: 'loot_box_basic',
-    type: 'loot_box',
-    name: 'shop.loot_box_basic.name',
-    description: 'shop.loot_box_basic.description',
-    priceStars: 15,
-    priceCredits: 40,
-    metadata: { tier: 'basic', pool: ['iron', 'titan', 'iridium'], deliveryMode: 'grant_sync' },
-    sortOrder: 30,
-  },
-  {
-    id: 'loot_box_advanced',
-    type: 'loot_box',
-    name: 'shop.loot_box_advanced.name',
-    description: 'shop.loot_box_advanced.description',
-    priceStars: 40,
-    priceCredits: 120,
-    metadata: { tier: 'advanced', pool: ['iron', 'titan', 'iridium', 'voidCrystal', 'echoShard'], deliveryMode: 'grant_sync' },
-    sortOrder: 31,
-  },
-  {
-    id: 'loot_box_premium',
-    type: 'loot_box',
-    name: 'shop.loot_box_premium.name',
-    description: 'shop.loot_box_premium.description',
-    priceStars: 120,
-    priceCredits: 350,
-    metadata: { tier: 'premium', pool: ['voidCrystal', 'echoShard'], guaranteed: true, doubleQty: true, deliveryMode: 'grant_sync' },
-    sortOrder: 32,
   },
 
   // ── Premium Unlocks (unsupported in P0) ───────────────────────────────────
@@ -304,8 +300,8 @@ type IapPackSeed = {
   kind: 'ad' | 'iap';
   icon: string;
   credits: number;
-  name: string;        // i18n key in config namespace
-  lore: string;        // i18n key in config namespace
+  name: string; // i18n key in config namespace
+  lore: string; // i18n key in config namespace
   productId: string | null;
   basePrice: string | null;
   sortOrder: number;
@@ -411,18 +407,48 @@ type LocaleBundleSeed = {
 };
 
 const LOCALE_BUNDLES: LocaleBundleSeed[] = [
-  { app: 'mobile', namespace: 'ui',        locale: 'ru', messages: localeUiRu },
-  { app: 'mobile', namespace: 'alerts',    locale: 'ru', messages: localeAlertsRu },
-  { app: 'mobile', namespace: 'intro',     locale: 'ru', messages: localeIntroRu },
-  { app: 'mobile', namespace: 'story',     locale: 'ru', messages: localeStoryRu },
-  { app: 'mobile', namespace: 'dialogues', locale: 'ru', messages: localeDialoguesRu },
-  { app: 'mobile', namespace: 'config',    locale: 'ru', messages: localeConfigRu },
-  { app: 'mobile', namespace: 'ui',        locale: 'en', messages: localeUiEn },
-  { app: 'mobile', namespace: 'alerts',    locale: 'en', messages: localeAlertsEn },
-  { app: 'mobile', namespace: 'intro',     locale: 'en', messages: localeIntroEn },
-  { app: 'mobile', namespace: 'story',     locale: 'en', messages: localeStoryEn },
-  { app: 'mobile', namespace: 'dialogues', locale: 'en', messages: localeDialoguesEn },
-  { app: 'mobile', namespace: 'config',    locale: 'en', messages: localeConfigEn },
+  { app: 'mobile', namespace: 'ui', locale: 'ru', messages: localeUiRu },
+  {
+    app: 'mobile',
+    namespace: 'alerts',
+    locale: 'ru',
+    messages: localeAlertsRu,
+  },
+  { app: 'mobile', namespace: 'intro', locale: 'ru', messages: localeIntroRu },
+  { app: 'mobile', namespace: 'story', locale: 'ru', messages: localeStoryRu },
+  {
+    app: 'mobile',
+    namespace: 'dialogues',
+    locale: 'ru',
+    messages: localeDialoguesRu,
+  },
+  {
+    app: 'mobile',
+    namespace: 'config',
+    locale: 'ru',
+    messages: localeConfigRu,
+  },
+  { app: 'mobile', namespace: 'ui', locale: 'en', messages: localeUiEn },
+  {
+    app: 'mobile',
+    namespace: 'alerts',
+    locale: 'en',
+    messages: localeAlertsEn,
+  },
+  { app: 'mobile', namespace: 'intro', locale: 'en', messages: localeIntroEn },
+  { app: 'mobile', namespace: 'story', locale: 'en', messages: localeStoryEn },
+  {
+    app: 'mobile',
+    namespace: 'dialogues',
+    locale: 'en',
+    messages: localeDialoguesEn,
+  },
+  {
+    app: 'mobile',
+    namespace: 'config',
+    locale: 'en',
+    messages: localeConfigEn,
+  },
 ];
 
 async function seedLocaleBundles() {

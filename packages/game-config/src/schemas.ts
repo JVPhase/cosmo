@@ -117,7 +117,6 @@ export type GrantKind =
   | 'credits_grant'
   | 'metal_grant'
   | 'booster_grant'
-  | 'loot_box_reward_grant'
   | (string & {}); // forward-compatible
 
 export type CreditsGrantPayload = { amount: number };
@@ -136,13 +135,10 @@ export type BoosterGrantPayload = {
   durationMs: number;
 };
 
-export type LootBoxRewardGrantPayload = { rolledMetals: Record<string, number> };
-
 export type GrantPayload =
   | CreditsGrantPayload
   | MetalGrantPayload
   | BoosterGrantPayload
-  | LootBoxRewardGrantPayload
   | Record<string, unknown>; // forward-compatible
 
 /**
@@ -185,7 +181,6 @@ export type TelegramGameSummaryDto = {
  * Server ShopItem SKU set (seed.ts):
  *   boosters: booster_mining_1h, booster_xp_1h, booster_metal_1h, booster_battle_30m
  *   metals:   metal_iron, metal_titan, metal_iridium, metal_void, metal_echo
- *   loot:     loot_box_basic, loot_box_advanced, loot_box_premium
  *   premium:  premium_sector_skip, premium_research_reset
  *   credits:  credits_100, credits_1000, credits_10000
  *
@@ -201,9 +196,6 @@ export type ShopItemIdCanonical =
   | 'booster_xp_1h'
   | 'booster_metal_1h'
   | 'booster_battle_30m'
-  | 'loot_box_basic'
-  | 'loot_box_advanced'
-  | 'loot_box_premium'
   | 'metal_iron'
   | 'metal_titan'
   | 'metal_iridium'

@@ -514,7 +514,6 @@ npx expo export --platform web   # или: npx expo start --web
 | `currency_pack` | `credits_100` | Кредиты → UserSave.data.credits (instant) |
 | `metal_pack` | `metal_iron` | Металлы → UserSave + локальный game state |
 | `booster` | `booster_mining_1h` | Inventory → локальный game state |
-| `loot_box` | `loot_box_basic` | Сервер роллит металлы → UserSave + локальный game state |
 | `premium_unlock` | `premium_sector_skip` | Сервер применяет к UserSave + локальный game state |
 
 ### Добавление нового SKU

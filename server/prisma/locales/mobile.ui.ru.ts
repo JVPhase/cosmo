@@ -16,7 +16,8 @@ export const messages: Record<string, string> = {
   'reset.cancel': 'Отмена',
   'reset.confirm': 'Сбросить',
   'offline.title': 'ОФЛАЙН-ДОБЫЧА',
-  'offline.text': 'Пока вас не было, реакторы не простаивали.\n\nНакоплено: +{earnings} энергии.',
+  'offline.text':
+    'Пока вас не было, реакторы не простаивали.\n\nНакоплено: +{earnings} энергии.',
   'research.modal_title': '◈ ИССЛЕДОВАНИЯ · МММРДР ◈',
   'story_log.modal_title': '◈ БОРТОВОЙ ЖУРНАЛ ◈',
   'achievements.modal_title': '◈ ЛИЧНОЕ ДЕЛО ◈',
@@ -45,19 +46,23 @@ export const messages: Record<string, string> = {
   'research.level_prefix': 'УР. {level}',
   'research.xp_progress': '{xpInLevel} / {xpNeeded} XP до уровня {next}',
   'research.xp_max': '{xp} XP · МАКСИМАЛЬНЫЙ УРОВЕНЬ',
-  'research.hint': '💡 XP начисляется за клики, пассивный доход, победы в боях и экспедиции.',
+  'research.hint':
+    '💡 XP начисляется за клики, пассивный доход, победы в боях и экспедиции.',
   'research.effect.click_multiplier': '+{pct}% к добыче/клик',
   'research.effect.passive_multiplier': '+{pct}% к пассивному доходу',
   'research.effect.metal_drop_bonus': '+{pct}% к шансу металлов',
   'research.effect.damage_multiplier': '+{pct}% к урону в бою',
-  'research.effect.battle_regen_block': 'Регенерация врага заблокирована на {sec} сек',
+  'research.effect.battle_regen_block':
+    'Регенерация врага заблокирована на {sec} сек',
   'research.effect.crit_chance': '+{pct}% шанс крита',
   'research.effect.crit_multiplier': '+{pct}% к урону крита',
   'research.effect.expedition_time_reduction': '−{pct}% время экспедиции',
   'research.effect.expedition_yield_bonus': '+{pct}% металла за экспедицию',
   'research.effect.expedition_slot_bonus': '+{count} слот экспедиции',
-  'research.effect.specific_metal_drop_bonus': '+{pct}% к шансу выпадения {metalId}',
-  'research.effect.module_charge_reduction': '−{pct}% ударов для зарядки модуля',
+  'research.effect.specific_metal_drop_bonus':
+    '+{pct}% к шансу выпадения {metalId}',
+  'research.effect.module_charge_reduction':
+    '−{pct}% ударов для зарядки модуля',
   'research.effect.module_effect_bonus': '+{pct}% к эффекту модуля',
   'research.effect.module_slot_bonus': '+{count} слот модуля',
   'research.effect.xp_multiplier_bonus': '+{pct}% к получаемому XP',
@@ -69,9 +74,11 @@ export const messages: Record<string, string> = {
   // ── Battle screen ────────────────────────────────────────────────────────
   'battle.timer_label': 'ВРЕМЯ',
   'battle.no_battle_title': 'НЕТ АКТИВНОГО БОЯ',
-  'battle.no_battle_text': 'Выберите вражескую планету на вкладке ПЛАН. и начните атаку.',
+  'battle.no_battle_text':
+    'Выберите вражескую планету на вкладке ПЛАН. и начните атаку.',
   'battle.ship_broken_title': 'КОРАБЛЬ СЛОМАН',
-  'battle.ship_broken_text': '«{shipName}» получил критические повреждения и вышел из боя.\n\nОтправьтесь в Верфь для починки.',
+  'battle.ship_broken_text':
+    '«{shipName}» получил критические повреждения и вышел из боя.\n\nОтправьтесь в Верфь для починки.',
   'battle.go_shipyard_btn': '🛠️ ПЕРЕЙТИ В ВЕРФЬ',
   'battle.hp_label': 'HP ПРОТИВНИКА',
   'battle.damage_per_click': '⚔️ {damage}/клик',
@@ -116,7 +123,8 @@ export const messages: Record<string, string> = {
   'expedition.sector2_short': '×5 СЕК.2',
   'expedition.sector2_multiplier': '×5 СЕКТОР 2',
   'expedition.ship_label': 'КОРАБЛЬ ДЛЯ ЭКСПЕДИЦИИ:',
-  'expedition.no_ships': 'Нет доступных кораблей. Постройте флот во вкладке ФЛОТ.',
+  'expedition.no_ships':
+    'Нет доступных кораблей. Постройте флот во вкладке ФЛОТ.',
   'expedition.ship_multiplier': '×{mult} КОРАБЛЬ',
   'expedition.send_btn': '🚀 ОТПРАВИТЬ',
   'expedition.select_ship_btn': 'ВЫБЕРИТЕ КОРАБЛЬ',
@@ -136,7 +144,8 @@ export const messages: Record<string, string> = {
   'fleet.build_btn': 'СОЗДАТЬ',
   'fleet.upgrade_btn': 'УЛУ.',
   'fleet.hint': '💡 Нажмите на корабль чтобы открыть его вооружение.',
-  'fleet.hint_expeditions': '💡 Нажмите на корабль чтобы открыть его вооружение. Отправляйте корабли в ЭКСПЕДИЦИИ за металлами.',
+  'fleet.hint_expeditions':
+    '💡 Нажмите на корабль чтобы открыть его вооружение. Отправляйте корабли в ЭКСПЕДИЦИИ за металлами.',
   // ── Ship card ────────────────────────────────────────────────────────────
   'shipcard.damage_mult': '×{mult} урон',
   'shipcard.damage_total': '⚔️ {damage}/клик',
@@ -201,21 +210,24 @@ export const messages: Record<string, string> = {
   'planets.suffix_3': 'Дельта',
   'planets.suffix_4': 'Эпсилон',
   // ── Achievement unlock toast ──────────────────────────────────────────────
-  'achievement_unlocked': '🏆 ДОСТИЖЕНИЕ РАЗБЛОКИРОВАНО',
+  achievement_unlocked: '🏆 ДОСТИЖЕНИЕ РАЗБЛОКИРОВАНО',
   // ── Shop screen ──────────────────────────────────────────────────────────
   'shop.tab_boosters': '⚡ БУСТЕРЫ',
   'shop.tab_metals': '⛏️ МЕТАЛЛЫ',
   'shop.tab_containers': '📦 КОНТЕЙН.',
   'shop.tab_converter': '🔄 КОНВЕРТЕР',
   'shop.tab_credits': '💳 КРЕДИТЫ',
-  'shop.pending_credits': '+{amount} 💳 кредитов будет зачислено при следующем запуске игры.',
-  'shop.pending_metal': '{icon} +{quantity} {metal} — будет добавлено при следующем запуске игры.',
-  'shop.pending_booster': '{name} — будет активирован при следующем запуске игры.',
-  'shop.pending_lootbox': '{name} куплен. Содержимое появится при следующем запуске игры.',
+  'shop.pending_credits':
+    '+{amount} 💳 кредитов будет зачислено при следующем запуске игры.',
+  'shop.pending_metal':
+    '{icon} +{quantity} {metal} — будет добавлено при следующем запуске игры.',
+  'shop.pending_booster':
+    '{name} — будет активирован при следующем запуске игры.',
   // ── Channel / CharacterSelectFlow ─────────────────────────────────────────
   'channel.title_incoming': '◈ ВХОДЯЩИЙ СИГНАЛ · КЛЕРК-7 ◈',
   'channel.title_active': '◈ ПРЯМОЙ КАНАЛ · {name} ◈',
-  'channel.select_text': 'Зафиксированы 4 входящих сигнала из неизвестных источников.\n\nСогласно регламенту МММРДР, одновременная обработка более одного канала связи требует лицензии категории КС-4. Форма подана. Ответа нет. Поэтому — выберите одного адресата.\n\nОстальные сигналы будут архивированы. Или потеряны. Технически — разницы нет.',
+  'channel.select_text':
+    'Зафиксированы 4 входящих сигнала из неизвестных источников.\n\nСогласно регламенту МММРДР, одновременная обработка более одного канала связи требует лицензии категории КС-4. Форма подана. Ответа нет. Поэтому — выберите одного адресата.\n\nОстальные сигналы будут архивированы. Или потеряны. Технически — разницы нет.',
   'channel.confirm': 'ПОДТВЕРДИТЬ',
   'channel.transmission': '📡 ПЕРЕДАЧА · СИГНАЛ 12%',
   'channel.next': 'ДАЛЕЕ',
@@ -244,7 +256,8 @@ export const messages: Record<string, string> = {
   'mining.click_hint': 'КЛИКНИ',
   'mining.hint': '◈ ДОБЫВАЙ ЭНЕРГИУМ ◈',
   // ── CharacterCommunicationChannel (remaining) ─────────────────────────────
-  'channel.established_garbled': 'Канал установлен: {name} [{role}].\n\nПолучено обрывистое сообщение:',
+  'channel.established_garbled':
+    'Канал установлен: {name} [{role}].\n\nПолучено обрывистое сообщение:',
   'channel.history_label': '📁 ИСТОРИЯ',
   'channel.tab_inbox': 'ВХОДЯЩИЕ',
   'channel.tab_history': 'ИСТОРИЯ',
@@ -253,7 +266,8 @@ export const messages: Record<string, string> = {
   'channel.no_messages': 'Сообщений пока нет.',
   'channel.message_n': 'СООБЩЕНИЕ #{n}',
   'channel.signal_blocked_label': '📡 СТАТУС КАНАЛА · СИГНАЛ 12%',
-  'channel.signal_blocked_text': 'Канал нестабилен. Источник помех — {alien}.\n\nПока они активны, связь не восстановится. Победи их — и канал будет работать в полную силу.',
+  'channel.signal_blocked_text':
+    'Канал нестабилен. Источник помех — {alien}.\n\nПока они активны, связь не восстановится. Победи их — и канал будет работать в полную силу.',
   'channel.signal_active_label': '📡 СТАТУС КАНАЛА · АКТИВЕН',
   'channel.no_new_messages': 'Новых сообщений нет.',
   'channel.close': 'ЗАКРЫТЬ',
@@ -308,8 +322,6 @@ export const messages: Record<string, string> = {
   'shop.purchase_error_text': 'Покупка не завершена.',
   'shop.watch_btn': 'СМОТРЕТЬ',
   'shop.header_title': '🛒 МАГАЗИН',
-  'shop.loot_title': '📦 Содержимое контейнера:',
-  'shop.loot_dismiss': 'Нажмите чтобы закрыть',
   'shop.buy_btn': 'КУПИТЬ',
   'shop.effect_click': 'добыча кликом',
   'shop.effect_passive': 'пассивный доход',
@@ -320,7 +332,8 @@ export const messages: Record<string, string> = {
   'shop.stars_purchase_pending_title': 'Покупка завершена',
   'shop.stars_payment_error_text': 'Статус: {status}',
   'shop.stars_telegram_unavail_title': 'Telegram недоступен',
-  'shop.stars_telegram_unavail_text': 'Откройте Mini App внутри Telegram или включите EXPO_PUBLIC_TELEGRAM_TEST_MODE=true для локальной проверки каталога.',
+  'shop.stars_telegram_unavail_text':
+    'Откройте Mini App внутри Telegram или включите EXPO_PUBLIC_TELEGRAM_TEST_MODE=true для локальной проверки каталога.',
   'shop.stars_purchase_complete_title': 'Purchase complete',
   'shop.stars_payment_error_title': 'Ошибка оплаты',
   'shop.stars_invoice_error_title': 'Ошибка',
@@ -329,27 +342,30 @@ export const messages: Record<string, string> = {
   'shop.stars_retry': 'Повторить',
   'shop.stars_empty': 'Нет доступных товаров',
   'shop.stars_test_mode_title': 'TEST MODE',
-  'shop.stars_test_mode_text': 'Stars-вкладка включена локально для проверки каталога. Реальная оплата и webhook подтверждение требуют запуска внутри Telegram. Для auth в dev-режиме можно передать EXPO_PUBLIC_TELEGRAM_TEST_INIT_DATA.',
+  'shop.stars_test_mode_text':
+    'Stars-вкладка включена локально для проверки каталога. Реальная оплата и webhook подтверждение требуют запуска внутри Telegram. Для auth в dev-режиме можно передать EXPO_PUBLIC_TELEGRAM_TEST_INIT_DATA.',
   'shop.stars_applied_credits': '+{amount} credits were added to your balance.',
-  'shop.stars_applied_metal': '{icon} {quantity} {metalId} were added to your inventory.',
-  'shop.stars_applied_booster': '{name} was delivered and activated immediately.',
-  'shop.stars_applied_lootbox': '{name} was delivered to your account.',
+  'shop.stars_applied_metal':
+    '{icon} {quantity} {metalId} were added to your inventory.',
+  'shop.stars_applied_booster':
+    '{name} was delivered and activated immediately.',
   // ── CharacterSelectFlow (explain step) ────────────────────────────────────
-  'channel.signal_unstable_explain': 'Сигнал нестабилен. Источник помех — {alienName}.\n\nПока они активны, качество связи не превышает 12%. После победы над ними канал будет восстановлен, и {characterName} сможет выйти на связь в полном объёме.\n\nФорма СВЗ-1 «Запрос на восстановление связи» подана автоматически. Ожидаемый срок рассмотрения: после победы.',
+  'channel.signal_unstable_explain':
+    'Сигнал нестабилен. Источник помех — {alienName}.\n\nПока они активны, качество связи не превышает 12%. После победы над ними канал будет восстановлен, и {characterName} сможет выйти на связь в полном объёме.\n\nФорма СВЗ-1 «Запрос на восстановление связи» подана автоматически. Ожидаемый срок рассмотрения: после победы.',
   // ── CharacterSelectFlow (metal deal offer) ────────────────────────────────
   'channel.offer_void_crystal': '✨ ×{amount} Кристалл Пустоты',
-  'channel.offer_echo_shard':   '🔊 ×{amount} Осколок Эха',
-  'channel.offer_energy_cost':  '— {cost} энергиума',
+  'channel.offer_echo_shard': '🔊 ×{amount} Осколок Эха',
+  'channel.offer_energy_cost': '— {cost} энергиума',
   // ── ShopScreen boost effect line ──────────────────────────────────────────
   'shop.boost_effect_line': '×{multiplier} {stat} на {duration}',
   // ── Research tab names (used in unlock toast) ─────────────────────────────
   'research.tab_mining': '«Добыча»',
   'research.tab_battle': '«Бой»',
   // ── Analytics export ──────────────────────────────────────────────────────
-  'analytics.error_web':        'Экспорт файла недоступен в веб-версии',
-  'analytics.error_log_empty':  'Лог пуст — нет данных для экспорта',
+  'analytics.error_web': 'Экспорт файла недоступен в веб-версии',
+  'analytics.error_log_empty': 'Лог пуст — нет данных для экспорта',
   'analytics.error_no_sharing': 'Sharing недоступен на этом устройстве',
-  'analytics.share_title':      'Экспорт аналитики Cosmo',
+  'analytics.share_title': 'Экспорт аналитики Cosmo',
   // ── PrestigePopup ─────────────────────────────────────────────────────────
   'prestige.pp_unit': 'п.п.',
   // ── PrestigeBtn ──────────────────────────────────────────────────────────
@@ -359,5 +375,6 @@ export const messages: Record<string, string> = {
   'click_power_info.text': 'Каждое нажатие приносит {clickPower} ⚡ энергиума.',
   // ── Passive rate info popup ───────────────────────────────────────────────
   'passive_rate_info.title': 'ПАССИВНЫЙ ДОХОД',
-  'passive_rate_info.text': 'Ваши дроны добывают {passiveRate} ⚡ энергиума каждую секунду.',
+  'passive_rate_info.text':
+    'Ваши дроны добывают {passiveRate} ⚡ энергиума каждую секунду.',
 };
