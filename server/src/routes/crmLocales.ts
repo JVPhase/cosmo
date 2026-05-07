@@ -4,8 +4,9 @@ import prisma from '../lib/prisma';
 const VALID_APPS = ['mobile', 'crm'] as const;
 const VALID_NAMESPACES = ['ui', 'alerts', 'intro', 'story', 'dialogues', 'config'] as const;
 const VALID_LOCALES = /^[a-z]{2}(-[A-Z]{2})?$/;
-// Translation key: dot-separated segments of [a-z0-9_-], e.g. "tabs.game", "story.entry_01.text"
-const VALID_KEY = /^[a-z0-9_.:-]{1,120}$/;
+// Translation key: dot-separated segments. Existing seeded bundles include
+// camelCase keys like "metal.echoShard.name", so uppercase A-Z is accepted.
+const VALID_KEY = /^[A-Za-z0-9_.:-]{1,120}$/;
 // Template variable placeholder like {count}, {name}
 const PLACEHOLDER_RE = /\{[a-z_]+\}/g;
 
@@ -199,7 +200,7 @@ export function registerCrmLocaleRoutes(app: FastifyInstance) {
       return reply.status(400).send({ error: `namespace must be one of: ${VALID_NAMESPACES.join(', ')}` });
     }
     if (!VALID_KEY.test(key)) {
-      return reply.status(400).send({ error: 'invalid key format (use lowercase dots/underscores, max 120 chars)' });
+      return reply.status(400).send({ error: 'invalid key format (use letters, digits, dots, underscores, dashes, max 120 chars)' });
     }
     if (!VALID_LOCALES.test(baseLocale)) {
       return reply.status(400).send({ error: 'invalid baseLocale format' });

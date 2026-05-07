@@ -12,5 +12,6 @@
       "@cosmo/game-config": ["../packages/game-config/src/index.ts"]
     }
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": ["src/mcp"]
 }

@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "target": "ES2022",
+    "noEmit": true,
+    "rootDirs": ["src", "../packages/game-config/src"]
+  },
+  "include": ["src/mcp"],
+  "exclude": []
+}

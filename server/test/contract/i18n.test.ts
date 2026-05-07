@@ -235,6 +235,22 @@ describe('Contract: i18n — CRM locale management', () => {
     assert.ok(body.version >= 1);
   });
 
+  it('PUT /crm/locales/:app/:ns/:locale accepts seeded camelCase keys', async () => {
+    const res = await app.inject({
+      method: 'PUT',
+      url: `/crm/locales/${testApp}/${testNs}/${testLocale}`,
+      headers: { authorization: `Bearer ${adminToken}`, 'content-type': 'application/json' },
+      payload: {
+        messages: {
+          [testKey]: 'Test value',
+          'metal.echoShard.name': 'Echo Shard',
+          'metal.voidCrystal.name': 'Void Crystal',
+        },
+      },
+    });
+    assert.equal(res.statusCode, 200, res.body);
+  });
+
   it('GET /crm/locales/:app/:ns/:locale returns bundle', async () => {
     const res = await app.inject({
       method: 'GET',
