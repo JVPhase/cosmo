@@ -59,6 +59,19 @@ export interface LocaleBundleUpdateResult {
   updatedAt: string;
 }
 
+export interface LocaleMessagesPatchResult {
+  app: string;
+  namespace: string;
+  locales: Array<{
+    id: string;
+    locale: string;
+    version: number;
+    updatedAt: string;
+    updatedKeyCount: number;
+    deletedKeyCount: number;
+  }>;
+}
+
 export interface CosmoApiOptions {
   baseUrl: string;
   email: string;
@@ -158,6 +171,17 @@ export class CosmoApi {
       `/crm/locales/${encodeURIComponent(app)}/${encodeURIComponent(namespace)}/${encodeURIComponent(locale)}`,
       { body: { messages } },
     )) as LocaleBundleUpdateResult;
+  }
+
+  async patchLocaleMessages(input: {
+    app: string;
+    namespace: string;
+    updates?: Record<string, Record<string, string | null>>;
+    deleteKeys?: Record<string, string[]>;
+  }): Promise<LocaleMessagesPatchResult> {
+    return (await this.fetchJson('PATCH', '/crm/locales/messages', {
+      body: input,
+    })) as LocaleMessagesPatchResult;
   }
 
   async createLocaleKey(input: {

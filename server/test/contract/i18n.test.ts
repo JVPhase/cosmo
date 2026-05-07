@@ -262,6 +262,50 @@ describe('Contract: i18n — CRM locale management', () => {
     assert.equal(body.messages[testKey], 'Test value');
   });
 
+  it('PATCH /crm/locales/messages updates selected locale keys only', async () => {
+    const patchedKey = `${testKey}.patch`;
+    const res = await app.inject({
+      method: 'PATCH',
+      url: '/crm/locales/messages',
+      headers: { authorization: `Bearer ${adminToken}`, 'content-type': 'application/json' },
+      payload: {
+        app: testApp,
+        namespace: testNs,
+        updates: {
+          en: {
+            [patchedKey]: 'Patched value',
+            'metal.echoShard.name': 'Echo Shard',
+          },
+          ru: {
+            [patchedKey]: 'Патч',
+          },
+        },
+        deleteKeys: {
+          en: ['metal.voidCrystal.name'],
+        },
+      },
+    });
+    assert.equal(res.statusCode, 200, res.body);
+
+    const enBundle = await db.localeBundle.findUnique({
+      where: { app_namespace_locale: { app: testApp, namespace: testNs, locale: 'en' } },
+    });
+    assert.ok(enBundle);
+    const enMessages = enBundle.messages as Record<string, string>;
+    assert.equal(enMessages[testKey], 'Test value');
+    assert.equal(enMessages[patchedKey], 'Patched value');
+    assert.equal(enMessages['metal.echoShard.name'], 'Echo Shard');
+    assert.ok(!Object.prototype.hasOwnProperty.call(enMessages, 'metal.voidCrystal.name'));
+
+    const ruBundle = await db.localeBundle.findUnique({
+      where: { app_namespace_locale: { app: testApp, namespace: testNs, locale: 'ru' } },
+    });
+    assert.ok(ruBundle);
+    const ruMessages = ruBundle.messages as Record<string, string>;
+    assert.equal(ruMessages[patchedKey], 'Патч');
+    assert.equal(ruMessages['existing.key'], 'Существующий ключ');
+  });
+
   it('DELETE /crm/locales/keys removes key from all locales', async () => {
     const res = await app.inject({
       method: 'DELETE',

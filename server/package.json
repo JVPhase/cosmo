@@ -9,6 +9,7 @@
     "db:migrate": "prisma migrate dev",
     "db:generate": "prisma generate",
     "db:seed": "prisma generate && tsx prisma/seed.ts",
+    "db:seed:locales": "prisma generate && tsx prisma/seedLocales.ts",
     "db:up": "docker compose -f ../docker-compose.yml up -d",
     "db:down": "docker compose -f ../docker-compose.yml down",
     "db:test:setup": "tsx scripts/test-db-setup.ts",

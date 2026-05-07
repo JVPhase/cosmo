@@ -23,6 +23,7 @@ Translations:
 - `list_locale_bundles` — список bundles с метаданными (`app`, `namespace`, `locale`, `version`, counts).
 - `get_locale_bundle` — полный messages object для bundle, например `mobile/ui/en`.
 - `update_locale_bundle` — полная замена messages object.
+- `patch_locale_messages` — точечно обновить/удалить много ключей в нескольких локалях без пересылки всего bundle.
 - `create_locale_key` — создать ключ во всех локалях namespace.
 - `rename_locale_key` — переименовать ключ во всех локалях namespace.
 - `delete_locale_key` — удалить ключ во всех локалях namespace.
@@ -110,6 +111,25 @@ npm run mcp:typecheck
 Или:
 
 > Покажи переводы `mobile/ui/en` и добавь ключ `tabs.shipyard`.
+
+Для пакетной точечной записи переводов MCP вызывает `patch_locale_messages`, например:
+
+```json
+{
+  "app": "mobile",
+  "namespace": "ui",
+  "updates": {
+    "en": {
+      "upgrade.15.name": "Quantum Drill",
+      "upgrade.15.lore": "A compact rig that folds spacetime around ore veins."
+    },
+    "ru": {
+      "upgrade.15.name": "Квантовый бур",
+      "upgrade.15.lore": "Компактная установка, сворачивающая пространство вокруг рудных жил."
+    }
+  }
+}
+```
 
 ## Подключение к Cursor
 

@@ -171,6 +171,139 @@ export function registerCrmLocaleRoutes(app: FastifyInstance) {
   });
 
   /**
+   * PATCH /crm/locales/messages
+   * Patch multiple locale bundles without sending the whole messages object.
+   *
+   * Payload:
+   * {
+   *   app: "mobile",
+   *   namespace: "ui",
+   *   updates: { en: { "tabs.game": "Game" }, ru: { "tabs.game": "Игра" } },
+   *   deleteKeys: { en: ["old.key"] }
+   * }
+   */
+  app.patch('/locales/messages', async (req, reply) => {
+    const body = (req.body ?? {}) as {
+      app?: unknown;
+      namespace?: unknown;
+      updates?: unknown;
+      deleteKeys?: unknown;
+    };
+
+    const appVal = typeof body.app === 'string' ? body.app.trim() : '';
+    const nsVal = typeof body.namespace === 'string' ? body.namespace.trim() : '';
+
+    if (!VALID_APPS.includes(appVal as (typeof VALID_APPS)[number])) {
+      return reply.status(400).send({ error: `app must be one of: ${VALID_APPS.join(', ')}` });
+    }
+    if (!VALID_NAMESPACES.includes(nsVal as (typeof VALID_NAMESPACES)[number])) {
+      return reply.status(400).send({ error: `namespace must be one of: ${VALID_NAMESPACES.join(', ')}` });
+    }
+
+    const updates = isPlainObject(body.updates) ? body.updates : {};
+    const deleteKeys = body.deleteKeys === undefined ? {} : body.deleteKeys;
+    if (!isPlainObject(deleteKeys)) {
+      return reply.status(400).send({ error: 'deleteKeys must be a JSON object when provided' });
+    }
+
+    const localesToTouch = new Set([
+      ...Object.keys(updates),
+      ...Object.keys(deleteKeys),
+    ]);
+    if (localesToTouch.size === 0) {
+      return reply.status(400).send({ error: 'updates or deleteKeys is required' });
+    }
+
+    const normalizedUpdates: Record<string, Messages> = {};
+    const normalizedDeletes: Record<string, string[]> = {};
+
+    for (const locale of localesToTouch) {
+      if (!VALID_LOCALES.test(locale)) {
+        return reply.status(400).send({ error: `invalid locale format: ${locale}` });
+      }
+
+      const localeUpdatesRaw = updates[locale];
+      if (localeUpdatesRaw !== undefined) {
+        if (!isPlainObject(localeUpdatesRaw)) {
+          return reply.status(400).send({ error: `updates.${locale} must be a JSON object` });
+        }
+        const localeUpdates: Messages = {};
+        for (const [key, value] of Object.entries(localeUpdatesRaw)) {
+          if (!VALID_KEY.test(key)) {
+            return reply.status(400).send({ error: `invalid key: "${key}"` });
+          }
+          if (typeof value !== 'string' && value !== null) {
+            return reply.status(400).send({ error: `updates.${locale}.${key} must be string or null` });
+          }
+          localeUpdates[key] = value;
+        }
+        normalizedUpdates[locale] = localeUpdates;
+      }
+
+      const localeDeletesRaw = deleteKeys[locale];
+      if (localeDeletesRaw !== undefined) {
+        if (!Array.isArray(localeDeletesRaw)) {
+          return reply.status(400).send({ error: `deleteKeys.${locale} must be an array` });
+        }
+        normalizedDeletes[locale] = [];
+        for (const key of localeDeletesRaw) {
+          if (typeof key !== 'string' || !VALID_KEY.test(key)) {
+            return reply.status(400).send({ error: `invalid delete key for ${locale}` });
+          }
+          normalizedDeletes[locale].push(key);
+        }
+      }
+    }
+
+    const updatedBundles = await prisma.$transaction(async (tx) => {
+      const result: Array<{
+        id: string;
+        app: string;
+        namespace: string;
+        locale: string;
+        version: number;
+        updatedAt: Date;
+      }> = [];
+
+      for (const locale of localesToTouch) {
+        const existing = await tx.localeBundle.findUnique({
+          where: { app_namespace_locale: { app: appVal, namespace: nsVal, locale } },
+        });
+        const messages = asMessages(existing?.messages ?? {});
+
+        for (const key of normalizedDeletes[locale] ?? []) {
+          delete messages[key];
+        }
+        for (const [key, value] of Object.entries(normalizedUpdates[locale] ?? {})) {
+          messages[key] = value;
+        }
+
+        const row = await tx.localeBundle.upsert({
+          where: { app_namespace_locale: { app: appVal, namespace: nsVal, locale } },
+          create: { app: appVal, namespace: nsVal, locale, messages: messages as object, version: 1 },
+          update: { messages: messages as object, version: { increment: 1 } },
+        });
+        result.push(row);
+      }
+
+      return result;
+    });
+
+    return {
+      app: appVal,
+      namespace: nsVal,
+      locales: updatedBundles.map((row) => ({
+        id: row.id,
+        locale: row.locale,
+        version: row.version,
+        updatedAt: row.updatedAt.toISOString(),
+        updatedKeyCount: Object.keys(normalizedUpdates[row.locale] ?? {}).length,
+        deletedKeyCount: (normalizedDeletes[row.locale] ?? []).length,
+      })),
+    };
+  });
+
+  /**
    * POST /crm/locales/keys
    * Create a new translation key across all existing locales for the given app+namespace.
    * - Sets baseValue for baseLocale

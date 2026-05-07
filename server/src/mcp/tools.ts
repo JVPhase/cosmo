@@ -162,6 +162,50 @@ function normalizeMessagesInput(value: unknown): Record<string, string | null> {
   return out;
 }
 
+function normalizeLocaleUpdatesInput(
+  value: unknown,
+): Record<string, Record<string, string | null>> | undefined {
+  if (value === undefined) return undefined;
+  const normalized = normalizeJsonInput(value, 'updates');
+  if (!isPlainObject(normalized)) {
+    throw new Error('updates must be a JSON object');
+  }
+
+  const out: Record<string, Record<string, string | null>> = {};
+  for (const [locale, messages] of Object.entries(normalized)) {
+    if (!isPlainObject(messages)) {
+      throw new Error(`updates.${locale} must be a JSON object`);
+    }
+    out[locale] = {};
+    for (const [key, message] of Object.entries(messages)) {
+      if (typeof message !== 'string' && message !== null) {
+        throw new Error(`updates.${locale}.${key} must be string or null`);
+      }
+      out[locale][key] = message;
+    }
+  }
+  return out;
+}
+
+function normalizeLocaleDeleteKeysInput(
+  value: unknown,
+): Record<string, string[]> | undefined {
+  if (value === undefined) return undefined;
+  const normalized = normalizeJsonInput(value, 'deleteKeys');
+  if (!isPlainObject(normalized)) {
+    throw new Error('deleteKeys must be a JSON object');
+  }
+
+  const out: Record<string, string[]> = {};
+  for (const [locale, keys] of Object.entries(normalized)) {
+    if (!Array.isArray(keys) || keys.some((key) => typeof key !== 'string')) {
+      throw new Error(`deleteKeys.${locale} must be an array of strings`);
+    }
+    out[locale] = keys;
+  }
+  return out;
+}
+
 export function registerCosmoTools(server: McpServer, api: CosmoApi): void {
   server.registerTool(
     'list_config_keys',
@@ -415,6 +459,58 @@ export function registerCosmoTools(server: McpServer, api: CosmoApi): void {
           normalizedMessages,
         );
         return ok({ status: 'updated', ...res });
+      } catch (e) {
+        return err(describeApiError(e));
+      }
+    },
+  );
+
+  server.registerTool(
+    'patch_locale_messages',
+    {
+      title: 'Patch locale messages',
+      description:
+        'Точечно обновляет/удаляет translation keys в нескольких локалях одного app+namespace без пересылки всего bundle. ' +
+        'updates: { "en": { "upgrade.15.name": "Quantum Drill" }, "ru": { ... } }. ' +
+        'deleteKeys: { "en": ["old.key"] }. Валидируются только переданные ключи.',
+      inputSchema: {
+        app: LOCALE_APP_ENUM,
+        namespace: LOCALE_NAMESPACE_ENUM,
+        updates: z
+          .record(z.record(z.union([z.string(), z.null()])))
+          .or(z.string())
+          .optional()
+          .describe(
+            'Object by locale: { "en": { "key.path": "Text" } }. JSON-string тоже будет распарсена.',
+          ),
+        deleteKeys: z
+          .record(z.array(LOCALE_KEY))
+          .or(z.string())
+          .optional()
+          .describe('Object by locale: { "en": ["old.key"] }.'),
+      },
+    },
+    async ({
+      app,
+      namespace,
+      updates,
+      deleteKeys,
+    }: {
+      app: string;
+      namespace: string;
+      updates?: unknown;
+      deleteKeys?: unknown;
+    }) => {
+      try {
+        const normalizedUpdates = normalizeLocaleUpdatesInput(updates);
+        const normalizedDeletes = normalizeLocaleDeleteKeysInput(deleteKeys);
+        const res = await api.patchLocaleMessages({
+          app,
+          namespace,
+          updates: normalizedUpdates,
+          deleteKeys: normalizedDeletes,
+        });
+        return ok({ status: 'patched', ...res });
       } catch (e) {
         return err(describeApiError(e));
       }
