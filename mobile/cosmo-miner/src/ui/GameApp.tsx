@@ -5,11 +5,11 @@ import React, {
   useCallback,
   useEffect,
   useRef,
-  useState,
+  useState
 } from 'react';
 import {
   SafeAreaView as RNSAView,
-  useSafeAreaInsets,
+  useSafeAreaInsets
 } from 'react-native-safe-area-context';
 import { StyleSheet, Text, View } from 'react-native';
 import { logEvent } from '../game/analytics';
@@ -32,7 +32,7 @@ import { ShipyardScreen } from '../screens/shipyard';
 import { ShopScreen } from '../screens/ShopScreen';
 import { UpgradesScreen } from '../screens/UpgradesScreen';
 import { CharacterCommunicationChannel } from './CharacterCommunicationChannel';
-// import { DevTools } from './DevTools';
+import { DevTools } from './DevTools';
 import { GameModals } from './GameModals';
 import { GameToasts } from './GameToasts';
 import { GlobalStatsBar } from './GlobalStatsBar';
@@ -64,7 +64,7 @@ class GameAppErrorBoundary extends Component<
             backgroundColor: '#050918',
             alignItems: 'center',
             justifyContent: 'center',
-            padding: 24,
+            padding: 24
           }}
         >
           <Text
@@ -72,7 +72,7 @@ class GameAppErrorBoundary extends Component<
               color: '#ff4444',
               fontSize: 13,
               fontWeight: '800',
-              marginBottom: 8,
+              marginBottom: 8
             }}
           >
             {t('ui.error_boundary.crash_title')}
@@ -81,7 +81,7 @@ class GameAppErrorBoundary extends Component<
             style={{
               color: 'rgba(255,255,255,0.7)',
               fontSize: 11,
-              textAlign: 'center',
+              textAlign: 'center'
             }}
           >
             {this.state.error.message}
@@ -112,7 +112,7 @@ export function GameApp({
   tab,
   onSetTab,
   onReset,
-  onChangeLocale,
+  onChangeLocale
 }: Props) {
   const appliedGrantSeqRef = useRef(initialAppliedGrantSeq);
   const safeInsets = useSafeAreaInsets();
@@ -122,7 +122,7 @@ export function GameApp({
 
   const game = useGame(initial, dialogues);
   const latestRef = useRef<GameState & { replaceStateFromSync: any }>(
-    game as any,
+    game as any
   );
   useEffect(() => {
     latestRef.current = game as any;
@@ -132,7 +132,7 @@ export function GameApp({
   const syncPendingGrantsNow = useGrantSync(appliedGrantSeqRef, latestRef);
 
   const minAttackEnergy = Math.min(
-    ...getAliens().map((a) => a.attackEnergyCost),
+    ...getAliens().map((a) => a.attackEnergyCost)
   );
   const screenGreetedRef = useRef<Set<string>>(new Set());
   const prevCharacterMessageRef = useRef<string | null>(null);
@@ -154,7 +154,7 @@ export function GameApp({
       upgrades: 'screen_upgrades',
       battle: 'screen_battle',
       shipyard: 'screen_shipyard',
-      planets: 'screen_planets',
+      planets: 'screen_planets'
     };
     const trigger = screenTriggers[tab];
     if (trigger && !screenGreetedRef.current.has(tab)) {
@@ -210,7 +210,7 @@ export function GameApp({
       setAchievementsOpen(false);
       onSetTab(t);
     },
-    [onSetTab],
+    [onSetTab]
   );
 
   let tabContent: React.ReactNode = null;
@@ -237,7 +237,7 @@ export function GameApp({
                   id: game.achievementToast.id,
                   nameKey: game.achievementToast.nameKey,
                   icon: game.achievementToast.icon,
-                  loreKey: game.achievementToast.loreKey,
+                  loreKey: game.achievementToast.loreKey
                 }
               : null
           }
@@ -260,7 +260,7 @@ export function GameApp({
               game.energy >= n.energyCost &&
               (n.branch === 'mining' ||
                 (n.branch === 'battle' && battleUnlocked) ||
-                (n.branch === 'expedition' && shipyardUnlocked)),
+                (n.branch === 'expedition' && shipyardUnlocked))
           )}
           onOpenResearch={() => {
             if (!screenGreetedRef.current.has('research')) {
@@ -291,7 +291,7 @@ export function GameApp({
           onOpenStoryLog={() => {
             const ctx = {
               unlockedPlanetIds: game.unlockedPlanetIds,
-              chosenCharacterId: game.chosenCharacterId,
+              chosenCharacterId: game.chosenCharacterId
             };
             setSeenStoryCount(getStoryLogUnlockedEntries(ctx).length);
             logEvent('modal_open', { modal: 'story_log' });
@@ -302,7 +302,7 @@ export function GameApp({
               playerLevel: game.playerLevel,
               prestigeCount: game.prestige.count,
               blocked: !game.canPrestige,
-              blockedReason: game.prestigeBlockedReason ?? undefined,
+              blockedReason: game.prestigeBlockedReason ?? undefined
             });
             if (
               !game.canPrestige &&
@@ -310,7 +310,7 @@ export function GameApp({
             ) {
               logEvent('prestige_popup_blocked', {
                 playerLevel: game.playerLevel,
-                blockedReason: 'level_too_low',
+                blockedReason: 'level_too_low'
               });
             }
             setPrestigeOpen(true);
@@ -320,7 +320,7 @@ export function GameApp({
           hasNewStoryEntry={
             getStoryLogUnlockedEntries({
               unlockedPlanetIds: game.unlockedPlanetIds,
-              chosenCharacterId: game.chosenCharacterId,
+              chosenCharacterId: game.chosenCharacterId
             }).length > seenStoryCount
           }
           hasUnreadChannelMessage={!!game.characterMessage}
@@ -416,7 +416,7 @@ export function GameApp({
           equippedModule={(() => {
             const shipId = game.battle?.shipId ?? game.fleet.selectedShipId;
             const owned = game.fleet.ownedShips.find(
-              (s) => s.shipId === shipId,
+              (s) => s.shipId === shipId
             );
             const modId = owned?.equippedModuleId ?? null;
             return modId ? getModuleById(modId) : null;
@@ -424,7 +424,7 @@ export function GameApp({
           equippedModuleLevel={(() => {
             const shipId = game.battle?.shipId ?? game.fleet.selectedShipId;
             const owned = game.fleet.ownedShips.find(
-              (s) => s.shipId === shipId,
+              (s) => s.shipId === shipId
             );
             const modId = owned?.equippedModuleId ?? null;
             return modId ? (game.moduleLevels[modId] ?? 0) : 0;
@@ -456,7 +456,7 @@ export function GameApp({
         style={[
           styles.container,
           { backgroundColor: 'transparent' },
-          tgTopPadding > 0 ? { paddingTop: tgTopPadding } : null,
+          tgTopPadding > 0 ? { paddingTop: tgTopPadding } : null
         ]}
       >
         <StatusBar style="light" />
@@ -502,7 +502,7 @@ export function GameApp({
           onConfirmPrestige={() => {
             logEvent('prestige_confirm', {
               playerLevel: game.playerLevel,
-              prestigeCountBefore: game.prestige.count,
+              prestigeCountBefore: game.prestige.count
             });
             game.performPrestige();
           }}
@@ -575,7 +575,7 @@ export function GameApp({
             clickPower:
               game.clickPower < 1000
                 ? game.clickPower.toFixed(2)
-                : formatNum(game.clickPower),
+                : formatNum(game.clickPower)
           })}
           clerk
         />
@@ -589,7 +589,7 @@ export function GameApp({
           }}
           headerEmoji="⚡"
           text={t('ui.passive_rate_info.text', {
-            passiveRate: formatNum(game.passiveRate),
+            passiveRate: formatNum(game.passiveRate)
           })}
           clerk
         />
@@ -614,7 +614,7 @@ export function GameApp({
           playerLevel={game.playerLevel}
         />
 
-        {/* <DevTools
+        <DevTools
           energy={game.energy}
           iron={game.metals.iron}
           titan={game.metals.titan}
@@ -630,11 +630,11 @@ export function GameApp({
               titan: patch.titan,
               iridium: patch.iridium,
               playerXP: patch.playerXP,
-              tabsUnlocked: patch.tabsUnlocked,
+              tabsUnlocked: patch.tabsUnlocked
             });
           }}
           onReset={onReset}
-        /> */}
+        />
       </RNSAView>
     </LinearGradient>
   );
@@ -643,5 +643,5 @@ export function GameApp({
 const styles = StyleSheet.create({
   gradientBg: { flex: 1 },
   container: { flex: 1, backgroundColor: '#050918', userSelect: 'none' },
-  content: { flex: 1 },
+  content: { flex: 1 }
 });

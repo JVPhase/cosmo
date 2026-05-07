@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
 import prisma from '../lib/prisma';
 
@@ -36,9 +37,8 @@ async function buildConfigPayload() {
     );
   }
 
-  return {
+  const payload = {
     version: 1,
-    generatedAt: Date.now(),
     monetizationEnabled: process.env.MONETIZATION_ENABLED !== 'false',
     formulaConstants: db['formulaConstants'],
     upgrades: db['upgrades'],
@@ -55,11 +55,16 @@ async function buildConfigPayload() {
     achievements: db['achievements'],
     planets: db['planets'],
   };
+  const generatedAt = parseInt(
+    crypto.createHash('sha256').update(JSON.stringify(payload)).digest('hex').slice(0, 12),
+    16,
+  );
+  return { ...payload, generatedAt };
 }
 
 export async function configRoutes(app: FastifyInstance) {
   app.get('/config', async (_req, reply) => {
-    reply.header('Cache-Control', 'public, max-age=3600');
+    reply.header('Cache-Control', 'no-cache');
     return buildConfigPayload();
   });
 
