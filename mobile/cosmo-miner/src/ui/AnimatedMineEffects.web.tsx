@@ -1,11 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import {
-  Animated,
-  Image as RNImage,
-  LayoutChangeEvent,
-  StyleSheet,
-  View,
-} from "react-native";
+import { Animated, LayoutChangeEvent, StyleSheet, View } from "react-native";
+import { Asset } from "expo-asset";
 import { formatNum } from "../game/formatNum";
 import type {
   AnimatedMineEffectsProps,
@@ -57,14 +52,35 @@ function passiveOrbitPeriodMs(passive: number): number {
 const imageCache = new Map<string, HTMLImageElement>();
 
 /**
- * Resolves a require()-style asset id to an HTMLImageElement, cached by URI.
- * Triggers an async load on first sight; the canvas redraw loop will pick it
- * up once `image.complete` becomes true.
+ * Resolves a require()-style asset id (or a string URL / `{ uri }` object) to
+ * an HTMLImageElement, cached by URI. Triggers an async load on first sight;
+ * the canvas redraw loop will pick it up once `image.complete` becomes true.
+ *
+ * NOTE: `react-native-web` >= 0.21 removed `Image.resolveAssetSource`, so we
+ * rely on `expo-asset`'s `Asset.fromModule` which works on both native and web.
  */
+function resolveAssetUri(
+  source: number | string | { uri?: string } | null | undefined,
+): string | null {
+  if (source == null) return null;
+  if (typeof source === "string") return source;
+  if (typeof source === "object") {
+    return typeof source.uri === "string" ? source.uri : null;
+  }
+  if (typeof source === "number") {
+    try {
+      const asset = Asset.fromModule(source);
+      return asset?.localUri ?? asset?.uri ?? null;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
 function getCachedAssetImage(source: number): HTMLImageElement | null {
   if (typeof window === "undefined") return null;
-  const resolved = RNImage.resolveAssetSource(source);
-  const uri = resolved?.uri;
+  const uri = resolveAssetUri(source);
   if (!uri) return null;
   let img = imageCache.get(uri);
   if (img) return img;
