@@ -68,6 +68,10 @@ export default function App() {
   const [configError, setConfigError] = useState<string | null>(null);
   const [localeChecked, setLocaleChecked] = useState(false);
   const [showLocalePicker, setShowLocalePicker] = useState(false);
+  // Bumped after every successful locale switch so the whole tree re-renders
+  // and `t()` calls (which read from a module-level cache) return new strings
+  // immediately, instead of waiting for the next interaction-driven render.
+  const [localeVersion, setLocaleVersion] = useState(0);
   const [tgInsets, setTgInsets] = useState<TelegramSafeAreaInsets>({
     sysTop: 0,
     contentTop: 0,
@@ -199,6 +203,7 @@ export default function App() {
     invalidateAliensCache();
     setShowLocalePicker(false);
     setLocaleChecked(true);
+    setLocaleVersion((v) => v + 1);
   }, []);
 
   const handleReset = useCallback(
