@@ -1,0 +1,17 @@
+Mine Cosmo — a relaxing cosmic idle adventure.
+
+Build your mining empire across distant planets, upgrade ships and crew, fight off alien raiders, and rise from a lone prospector to galactic tycoon.
+
+Core gameplay:
+- Tap to mine — extract iron, titan, iridium, void crystals, and more
+- Upgrade your fleet — unlock new ships with unique perks
+- Recruit characters — captains, engineers, scientists, each with bonuses
+- Explore planets — every world has its own resource mix and aliens
+- Battle alien raiders — defend your fleet in tactical encounters
+- Expedition mode — send ships on multi-stage missions
+- Prestige — restart with permanent boosts when progress slows
+- Achievements — dozens of milestones to unlock
+
+Designed for short sessions, but rewarding deep play. No forced timers, no pay-to-win.
+
+Privacy: we collect anonymous gameplay analytics via PostHog to improve the game. See our privacy policy for details.

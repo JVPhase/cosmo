@@ -9,8 +9,11 @@
 
 | File | Language | Purpose |
 |------|----------|---------|
-| [privacy-policy-en.md](privacy-policy-en.md) | EN | Privacy Policy (GDPR-aligned) |
-| [privacy-policy-ru.md](privacy-policy-ru.md) | RU | Политика конфиденциальности |
+| [privacy-policy-en.md](privacy-policy-en.md) | EN | Privacy Policy — Telegram Mini App (GDPR-aligned) |
+| [privacy-policy-ru.md](privacy-policy-ru.md) | RU | Политика конфиденциальности — Telegram Mini App |
+| [privacy-policy-android-en.md](privacy-policy-android-en.md) | EN | Privacy Policy — Google Play / Android app |
+| [privacy-policy-android-ru.md](privacy-policy-android-ru.md) | RU | Политика конфиденциальности — Google Play / Android |
+| [../privacy-policy.html](../privacy-policy.html) | EN+RU | Hostable HTML page for Google Play (combined Android policy) |
 | [terms-en.md](terms-en.md) | EN | Terms of Service |
 | [terms-ru.md](terms-ru.md) | RU | Публичная оферта / Пользовательское соглашение |
 | [dpa-en.md](dpa-en.md) | EN | Data Processing Agreement (controller → sub-processor) |

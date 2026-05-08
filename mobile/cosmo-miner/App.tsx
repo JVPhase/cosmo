@@ -14,6 +14,7 @@ import {
   initAnalytics,
   logError,
 } from './src/game/analytics';
+import { initAds } from './src/services/ads';
 import { formatNum } from './src/game/formatNum';
 import { loadI18n, loadSavedLocale, saveLocale, t } from './src/game/i18n';
 import { invalidatePlanetsCache } from './src/game/PLANETS';
@@ -105,6 +106,7 @@ export default function App() {
 
   useEffect(() => {
     initAnalytics(sessionIdRef.current);
+    void initAds();
 
     const prevHandler = ErrorUtils.getGlobalHandler();
     ErrorUtils.setGlobalHandler((error, isFatal) => {

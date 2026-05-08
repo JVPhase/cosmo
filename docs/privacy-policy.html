@@ -1,0 +1,500 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Privacy Policy — Mine Cosmo</title>
+<meta name="description" content="Privacy Policy for the Mine Cosmo Android application." />
+<style>
+  :root {
+    --bg: #0b1020;
+    --panel: #121a33;
+    --text: #e6ecff;
+    --muted: #8da0c9;
+    --accent: #00d4ff;
+    --border: #243056;
+    --link: #6cd3ff;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  header {
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    padding: 24px 16px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  header .wrap {
+    max-width: 800px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  header h1 { margin: 0; font-size: 20px; font-weight: 700; }
+  .lang-toggle {
+    display: inline-flex;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    font-size: 13px;
+  }
+  .lang-toggle button {
+    background: transparent;
+    color: var(--muted);
+    border: none;
+    padding: 6px 14px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background 0.15s, color 0.15s;
+  }
+  .lang-toggle button.active {
+    background: var(--accent);
+    color: #041018;
+  }
+  main {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 32px 16px 64px;
+  }
+  article { display: none; }
+  article.active { display: block; }
+  h1.doc-title { font-size: 28px; margin-top: 0; line-height: 1.2; }
+  h2 { font-size: 20px; margin-top: 32px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+  h3 { font-size: 16px; margin-top: 24px; color: var(--accent); }
+  p, li { color: var(--text); }
+  a { color: var(--link); }
+  a:hover { text-decoration: underline; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    font-size: 14px;
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 8px 10px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th { background: var(--panel); font-weight: 600; }
+  blockquote {
+    border-left: 3px solid var(--accent);
+    margin: 16px 0;
+    padding: 4px 12px;
+    color: var(--muted);
+    background: rgba(0, 212, 255, 0.05);
+  }
+  hr { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+  code {
+    background: var(--panel);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 13px;
+  }
+  .meta {
+    color: var(--muted);
+    font-size: 14px;
+    margin-bottom: 24px;
+  }
+  .meta strong { color: var(--text); }
+  footer {
+    text-align: center;
+    color: var(--muted);
+    padding: 24px 16px 48px;
+    font-size: 13px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <h1>Mine Cosmo — Privacy Policy</h1>
+    <div class="lang-toggle" role="tablist" aria-label="Language">
+      <button id="btn-en" class="active" role="tab" aria-selected="true" aria-controls="doc-en">EN</button>
+      <button id="btn-ru" role="tab" aria-selected="false" aria-controls="doc-ru">RU</button>
+    </div>
+  </div>
+</header>
+
+<main>
+
+<article id="doc-en" class="active" role="tabpanel" aria-labelledby="btn-en">
+
+<h1 class="doc-title">Privacy Policy — Mine Cosmo (Android)</h1>
+
+<p class="meta">
+  <strong>Version:</strong> 1.0 &middot;
+  <strong>Effective date:</strong> 2026-05-08 &middot;
+  <strong>Last updated:</strong> 2026-05-08<br />
+  Applies to: Mine Cosmo Android application distributed via Google Play (package <code>com.minecosmo.app</code>).
+</p>
+
+<blockquote>A separate Privacy Policy applies to the Telegram Mini App version of the game; this document covers the standalone Android app only.</blockquote>
+
+<h2>1. Who We Are</h2>
+<p>This application ("the App", "Mine Cosmo") is operated by <strong>Ivan Vasilev</strong> ("we", "us", "our"), an independent developer.</p>
+<p><strong>Contact:</strong> <a href="mailto:jvmobile.info@gmail.com">jvmobile.info@gmail.com</a></p>
+<p>We act as the Data Controller for personal data processed under this Policy.</p>
+
+<h2>2. What Data We Collect</h2>
+
+<h3>2.1 Anonymous analytics data (PostHog)</h3>
+<p>When you use the App, we collect anonymous usage data via PostHog:</p>
+<ul>
+  <li>A randomly generated, app-scoped device identifier (not linked to your real identity, your Google account, your phone number, or any contact data)</li>
+  <li>Device model, operating system version, App version</li>
+  <li>In-app events: screens viewed, features used, gameplay milestones reached, errors and crashes</li>
+  <li>Approximate session timing and duration</li>
+</ul>
+<p>Analytics events are stored in the European Union region.</p>
+
+<h3>2.2 In-app purchase data (Google Play Billing)</h3>
+<p>When you make an in-app purchase:</p>
+<ul>
+  <li>Product ID of the purchased item (e.g. <code>cosmo_credits_100</code>)</li>
+  <li>Purchase token issued by Google Play</li>
+  <li>Timestamp of the transaction</li>
+</ul>
+<p>Google Play Billing handles the entire payment flow. <strong>We do not see, store, or have access to your payment card information, billing address, or Google Account email.</strong></p>
+
+<h3>2.3 Advertising data (Google AdMob)</h3>
+<p>The App shows rewarded video ads served by Google AdMob. We request <strong>non-personalised ads only</strong>: AdMob does not build a behavioural advertising profile based on your activity in this App.</p>
+<p>AdMob may collect technical data such as IP address, device identifiers, and ad-interaction events to deliver and measure ads. See <a href="https://support.google.com/admob/answer/6128543" rel="noopener">Google's AdMob &amp; AdSense data disclosure</a> for details.</p>
+
+<h3>2.4 Local game data (stored on your device only)</h3>
+<ul>
+  <li>Save files (game progress, settings, language preference)</li>
+  <li>Cached configuration and analytics events (when offline)</li>
+</ul>
+<p>This data lives in the App's private sandbox on your device and is never shared with third parties unless you explicitly use a backup/restore feature.</p>
+
+<h3>2.5 Optional cloud save data (server-side)</h3>
+<p>If you sign in to enable cloud saves, we store on our server:</p>
+<ul>
+  <li>An anonymous account identifier and JWT refresh token</li>
+  <li>Your game state (resources, fleet, research) as a JSON blob</li>
+  <li>Wallet balance (server-authoritative credits)</li>
+</ul>
+<p>The App does <strong>not</strong> require an email, password, phone number, or any third-party login (Google / Apple / Facebook) to function.</p>
+
+<h3>2.6 Technical server logs</h3>
+<p>When the App contacts our server, we capture transient request logs (IP address, User-Agent string) for security and abuse prevention.</p>
+
+<h3>What we do <em>not</em> collect</h3>
+<ul>
+  <li>Payment card or banking information</li>
+  <li>Precise or coarse location</li>
+  <li>Microphone, camera, photos, or contacts</li>
+  <li>Biometric data</li>
+  <li>SMS, call logs, or other personal device data</li>
+  <li>Children's data (the App is not directed at children under 13)</li>
+</ul>
+
+<h2>3. How We Use Your Data</h2>
+<table>
+  <thead><tr><th>Purpose</th><th>Legal basis (GDPR Art. 6)</th></tr></thead>
+  <tbody>
+    <tr><td>Run the App, save and restore your progress</td><td>Contract (Art. 6(1)(b))</td></tr>
+    <tr><td>Process in-app purchases and deliver purchased items</td><td>Contract</td></tr>
+    <tr><td>Show rewarded ads in exchange for in-game rewards</td><td>Consent / Legitimate interest (Art. 6(1)(f))</td></tr>
+    <tr><td>Diagnose crashes and improve gameplay balance via analytics</td><td>Legitimate interest</td></tr>
+    <tr><td>Detect and prevent fraud, abuse, and security incidents</td><td>Legitimate interest</td></tr>
+    <tr><td>Comply with legal obligations (purchase records for tax/accounting)</td><td>Legal obligation (Art. 6(1)(c))</td></tr>
+  </tbody>
+</table>
+<p>We do <strong>not</strong> sell your data, do <strong>not</strong> use it for cross-app advertising profiling, and do <strong>not</strong> share it with third parties for marketing.</p>
+
+<h2>4. Third-party Services (Sub-processors)</h2>
+<table>
+  <thead><tr><th>Service</th><th>Purpose</th><th>Provider</th><th>Region</th></tr></thead>
+  <tbody>
+    <tr><td>Google Play Billing</td><td>In-app purchases</td><td>Google LLC</td><td>Global (per Google Play Terms)</td></tr>
+    <tr><td>Google AdMob</td><td>Rewarded video ads</td><td>Google LLC</td><td>Global</td></tr>
+    <tr><td>PostHog</td><td>Anonymous product analytics</td><td>PostHog Inc.</td><td>European Union</td></tr>
+    <tr><td>Cloud hosting</td><td>API and database hosting</td><td>(see project repository)</td><td>EU</td></tr>
+  </tbody>
+</table>
+<p>Each provider processes data only as instructed by us, under their own privacy policy:</p>
+<ul>
+  <li><a href="https://policies.google.com/privacy" rel="noopener">Google Play Privacy Policy</a></li>
+  <li><a href="https://support.google.com/admob/answer/6128543" rel="noopener">Google AdMob Privacy</a></li>
+  <li><a href="https://posthog.com/privacy" rel="noopener">PostHog Privacy Policy</a></li>
+</ul>
+
+<h2>5. International Transfers</h2>
+<p>Data may be transferred outside your country of residence. Where required, we rely on the EU Standard Contractual Clauses (SCCs) or adequacy decisions to protect data crossing borders.</p>
+
+<h2>6. How Long We Keep Your Data</h2>
+<table>
+  <thead><tr><th>Data</th><th>Retention</th></tr></thead>
+  <tbody>
+    <tr><td>Anonymous analytics events</td><td>Up to 12 months</td></tr>
+    <tr><td>Cloud save game state (if enabled)</td><td>While account is active + 30 days after deletion request</td></tr>
+    <tr><td>Purchase records</td><td>5 years from transaction (accounting / tax law)</td></tr>
+    <tr><td>Server request logs (IP, User-Agent)</td><td>90 days</td></tr>
+    <tr><td>Server backups</td><td>30 days rolling</td></tr>
+    <tr><td>Local on-device data</td><td>Until you uninstall the App or reset progress</td></tr>
+  </tbody>
+</table>
+
+<h2>7. Your Rights</h2>
+<p>If you reside in the EU/EEA, UK, or another jurisdiction with equivalent rights, you may:</p>
+<ul>
+  <li>Request <strong>access</strong> to your personal data</li>
+  <li>Request <strong>rectification</strong> of inaccurate data</li>
+  <li>Request <strong>erasure</strong> of your data ("right to be forgotten")</li>
+  <li>Request <strong>restriction</strong> of processing</li>
+  <li>Request <strong>portability</strong> of your data in a machine-readable format</li>
+  <li><strong>Object</strong> to processing based on legitimate interests</li>
+  <li><strong>Withdraw consent</strong> at any time</li>
+</ul>
+<p>To exercise any of these rights, email <a href="mailto:jvmobile.info@gmail.com">jvmobile.info@gmail.com</a>. We will respond within 30 days. You may also lodge a complaint with your national data protection authority.</p>
+<p>You can additionally:</p>
+<ul>
+  <li>Reset all local game data via in-app <strong>Settings → Reset</strong></li>
+  <li>Uninstall the App at any time, which removes all local data</li>
+  <li>Opt out of personalised ads in your device settings (Android: Settings → Google → Ads → Reset advertising ID)</li>
+</ul>
+
+<h2>8. Children</h2>
+<p>The App is not directed at children under 13 and we do not knowingly collect data from children under 13. If you believe a child has provided us data, contact us and we will delete it promptly.</p>
+
+<h2>9. Security</h2>
+<ul>
+  <li>All network traffic is encrypted via HTTPS / TLS 1.2+</li>
+  <li>Local save files are stored in the App's private sandbox (not readable by other apps)</li>
+  <li>Server-side data is protected by industry-standard access controls and encrypted backups</li>
+  <li>We follow the OWASP Mobile Top 10 guidelines for App security</li>
+</ul>
+
+<h2>10. Changes to This Policy</h2>
+<p>We may update this Policy. Material changes will be communicated through the App or the Google Play listing. The "Last updated" date at the top reflects the most recent revision. Continued use of the App after changes constitutes acceptance of the updated Policy.</p>
+
+<h2>11. Contact</h2>
+<p>For privacy questions, data deletion requests, or any other concerns:</p>
+<p><strong>Email:</strong> <a href="mailto:jvmobile.info@gmail.com">jvmobile.info@gmail.com</a></p>
+
+</article>
+
+<article id="doc-ru" role="tabpanel" aria-labelledby="btn-ru">
+
+<h1 class="doc-title">Политика конфиденциальности — Mine Cosmo (Android)</h1>
+
+<p class="meta">
+  <strong>Версия:</strong> 1.0 &middot;
+  <strong>Дата вступления в силу:</strong> 08.05.2026 &middot;
+  <strong>Последнее обновление:</strong> 08.05.2026<br />
+  Действие: приложение Mine Cosmo для Android, распространяемое через Google Play (пакет <code>com.minecosmo.app</code>).
+</p>
+
+<blockquote>На версию игры в виде Telegram Mini App распространяется отдельная политика конфиденциальности; настоящий документ касается только самостоятельного Android-приложения.</blockquote>
+
+<h2>1. Оператор данных</h2>
+<p>Приложение Mine Cosmo («Приложение») разрабатывается и эксплуатируется <strong>Иваном Васильевым</strong> («мы», «нас») — независимым разработчиком.</p>
+<p><strong>Контакт:</strong> <a href="mailto:jvmobile.info@gmail.com">jvmobile.info@gmail.com</a></p>
+<p>Мы выступаем оператором персональных данных в значении Федерального закона № 152-ФЗ и контроллером данных в значении GDPR в отношении обработки, описанной в настоящей Политике.</p>
+
+<h2>2. Какие данные мы собираем</h2>
+
+<h3>2.1 Анонимная аналитика (PostHog)</h3>
+<p>При использовании Приложения мы собираем анонимные данные через PostHog:</p>
+<ul>
+  <li>Случайно сгенерированный идентификатор устройства, привязанный только к Приложению (не связан с вашей реальной личностью, Google-аккаунтом, телефонным номером или контактами)</li>
+  <li>Модель устройства, версию ОС, версию Приложения</li>
+  <li>Внутриигровые события: посещённые экраны, использованные функции, достижения, ошибки и сбои</li>
+  <li>Приблизительное время и продолжительность сессий</li>
+</ul>
+<p>Аналитика хранится в регионе Европейского союза.</p>
+
+<h3>2.2 Внутриигровые покупки (Google Play Billing)</h3>
+<p>При совершении покупки мы получаем:</p>
+<ul>
+  <li>Идентификатор товара (например, <code>cosmo_credits_100</code>)</li>
+  <li>Токен покупки, выданный Google Play</li>
+  <li>Время транзакции</li>
+</ul>
+<p>Платёжный поток полностью обрабатывается Google Play Billing. <strong>Мы не видим, не храним и не имеем доступа к данным вашей банковской карты, платёжному адресу или email вашего Google-аккаунта.</strong></p>
+
+<h3>2.3 Реклама (Google AdMob)</h3>
+<p>В Приложении показывается видеореклама с вознаграждением, поставляемая Google AdMob. Мы запрашиваем <strong>только неперсонализированную рекламу</strong>: AdMob не строит поведенческий рекламный профиль на основе вашей активности в Приложении.</p>
+<p>AdMob может собирать технические данные (IP-адрес, идентификаторы устройства, события взаимодействия с рекламой) для показа и измерения объявлений. Подробнее: <a href="https://support.google.com/admob/answer/6128543?hl=ru" rel="noopener">Раскрытие данных AdMob и AdSense</a>.</p>
+
+<h3>2.4 Локальные игровые данные (только на вашем устройстве)</h3>
+<ul>
+  <li>Файлы сохранений (прогресс, настройки, выбранный язык)</li>
+  <li>Кешированная конфигурация и события аналитики (в офлайн-режиме)</li>
+</ul>
+<p>Эти данные находятся в приватном sandbox-каталоге Приложения на вашем устройстве и не передаются третьим лицам.</p>
+
+<h3>2.5 Опциональные облачные сохранения (на стороне сервера)</h3>
+<p>При включении облачных сохранений мы храним на сервере:</p>
+<ul>
+  <li>Анонимный идентификатор аккаунта и JWT refresh-токен</li>
+  <li>Игровое состояние (ресурсы, флот, исследования) в формате JSON</li>
+  <li>Баланс кошелька (авторитативные кредиты на сервере)</li>
+</ul>
+<p>Приложение <strong>не требует</strong> email, пароля, телефона или входа через сторонние сервисы (Google / Apple / Facebook).</p>
+
+<h3>2.6 Технические серверные логи</h3>
+<p>При обращении Приложения к нашему серверу мы кратковременно фиксируем IP-адрес и User-Agent для целей безопасности и предотвращения злоупотреблений.</p>
+
+<h3>Что мы <em>не</em> собираем</h3>
+<ul>
+  <li>Данные банковских карт или платёжные реквизиты</li>
+  <li>Точную или приблизительную геолокацию</li>
+  <li>Доступ к микрофону, камере, фото или контактам</li>
+  <li>Биометрические данные</li>
+  <li>SMS, журналы звонков и иные персональные данные устройства</li>
+  <li>Данные детей младше 13 лет</li>
+</ul>
+
+<h2>3. Цели обработки и правовые основания</h2>
+<table>
+  <thead><tr><th>Цель</th><th>Правовое основание</th></tr></thead>
+  <tbody>
+    <tr><td>Предоставление функциональности Приложения, сохранение и восстановление прогресса</td><td>Исполнение договора (152-ФЗ ст. 6 ч. 1 п. 5; GDPR Art. 6(1)(b))</td></tr>
+    <tr><td>Обработка покупок и доставка цифровых товаров</td><td>Исполнение договора</td></tr>
+    <tr><td>Показ рекламы с вознаграждением в обмен на игровые бонусы</td><td>Согласие пользователя / Законный интерес</td></tr>
+    <tr><td>Диагностика сбоев и улучшение игрового баланса (аналитика)</td><td>Законный интерес</td></tr>
+    <tr><td>Предотвращение мошенничества и защита безопасности</td><td>Законный интерес</td></tr>
+    <tr><td>Соблюдение бухгалтерских обязательств (записи о покупках)</td><td>Исполнение правового обязательства</td></tr>
+  </tbody>
+</table>
+<p>Мы <strong>не продаём</strong> ваши данные, <strong>не используем</strong> их для кросс-приложенческого рекламного профилирования и <strong>не передаём</strong> третьим лицам в маркетинговых целях.</p>
+
+<h2>4. Передача третьим лицам (субобработчики)</h2>
+<table>
+  <thead><tr><th>Сервис</th><th>Цель</th><th>Поставщик</th><th>Регион</th></tr></thead>
+  <tbody>
+    <tr><td>Google Play Billing</td><td>Внутриигровые покупки</td><td>Google LLC</td><td>Глобально (по условиям Google Play)</td></tr>
+    <tr><td>Google AdMob</td><td>Видеореклама с вознаграждением</td><td>Google LLC</td><td>Глобально</td></tr>
+    <tr><td>PostHog</td><td>Анонимная продуктовая аналитика</td><td>PostHog Inc.</td><td>Европейский союз</td></tr>
+    <tr><td>Облачный хостинг</td><td>API и база данных</td><td>(см. репозиторий проекта)</td><td>ЕС</td></tr>
+  </tbody>
+</table>
+<p>Каждый поставщик обрабатывает данные исключительно по нашему поручению согласно собственным политикам конфиденциальности:</p>
+<ul>
+  <li><a href="https://policies.google.com/privacy?hl=ru" rel="noopener">Политика конфиденциальности Google Play</a></li>
+  <li><a href="https://support.google.com/admob/answer/6128543?hl=ru" rel="noopener">Политика AdMob</a></li>
+  <li><a href="https://posthog.com/privacy" rel="noopener">Политика PostHog</a></li>
+</ul>
+
+<h2>5. Трансграничная передача</h2>
+<p>Ваши данные могут передаваться за пределы вашей страны проживания. При необходимости мы используем стандартные договорные положения ЕС (SCCs) или решения об адекватности уровня защиты для трансграничной передачи.</p>
+
+<h2>6. Сроки хранения</h2>
+<table>
+  <thead><tr><th>Категория данных</th><th>Срок</th></tr></thead>
+  <tbody>
+    <tr><td>Анонимные события аналитики</td><td>До 12 месяцев</td></tr>
+    <tr><td>Облачные сохранения (если включены)</td><td>Пока аккаунт активен + 30 дней после запроса на удаление</td></tr>
+    <tr><td>Записи о покупках</td><td>5 лет с даты транзакции (бухгалтерское / налоговое право)</td></tr>
+    <tr><td>Серверные логи (IP, User-Agent)</td><td>90 дней</td></tr>
+    <tr><td>Серверные резервные копии</td><td>30 дней (ротация)</td></tr>
+    <tr><td>Локальные данные на устройстве</td><td>До удаления Приложения или сброса прогресса</td></tr>
+  </tbody>
+</table>
+
+<h2>7. Ваши права</h2>
+<p>Если вы находитесь в ЕС/ЕЭЗ, Великобритании, России или иной юрисдикции с эквивалентными правами, вы вправе:</p>
+<ul>
+  <li>Запросить <strong>доступ</strong> к вашим персональным данным</li>
+  <li>Запросить <strong>исправление</strong> неточных данных</li>
+  <li>Запросить <strong>удаление</strong> данных («право быть забытым»)</li>
+  <li>Запросить <strong>ограничение</strong> обработки</li>
+  <li>Запросить <strong>переносимость</strong> данных в машиночитаемом формате</li>
+  <li><strong>Возразить</strong> против обработки на основании законных интересов</li>
+  <li><strong>Отозвать согласие</strong> в любое время</li>
+</ul>
+<p>Для реализации прав напишите на <a href="mailto:jvmobile.info@gmail.com">jvmobile.info@gmail.com</a>. Срок ответа — 30 дней. Вы также вправе обратиться с жалобой в Роскомнадзор (rkn.gov.ru) или иной национальный орган по защите данных.</p>
+<p>Дополнительно вы можете:</p>
+<ul>
+  <li>Сбросить все локальные игровые данные через <strong>Настройки → Сброс</strong></li>
+  <li>Удалить Приложение, что очистит все локальные данные с устройства</li>
+  <li>Отказаться от персонализированной рекламы в настройках устройства (Android: Настройки → Google → Реклама → Сбросить идентификатор рекламы)</li>
+</ul>
+
+<h2>8. Несовершеннолетние</h2>
+<p>Приложение не адресовано детям младше 13 лет. Мы сознательно не собираем данные несовершеннолетних. Если вам известно, что ребёнок передал нам свои данные, свяжитесь с нами — мы их немедленно удалим.</p>
+
+<h2>9. Меры защиты</h2>
+<ul>
+  <li>Весь сетевой трафик шифруется через HTTPS / TLS 1.2+</li>
+  <li>Локальные сохранения хранятся в приватном sandbox-каталоге Приложения (недоступны другим приложениям)</li>
+  <li>Серверные данные защищены отраслевыми мерами контроля доступа и шифрованием резервных копий</li>
+  <li>Мы следуем рекомендациям OWASP Mobile Top 10</li>
+</ul>
+
+<h2>10. Изменения политики</h2>
+<p>Мы можем обновлять Политику. О существенных изменениях мы уведомим через Приложение или листинг в Google Play. Дата «Последнее обновление» в начале документа отражает актуальную ревизию. Продолжение использования Приложения после изменений означает согласие с обновлённой Политикой.</p>
+
+<h2>11. Контакт</h2>
+<p>По вопросам конфиденциальности, удаления данных или любым другим обращениям:</p>
+<p><strong>Email:</strong> <a href="mailto:jvmobile.info@gmail.com">jvmobile.info@gmail.com</a></p>
+
+</article>
+
+</main>
+
+<footer>
+  &copy; 2026 Ivan Vasilev — Mine Cosmo
+</footer>
+
+<script>
+(function () {
+  var btnEn = document.getElementById('btn-en');
+  var btnRu = document.getElementById('btn-ru');
+  var docEn = document.getElementById('doc-en');
+  var docRu = document.getElementById('doc-ru');
+
+  function setLang(lang) {
+    var isRu = lang === 'ru';
+    btnRu.classList.toggle('active', isRu);
+    btnEn.classList.toggle('active', !isRu);
+    btnRu.setAttribute('aria-selected', String(isRu));
+    btnEn.setAttribute('aria-selected', String(!isRu));
+    docRu.classList.toggle('active', isRu);
+    docEn.classList.toggle('active', !isRu);
+    document.documentElement.lang = isRu ? 'ru' : 'en';
+    document.title = isRu
+      ? 'Политика конфиденциальности — Mine Cosmo'
+      : 'Privacy Policy — Mine Cosmo';
+    try { localStorage.setItem('cosmo-pp-lang', lang); } catch (e) {}
+    if (history && history.replaceState) {
+      var hash = isRu ? '#ru' : '#en';
+      history.replaceState(null, '', location.pathname + location.search + hash);
+    }
+  }
+
+  btnEn.addEventListener('click', function () { setLang('en'); });
+  btnRu.addEventListener('click', function () { setLang('ru'); });
+
+  // Initial language: hash > localStorage > browser > en
+  var initial = 'en';
+  if (location.hash === '#ru') initial = 'ru';
+  else if (location.hash === '#en') initial = 'en';
+  else {
+    try {
+      var saved = localStorage.getItem('cosmo-pp-lang');
+      if (saved === 'ru' || saved === 'en') initial = saved;
+      else if ((navigator.language || '').toLowerCase().indexOf('ru') === 0) initial = 'ru';
+    } catch (e) {}
+  }
+  setLang(initial);
+})();
+</script>
+
+</body>
+</html>
