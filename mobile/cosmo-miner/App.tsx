@@ -22,6 +22,7 @@ import { fetchDialogues, type DialoguesPayload } from './src/game/dialogues';
 import {
   loadRemoteConfigFromCache,
   fetchAndCacheRemoteConfig,
+  getCachedRemoteConfig,
 } from './src/game/remoteConfig';
 import {
   clearGame,
@@ -176,17 +177,22 @@ export default function App() {
     let mounted = true;
     (async () => {
       const cached = await loadRemoteConfigFromCache();
+      const cachedAt = cached?.generatedAt ?? null;
+      if (cached && mounted) {
+        setConfigReady(true);
+      }
       try {
         await fetchAndCacheRemoteConfig();
-        if (mounted) {
-          setConfigReady(true);
-          setConfigError(null);
+        if (!mounted) return;
+        setConfigReady(true);
+        setConfigError(null);
+        const fresh = getCachedRemoteConfig();
+        if (cachedAt !== null && fresh && fresh.generatedAt !== cachedAt) {
+          setGameKey((k) => k + 1);
         }
       } catch (err: any) {
         if (!mounted) return;
-        if (cached) {
-          setConfigReady(true);
-        } else {
+        if (!cached) {
           setConfigError(err?.message ?? 'Не удалось загрузить конфиг');
         }
       }
