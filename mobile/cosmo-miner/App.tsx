@@ -27,12 +27,9 @@ import {
 } from './src/game/remoteConfig';
 import {
   clearGame,
-  loadUnlocked,
   saveIntroSeen,
-  saveUnlocked,
 } from './src/game/storage';
 import { useBootstrapGame } from './src/game/useBootstrapGame';
-import { PasswordScreen } from './src/ui/PasswordScreen';
 import { IntroOverlay } from './src/ui/IntroOverlay';
 import { Popup } from './src/ui/Popup';
 import {
@@ -61,7 +58,6 @@ export default function App() {
     setOfflineEarnings,
   } = useBootstrapGame();
 
-  const [unlocked, setUnlocked] = useState<boolean | null>(null);
   const [tab, setTab] = useState<TabId>('game');
   const [gameKey, setGameKey] = useState(0);
   const [dialogues, setDialogues] = useState<DialoguesPayload | null>(null);
@@ -93,15 +89,6 @@ export default function App() {
       .catch((err) => {
         setDialoguesError(err?.message ?? 'Failed to load dialogues');
       });
-  }, []);
-
-  const handleUnlock = useCallback(() => {
-    void saveUnlocked();
-    setUnlocked(true);
-  }, []);
-
-  useEffect(() => {
-    loadUnlocked().then((was) => setUnlocked(was ? true : false));
   }, []);
 
   useEffect(() => {
@@ -240,16 +227,6 @@ export default function App() {
     return (
       <View style={styles.container}>
         <StatusBar style="light" />
-      </View>
-    );
-  }
-
-  if (unlocked !== true) {
-    if (unlocked === null) return null;
-    return (
-      <View style={styles.container}>
-        <StatusBar style="light" />
-        <PasswordScreen onUnlock={handleUnlock} />
       </View>
     );
   }
